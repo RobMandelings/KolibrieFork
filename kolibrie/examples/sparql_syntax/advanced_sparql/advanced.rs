@@ -11,6 +11,7 @@
 use kolibrie::execute_query::*;
 use kolibrie::sparql_database::*;
 
+// ! Simple a more advanced RDF knowledge graph, but the query itself is easy (simple join I think)
 fn query() {
     let rdf_data = r#"
     <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"

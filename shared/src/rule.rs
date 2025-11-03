@@ -19,7 +19,7 @@ pub struct FilterCondition {
 
 #[derive(Debug, Clone)]
 pub struct Rule {
-    pub premise: Vec<TriplePattern>,
-    pub filters: Vec<FilterCondition>,
-    pub conclusion: Vec<TriplePattern>,
+    pub premise: Vec<TriplePattern>, // if Rob follows master course
+    pub filters: Vec<FilterCondition>, // ?? How do filters work?
+    pub conclusion: Vec<TriplePattern>, // then Rob is a master student
 }

@@ -32,6 +32,7 @@ pub struct HierarchicalRule {
 
 #[derive(Debug, Clone)]
 pub struct ReasoningHierarchy {
+    // ! Like an ordered set based on a B-tree
     pub levels: BTreeMap<ReasoningLevel, KnowledgeGraph>,
     pub cross_level_rules: Vec<HierarchicalRule>,
     pub propagation_rules: Vec<HierarchicalRule>,
@@ -43,6 +44,8 @@ impl ReasoningHierarchy {
         levels.insert(ReasoningLevel::Base, KnowledgeGraph::new());
         levels.insert(ReasoningLevel::Deductive, KnowledgeGraph::new());
         levels.insert(ReasoningLevel::Abductive, KnowledgeGraph::new());
+
+        // ?? What is metareasoning? 'reasoning about reasoning'?
         levels.insert(ReasoningLevel::MetaReasoning, KnowledgeGraph::new());
         
         Self {
@@ -63,11 +66,15 @@ impl ReasoningHierarchy {
         if let Some(kg) = self.levels.get_mut(&level) {
             kg.add_rule(rule.clone());
         }
-        
+
+        // ?? What is cross level processing?
         // For cross-level processing, rules should depend on Base level plus their own level
+
+        // ! What are dependencies?
+        // ! vec! is easy way to create a vector. This vector contains a single element
         let mut dependencies = vec![ReasoningLevel::Base];
         if level != ReasoningLevel::Base {
-            dependencies.push(level.clone());
+            dependencies.push(level.clone()); // Add reasoning level to the base level
         }
         
         let hierarchical_rule = HierarchicalRule {
@@ -85,7 +92,8 @@ impl ReasoningHierarchy {
 
     pub fn hierarchical_inference(&mut self) -> BTreeMap<ReasoningLevel, Vec<Triple>> {
         let mut all_inferred = BTreeMap::new();
-        
+
+        // ! .iter() creates an iterator to loop over
         // Process levels in dependency order
         for level in [ReasoningLevel::Base, ReasoningLevel::Deductive, 
                      ReasoningLevel::Abductive, ReasoningLevel::MetaReasoning].iter() {
@@ -93,6 +101,7 @@ impl ReasoningHierarchy {
             println!("Processing level: {:?}", level);
             
             // First, run standard inference within this level
+            // ! Get the knowledge graph for given reasoning level
             if let Some(kg) = self.levels.get_mut(level) {
                 let inferred = kg.infer_new_facts_semi_naive();
                 println!("  Standard inference produced {} facts", inferred.len());
@@ -106,7 +115,10 @@ impl ReasoningHierarchy {
             // Add cross-level facts to the results
             if let Some(existing) = all_inferred.get_mut(level) {
                 existing.extend(new_cross_level_facts);
-            } else {
+            } else { // ! If there does not yet exist a value for the level map
+                // ! Create such a value with for the the level map with cross level facts
+                // ! This is the case where all_inferred does not contain
+                // ! any inferred rules yet for the current level
                 all_inferred.insert(level.clone(), new_cross_level_facts);
             }
         }
@@ -116,7 +128,8 @@ impl ReasoningHierarchy {
 
     fn apply_cross_level_rules(&mut self, target_level: ReasoningLevel) -> Vec<Triple> {
         let mut new_facts = Vec::new();
-        
+
+        // ! |r| is Rust's closure syntax. The parameters go inside the vertical bars
         // Get rules that target this level
         let applicable_rules: Vec<_> = self.cross_level_rules.iter()
             .filter(|r| r.level == target_level)
