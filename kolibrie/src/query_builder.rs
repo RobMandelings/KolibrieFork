@@ -43,7 +43,7 @@ pub struct QueryBuilder<'a> {
     object_filter: Option<TripleFilter>,
     custom_filter: Option<Box<dyn Fn(&Triple) -> bool + 'a>>,
     join_conditions: Vec<JoinCondition>,
-    join_db: Option<&'a SparqlDatabase>,
+    join_db: Option<&'a SparqlDatabase>, // TEST
     distinct_results: bool,
     sort_key: Option<Box<dyn Fn(&Triple) -> String + 'a>>,
     sort_direction: SortDirection,
