@@ -35,7 +35,7 @@ fn simple_select() {
     database.parse_rdf(rdf_data);
 
     // ! This is the sparql query!
-    // ! Where is this relationship defined 'ex:worksAt'
+    // ! Where is this relationship defined 'ex:worksAt'?
     let sparql = r#"PREFIX ex: <http://t statexample.org/> SELECT ?person ?location WHERE {?person ex:worksAt ?location}"#;
 
     let results = execute_query(sparql, &mut database);
