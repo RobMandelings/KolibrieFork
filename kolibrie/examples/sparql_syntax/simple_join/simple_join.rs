@@ -34,6 +34,7 @@ fn simple_join() {
     let mut database = SparqlDatabase::new();
     database.parse_rdf(rdf_data);
 
+    // ! The . is the join operator!
     let sparql = r#"PREFIX ex: <http://example.org/> SELECT ?person ?location ?city WHERE {?person ex:worksAt ?location . ?location ex:located ?city}"#;
 
     let results = execute_query(sparql, &mut database);
