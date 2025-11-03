@@ -45,7 +45,7 @@ const HASHMAP_INITIAL_CAPACITY1: usize = 1024;
 
 #[derive(Debug, Clone)]
 pub struct SparqlDatabase {
-    pub triples: BTreeSet<Triple>,
+    pub triples: BTreeSet<Triple>, // Why use BTreeSet as ordered set?
     pub streams: Vec<TimestampedTriple>,
     pub sliding_window: Option<SlidingWindow>,
     pub dictionary: Dictionary,
@@ -59,22 +59,28 @@ pub struct SparqlDatabase {
 impl SparqlDatabase {
     pub fn new() -> Self {
         Self {
-            triples: BTreeSet::new(),
+            triples: BTreeSet::new(), // ! "Multiset of elements"?
             streams: Vec::new(),
             sliding_window: None,
             dictionary: Dictionary::new(),
             prefixes: HashMap::new(),
             udfs: HashMap::new(),
-            index_manager: UnifiedIndex::new(),
+            index_manager: UnifiedIndex::new(), // ! Quick retrieval of triples
             rule_map: HashMap::new(),
         }
     }
 
+    // ! db.query(). ... ? I think something like this
     pub fn query(&self) -> QueryBuilder {
         QueryBuilder::new(self)
     }
 
     pub fn add_triple(&mut self, triple: Triple) {
+
+        // ! Important to make a clone of this triple. Otherwise a reference would be added.
+        // ! Isn't it value-by-default?
+        // ! Yes but triple is owned in this function, we need to pass a clone such that
+        // ! ownership is not transferred.
         self.triples.insert(triple.clone());
         self.index_manager.insert(&triple);
     }

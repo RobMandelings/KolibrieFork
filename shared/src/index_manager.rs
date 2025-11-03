@@ -14,11 +14,12 @@ use crate::terms::Term::*;
 use crate::triple::Triple;
 
 #[derive(Debug, Clone)]
+// ! Allows for efficient retrieval of triples
 pub struct UnifiedIndex {
     // The six permutations, using HashMap of HashMap of HashSet.
-    pub spo: HashMap<u32, HashMap<u32, HashSet<u32>>>,
-    pub pos: HashMap<u32, HashMap<u32, HashSet<u32>>>,
-    pub osp: HashMap<u32, HashMap<u32, HashSet<u32>>>,
+    pub spo: HashMap<u32, HashMap<u32, HashSet<u32>>>, // ! Find all objects for subject  predicate pair
+    pub pos: HashMap<u32, HashMap<u32, HashSet<u32>>>, // ! Find all subjects for predicate, object subject pairs
+    pub osp: HashMap<u32, HashMap<u32, HashSet<u32>>>, // ...
     pub pso: HashMap<u32, HashMap<u32, HashSet<u32>>>,
     pub ops: HashMap<u32, HashMap<u32, HashSet<u32>>>,
     pub sop: HashMap<u32, HashMap<u32, HashSet<u32>>>,
@@ -38,6 +39,8 @@ impl UnifiedIndex {
 
     /// Insert a single triple into all six indexes
     pub fn insert(&mut self, triple: &Triple) -> bool {
+
+        // ! * is a dereferencing operator: gives the value that the reference points to (&Triple -> Triple)
         let Triple { subject: s, predicate: p, object: o } = *triple;
         if let Some(pred_map) = self.spo.get(&s) {
             if let Some(objects) = pred_map.get(&p) {

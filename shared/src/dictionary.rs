@@ -13,6 +13,8 @@ use crate::triple::Triple;
 
 // Dictionary for encoding and decoding strings
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
+
+// ! Why is dictionary required?
 pub struct Dictionary {
     pub string_to_id: HashMap<String, u32>,
     pub id_to_string: HashMap<u32, String>,
@@ -28,7 +30,10 @@ impl Dictionary {
         }
     }
 
+    // ! Like d.encode(val)
+    // ! Encodes to an ID, not a string. What does id represent?
     pub fn encode(&mut self, value: &str) -> u32 {
+        // ! Where does this &id come from?
         if let Some(&id) = self.string_to_id.get(value) {
             id
         } else {
@@ -48,6 +53,8 @@ impl Dictionary {
         let s = self.decode(triple.subject).unwrap_or("unknown");
         let p = self.decode(triple.predicate).unwrap_or("unknown");
         let o = self.decode(triple.object).unwrap_or("unknown");
+
+        // ! No ; after this line, so this is the return value
         format!("{} {} {} .", s, p, o)
     }
 

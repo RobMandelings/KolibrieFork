@@ -34,6 +34,7 @@ fn simple_select() {
     let mut database = SparqlDatabase::new();
     database.parse_rdf(rdf_data);
 
+    // ! This is the sparql query!
     let sparql = r#"PREFIX ex: <http://example.org/> SELECT ?person ?location WHERE {?person ex:worksAt ?location}"#;
 
     let results = execute_query(sparql, &mut database);
@@ -41,6 +42,8 @@ fn simple_select() {
     // Now the main function is responsible for printing the results
     println!("Results:");
     for result in results {
+
+        // ! Only works if &result is a slice with two elements, not one or zero. Otherwise it doesn't work
         if let [person, location] = &result[..] {
             println!("?person = {}, ?location = {}", person, location);
         }
