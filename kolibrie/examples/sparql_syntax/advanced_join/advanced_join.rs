@@ -36,7 +36,14 @@ fn advanced_join() {
     let mut database = SparqlDatabase::new();
     database.parse_rdf(rdf_data);
 
-    let sparql = r#"PREFIX ex: <http://example.org/> SELECT ?person ?location ?city ?zipcode WHERE {?person ex:worksAt ?location . ?location ex:located ?city . ?location ex:zipcode ?zipcode}"#;
+    // ! person -> location
+    // ! location -> city
+    // ! location -> zipcode
+    let sparql = r#"PREFIX ex: <http://example.org/>
+    SELECT ?person ?location ?city ?zipcode
+    WHERE {?person ex:worksAt ?location
+    . ?location ex:located ?city
+    . ?location ex:zipcode ?zipcode}"#;
 
     let results = execute_query(sparql, &mut database);
 

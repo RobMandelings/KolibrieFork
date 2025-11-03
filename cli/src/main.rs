@@ -11,7 +11,6 @@
 use clap::Parser;
 use kolibrie::execute_query::*;
 use kolibrie::sparql_database::SparqlDatabase;
-
 #[derive(Parser)]
 #[command(
     name = "kolibrie-cli",
