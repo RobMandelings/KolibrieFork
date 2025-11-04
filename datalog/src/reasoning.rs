@@ -126,6 +126,7 @@ impl ReasoningHierarchy {
         all_inferred
     }
 
+    // ?? What is a cross level rule?
     fn apply_cross_level_rules(&mut self, target_level: ReasoningLevel) -> Vec<Triple> {
         let mut new_facts = Vec::new();
 

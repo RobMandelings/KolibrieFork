@@ -23,6 +23,7 @@ use shared::rule::FilterCondition;
 // Logic part: Knowledge Graph
 
 #[derive(Debug, Clone)]
+// Are there RDF connections here or not?
 pub struct KnowledgeGraph {
     pub dictionary: Dictionary,
     pub rules: Vec<Rule>, // List of dynamic rules

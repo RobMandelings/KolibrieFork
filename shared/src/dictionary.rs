@@ -15,6 +15,11 @@ use crate::triple::Triple;
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 
 // ! Why is dictionary required?
+// ! To go from the name or field to an ID that is used in dictionary?
+/** !
+I think its used to map e.g. things like "KULeuven" to a corresponding id, such that you can
+use this id in your triples.
+*/
 pub struct Dictionary {
     pub string_to_id: HashMap<String, u32>,
     pub id_to_string: HashMap<u32, String>,

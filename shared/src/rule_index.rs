@@ -16,6 +16,7 @@ pub type RuleId = usize;
 pub const WILDCARD: u32 = u32::MAX;
 
 #[derive(Debug, Clone)]
+// ?? What is the RuleIndex?
 pub struct RuleIndex {
     pub spo: HashMap<u32, HashMap<u32, HashSet<RuleId>>>,
     pub pos: HashMap<u32, HashMap<u32, HashSet<RuleId>>>,
