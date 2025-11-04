@@ -135,6 +135,7 @@ fn create_teaching_transitivity_rule(hierarchy: &mut ReasoningHierarchy) -> Rule
     let base_kg = hierarchy.levels.get_mut(&ReasoningLevel::Base).unwrap();
     
     Rule {
+        // ! So its rather 'if we can find these triples, the rule applies'
         premise: vec![
             (
                 Term::Variable("x".to_string()),
