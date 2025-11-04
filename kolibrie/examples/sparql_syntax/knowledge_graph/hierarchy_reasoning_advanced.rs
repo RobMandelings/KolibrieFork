@@ -60,6 +60,7 @@ fn main() {
     println!("\n4. Adding Meta-Reasoning Rules:");
     let significance_meta_rule = create_significance_meta_rule(&mut hierarchy);
     hierarchy.add_cross_level_rule(significance_meta_rule);
+    // ! We add reasoning rules based on reasoning results
     println!("   - Added meta-rule: might_have_soul(X) ∧ might_be_remembered(X) -> significant_figure(X)");
     
     // Perform inference
@@ -280,7 +281,7 @@ fn display_triple_with_level(hierarchy: &mut ReasoningHierarchy, triple: &Triple
     let object = get_decoded_term(hierarchy, triple.object, ReasoningLevel::Base);
     let certainty = hierarchy.get_fact_certainty(triple);
     
-    println!("   {} {} {} (level: {:?}, certainty: {:.1})", 
+    println!("   {} {} {} (level: {:?}, certainty: {:.1})",
              subject, predicate, object, level, certainty);
 }
 
