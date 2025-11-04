@@ -50,10 +50,12 @@ impl Dictionary {
         }
     }
 
+    // ! Decode from an id to a triple (as string)
     pub fn decode(&self, id: u32) -> Option<&str> {
         self.id_to_string.get(&id).map(|s| s.as_str())
     }
 
+    // ! Decode the triple such that you see it as names rather than just ids
     pub fn decode_triple(&self, triple: &Triple) -> String {
         let s = self.decode(triple.subject).unwrap_or("unknown");
         let p = self.decode(triple.predicate).unwrap_or("unknown");

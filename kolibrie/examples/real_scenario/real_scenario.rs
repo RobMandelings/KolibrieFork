@@ -283,6 +283,7 @@ fn main() {
     println!("Database RDF triples: {:#?}", database.triples);
 
     // Load data into knowledge graph
+    // ! Knowledge graph is build from the data in the database
     let mut kg = KnowledgeGraph::new();
     for triple in database.triples.iter() {
         let subject = database.dictionary.decode(triple.subject);
@@ -324,6 +325,9 @@ WHERE {
 }"#;
 
     // Rule 3a: If it's not dark (light level > 50), use cameras for detection
+
+    // ?? Where does the RULE syntax come from?
+
     let rule3a = r#"PREFIX ex: <http://example.org#>
 RULE :UseCameraDetection(?room) :- 
     WHERE { 
@@ -356,6 +360,8 @@ WHERE {
 }"#;
 
     // Mark all detection events as unauthorized:
+    // ! So this rule initially marks all detection events as unauthorised.
+    // ! When there is a detection even for any person => unauthorise this event (invalid detection)?
     let rule_mark_all_unauthorized = r#"PREFIX ex: <http://example.org#>
 RULE :MarkAllEventsUnauthorized(?event) :-
     WHERE {
@@ -371,6 +377,10 @@ WHERE {
 }"#;
 
     // Override to authorized if event is within the allowed time slot:
+
+    // ?? Why the rule combined with the SPARQL query then?
+    // ?? This example does not seem to be finished?
+    // If a person was detected by some event, then that even unauthorises
     let rule_mark_authorized_if_within_schedule = r#"PREFIX ex: <http://example.org#>
 RULE :MarkAllEventsUnauthorized(?event) :-
     WHERE {

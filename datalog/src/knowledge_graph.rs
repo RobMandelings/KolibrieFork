@@ -24,6 +24,7 @@ use shared::rule::FilterCondition;
 
 #[derive(Debug, Clone)]
 // Are there RDF connections here or not?
+// ! Used when reasoning
 pub struct KnowledgeGraph {
     pub dictionary: Dictionary,
     pub rules: Vec<Rule>, // List of dynamic rules
@@ -46,6 +47,7 @@ impl KnowledgeGraph {
 
     /// Add an ABox triple (instance-level information)
     pub fn add_abox_triple(&mut self, subject: &str, predicate: &str, object: &str) {
+        // ! So this is decoded and subsequently encoded?
         let s = self.dictionary.encode(subject);
         let p = self.dictionary.encode(predicate);
         let o = self.dictionary.encode(object);

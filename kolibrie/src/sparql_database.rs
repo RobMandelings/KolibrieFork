@@ -46,10 +46,10 @@ const HASHMAP_INITIAL_CAPACITY1: usize = 1024;
 #[derive(Debug, Clone)]
 pub struct SparqlDatabase {
     pub triples: BTreeSet<Triple>, // Why use BTreeSet as ordered set?
-    pub streams: Vec<TimestampedTriple>,
+    pub streams: Vec<TimestampedTriple>, // ?? Multiple streams? How? Its a vector of triples?
     pub sliding_window: Option<SlidingWindow>,
     pub dictionary: Dictionary,
-    pub prefixes: HashMap<String, String>,
+    pub prefixes: HashMap<String, String>, // ??
     pub udfs: HashMap<String, ClonableFn>,
     pub index_manager: UnifiedIndex,
     pub rule_map: HashMap<String, String>,
