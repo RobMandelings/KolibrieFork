@@ -161,7 +161,10 @@ impl KnowledgeGraph {
         }
         result
     }
-    
+
+    // ! Semi naive forward chaining? Look up how it works?
+    // ! Deleting monotonic, ...
+    // ! Write semi naive algorithm first
     pub fn infer_new_facts(&mut self) -> Vec<Triple> {
         let mut inferred_facts = Vec::new();
         let mut all_facts = self.index_manager.query(None, None, None);
@@ -779,6 +782,7 @@ pub struct DatalogEngine {
     pub dictionary: Dictionary,
 }
 
+// ! This isn't important
 impl DatalogEngine {
     /// Construct a new DatalogEngine from an existing KnowledgeGraph
     pub fn new_from_kg(kg: &KnowledgeGraph) -> Self {

@@ -135,6 +135,7 @@ pub struct WindowBlock<'a> {
 
 // Modified CombinedRule to include windowing
 #[derive(Clone, Debug)]
+// ?? What is this exactly?
 pub struct CombinedRule<'a> {
     pub head: RuleHead<'a>,
     pub stream_type: Option<StreamType<'a>>,

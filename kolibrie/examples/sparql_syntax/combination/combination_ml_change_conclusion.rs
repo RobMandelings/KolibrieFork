@@ -13,6 +13,7 @@ use std::error::Error;
 use std::time::SystemTime;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+// More readable than RDF triples
 struct TrafficData {
     road_id: String,
     avg_speed: f64,
@@ -179,6 +180,7 @@ fn predict_congestion(
 }
 
 // Struct to manage dynamic rule configurations
+// ?? Why would you need dynamic rules?
 struct DynamicRuleManager {
     current_rules: HashMap<String, String>,
     database: SparqlDatabase,
@@ -309,6 +311,8 @@ impl DynamicRuleManager {
         Ok(())
     }
 
+    // ! So we 'apply' an emergency priority rule (something that states 'when something is
+    // ! an emergency rule
     // Manual implementation of emergency priority rule
     fn manually_apply_emergency_priority_rule(&mut self) {
         println!("     Manually applying emergency priority rule...");
@@ -376,12 +380,12 @@ impl DynamicRuleManager {
 
         for triple in &self.database.triples {
             if let Some(pred) = self.database.dictionary.decode(triple.predicate) {
-                if pred.contains("emergencyVehicles") {
+                if pred.contains("emergencyVehicles") { // ! So the relationship is emergencyVehicles then?
                     if let (Some(subject_str), Some(object_str)) = (
-                        self.database.dictionary.decode(triple.subject),
-                        self.database.dictionary.decode(triple.object),
+                        self.database.dictionary.decode(triple.subject), // How do we know subject is road?
+                        self.database.dictionary.decode(triple.object), // Object is the count of emergency vehicles
                     ) {
-                        if let Ok(count) = object_str.parse::<i32>() {
+                        if let Ok(count) = object_str.parse::<i32>() { // What if count is 0? Then you also consider this to be an emergency road?
                             results.push((subject_str.to_string(), count));
                         }
                     }
@@ -389,7 +393,7 @@ impl DynamicRuleManager {
             }
         }
 
-        results
+        results // ! All triples having emergency vehicles as predicate and count as object. Assumes subject to be road?
     }
 
     fn find_roads_with_bad_weather(&self) -> Vec<String> {
@@ -413,6 +417,7 @@ impl DynamicRuleManager {
         results
     }
 
+    // ! Returns <road, congestionLvl> hashmap?
     fn find_roads_with_congestion(&self) -> HashMap<String, String> {
         let mut results = HashMap::new();
 
@@ -447,6 +452,7 @@ impl DynamicRuleManager {
         let road_subject_id = self.database.dictionary.encode(&road_subject);
 
         // Check if this prediction should create triples based on WHERE filters
+        // ! If the prediction does not pass the filter, we shouldn't add any triples
         if !self.prediction_matches_where_clause(prediction, rule) {
             println!(
                 "  Skipping {} - doesn't match WHERE clause filters",
