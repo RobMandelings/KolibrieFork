@@ -55,6 +55,7 @@ impl KnowledgeGraph {
         self.index_manager.insert(&Triple { subject: s, predicate: p, object: o });
     }
 
+    // ! What is an instance-level assertion?
     /// Query the ABox for instance-level assertions (using TrieIndex now)
     pub fn query_abox(
         &mut self,
@@ -167,12 +168,12 @@ impl KnowledgeGraph {
     // ! Write semi naive algorithm first
     pub fn infer_new_facts(&mut self) -> Vec<Triple> {
         let mut inferred_facts = Vec::new();
-        let mut all_facts = self.index_manager.query(None, None, None);
+        let mut all_facts = self.index_manager.query(None, None, None); // (None, None, None) retrieves all wildcards?
         let mut known_facts: HashSet<Triple> = all_facts.iter().cloned().collect();
 
         loop {
             let mut new_facts_this_round = Vec::new();
-            let rules = self.rules.clone();
+            let rules = self.rules.clone(); // ! Why clone?
 
             for rule in &rules {
                 let bindings = self.evaluate_rule_with_optimized_join(rule, &all_facts);

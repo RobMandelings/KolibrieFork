@@ -14,7 +14,9 @@ use crate::terms::Term::*;
 use crate::triple::Triple;
 
 #[derive(Debug, Clone)]
-// ! Allows for efficient retrieval of triples
+/**
+! Allows for efficient retrieval of triples by allowing easy search.
+*/
 pub struct UnifiedIndex {
     // The six permutations, using HashMap of HashMap of HashSet.
     pub spo: HashMap<u32, HashMap<u32, HashSet<u32>>>, // ! Find all objects for subject  predicate pair
@@ -37,7 +39,13 @@ impl UnifiedIndex {
         }
     }
 
-    /// Insert a single triple into all six indexes
+    /**
+    Insert a single triple into all six indexes
+
+    ! returns false if the triple is already stored, else true
+
+    ! Just add the triple in the index so it can efficiently be retrieved via a query or triplepattern
+    */
     pub fn insert(&mut self, triple: &Triple) -> bool {
 
         // ! * is a dereferencing operator: gives the value that the reference points to (&Triple -> Triple)
@@ -45,6 +53,9 @@ impl UnifiedIndex {
         if let Some(pred_map) = self.spo.get(&s) {
             if let Some(objects) = pred_map.get(&p) {
                 if objects.contains(&o) {
+                    // ! if you change this to just 'false' instead (without semicolon), it doesn't work
+                    // ! because this is regarded as the return value for the if statement, not the function
+                    // ! return false means the function value actually returns false
                     return false; // triple already stored
                 }
             }
@@ -65,6 +76,7 @@ impl UnifiedIndex {
         let exists = self.spo
             .get(&s)
             .and_then(|pred_map| pred_map.get(&p))
+            // ! If objects.contains() fails for example? (For example when you do None.contains)
             .map_or(false, |objects| objects.contains(&o));
         
         if !exists {
