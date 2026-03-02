@@ -168,12 +168,13 @@ fn run_combined_workflow(
             let sensor_uri = format!("http://example.org/Sensor_{}", room);
             let room_uri = format!("http://example.org/{}", room);
             
-            // Add triples
+            // Add triples. These triples provide information about the sensor
             database.add_triple_parts(&sensor_uri, "http://example.org/hasRoom", &room_uri);
             database.add_triple_parts(&sensor_uri, "http://example.org/temperature", &temp.to_string());
             database.add_triple_parts(&sensor_uri, "http://example.org/humidity", &humidity.to_string());
             database.add_triple_parts(&sensor_uri, "http://example.org/occupancy", &occupancy.to_string());
-            
+
+            // Triples represented as raw text; they still need to be parsed into Kolibrie’s internal data structures.
             let triples_data = format!(
                 "<{}> <http://example.org/hasRoom> <{}> .
                  <{}> <http://example.org/temperature> \"{}\" .
@@ -184,9 +185,11 @@ fn run_combined_workflow(
                 sensor_uri, humidity,
                 sensor_uri, occupancy
             );
-            
+
+            // Parse the 'raw' triples into the internal data structures
             let triples = engine.parse_data(&triples_data);
             for triple in triples {
+                // Add triple to the stream at specific time point
                 engine.add_to_stream("sensorStream", triple.clone(), time);
             }
             
