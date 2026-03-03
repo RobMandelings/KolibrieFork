@@ -1808,6 +1808,82 @@ pub fn convert_combined_rule<'a>(
     }
 }
 
+/// Processes a rule definition by parsing it, integrating its prefixes into the database, and
+/// executing related reasoning tasks.
+///
+/// This function supports both standard reasoning rules and continuous execution of window-based
+/// rules for stream reasoning.
+///
+/// # Arguments
+///
+/// * `rule_input` - A string slice representing the rule definition to be processed.
+/// * `database` - A mutable reference to the `SparqlDatabase` storing triples, prefixes,
+///   and associated knowledge graph structures.
+///
+/// # Returns
+///
+/// * `Result<(Rule, Vec<Triple>), String>` - Returns:
+///   - A tuple containing the parsed `Rule` and a vector of inferred or streamed triples if successful.
+///   - An error message as a `String` in case of a failure during processing.
+///
+/// # Workflow
+///
+/// 1. **Register Prefixes:** Extract and integrate prefixes from the rule definition into the `SparqlDatabase`.
+///
+/// 2. **Initialize Knowledge Graph:** Create a `Reasoner` instance and initialize it with triples
+///    and dictionary data from the database for reasoning tasks.
+///
+/// 3. **Parse Rule:** Parse the standalone rule from `rule_input` and retrieve the rule definition
+///    along with any declared prefixes. These prefixes are added into the database.
+///
+/// 4. **Convert Rule:** Convert the parsed rule into an internal dynamic rule representation using
+///    available dictionary and prefixes.
+///
+/// 5. **Stream Reasoning (if applicable):**
+///    - If the rule includes a window clause, set up RSP (Reactive Stream Processing) execution for each
+///      defined window. Assign a proper `StreamOperator` based on the provided stream type (e.g., RSTREAM,
+///      ISTREAM, or DSTREAM).
+///    - Integrate current triples from the database into the windows and register windowed callbacks
+///      for continuous execution on incoming data.
+///    - Infer new facts from windowed data and augment the database with the results.
+///
+/// 6. **Non-Stream Reasoning (default):**
+///    - Add the parsed rule to the knowledge graph and infer facts using semi-naive reasoning.
+///    - Augment the database with newly inferred triples.
+///
+/// 7. **Register Rule Predicates:** Ensure that predicates associated with the rule are stored within
+///    the database for future lookups.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The rule definition cannot be parsed.
+/// - A failure occurs during window or stream processing setup.
+///
+/// # Example
+///
+/// ```
+/// let rule_input = r#"PREFIX : <http://example.com/>
+/// SELECT ?subject ?predicate ?object
+/// WHERE {
+///     ?subject ?predicate ?object .
+/// }
+/// WINDOW {
+///     RANGE 10s
+///     STEP 5s
+/// }
+/// "#;
+/// let mut database = SparqlDatabase::new();
+///
+/// match process_rule_definition(&rule_input, &mut database) {
+///     Ok((rule, inferred_triples)) => {
+///         println!("Processed rule: {:?}, inferred {} triples", rule, inferred_triples.len());
+///     }
+///     Err(err) => {
+///         eprintln!("Failed to process rule: {}", err);
+///     }
+/// }
+/// ```
 pub fn process_rule_definition(
     rule_input: &str,
     database: &mut SparqlDatabase,

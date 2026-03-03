@@ -18,6 +18,34 @@ use log::{debug, error};
 #[cfg(test)]
 use std::{println as debug, println as error};
 
+/// The `SimpleR2R` struct serves as a container for executing SPARQL queries
+/// against a `SparqlDatabase` using a specified execution mode.
+///
+/// # Fields
+///
+/// * `item` - Represents the `SparqlDatabase`, which is the underlying database
+///   source containing data to execute SPARQL queries against.
+///
+/// * `execution_mode` - Specifies the mode in which SPARQL queries are executed,
+///   determined by the `QueryExecutionMode` enum. This can define execution behavior
+///   such as synchronous or asynchronous execution, among other modes.
+///
+/// # Usage
+///
+/// A `SimpleR2R` instance allows integrating a SPARQL database with a specified
+/// query execution strategy. For example, it can be used in scenarios where you need
+/// to interact with semantic data sources in different operational modes.
+///
+/// # Example
+///
+/// ```rust
+/// let database = SparqlDatabase::new();
+/// let execution_mode = QueryExecutionMode::Synchronous;
+/// let simple_r2r = SimpleR2R {
+///     item: database,
+///     execution_mode,
+/// };
+/// ```
 pub struct SimpleR2R {
     pub item: SparqlDatabase,
     pub execution_mode: QueryExecutionMode,
@@ -61,10 +89,19 @@ impl R2ROperator<Triple, Vec<PhysicalOperator>, Vec<(String, String)>> for Simpl
         Err("something went wrong")
     }
 
+    /// Adds a `Triple` to the SparQL database.
+    ///
+    /// This method takes a `Triple` object as input and appends it to the
+    /// underlying data structure by invoking the `add_triple` method
+    /// on the `item` field.
+    ///
+    /// # Parameters
+    /// - `data`: A `Triple` instance that represents the data to be added.
     fn add(&mut self, data: Triple) {
         self.item.add_triple(data);
     }
 
+    /// Removes a triple from the SparQL database
     fn remove(&mut self, data: &Triple) {
         self.item.delete_triple(data);
     }
@@ -74,6 +111,7 @@ impl R2ROperator<Triple, Vec<PhysicalOperator>, Vec<(String, String)>> for Simpl
         Vec::new()
     }
 
+    /// Executes a query based on the provided `PhysicalOperator` and returns the result.
     fn execute_query(&mut self, op: &PhysicalOperator) -> Vec<Vec<(String, String)>> {
         debug!("SimpleR2R executing query with PhysicalOperator");
 

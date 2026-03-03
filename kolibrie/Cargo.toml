@@ -269,6 +269,10 @@ name = "full_combination"
 path = "examples/sparql_syntax/combination/full_combination.rs"
 
 [[example]]
+name = "my_rsp_engine"
+path = "examples/sparql_syntax/combination/my_rsp_engine.rs"
+
+[[example]]
 name = "retrieve_rsp"
 path = "examples/sparql_syntax/rsp_ql_syntax/retrieve.rs"
 

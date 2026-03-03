@@ -70,6 +70,49 @@ pub struct WindowResult {
     pub timestamp: usize,
 }
 
+/// A generic `ResultConsumer` struct designed to consume results of type `I`
+/// using a provided callback function.
+///
+/// The `ResultConsumer` wraps a function that takes an input of type `I`
+/// and executes a callback. The function is stored in an `Arc` for safe
+/// shared ownership across threads while adhering to the `Send` and `Sync`
+/// traits for concurrent execution.
+///
+/// # Generics
+/// - `I`: The input type that the wrapped function will accept.
+///
+/// # Fields
+/// - `function`: An `Arc`-wrapped closure or function pointer of type `dyn Fn(I) -> ()`,
+///   which is callable with an argument of type `I` and returns no value (`()`).
+///   The `Arc` enables shared ownership of the function, ensuring it can be accessed
+///   safely and concurrently across thread boundaries.
+///
+/// # Trait Bounds
+/// - The closure or function provided must implement both `Send` and `Sync`,
+///   signifying it can be safely transferred across threads and safely accessed
+///   from multiple threads concurrently.
+///
+/// # Design Rationale
+/// This struct is intended for scenarios where results need to be processed
+/// in a customizable and concurrent manner. By leveraging `Arc`, the `ResultConsumer`
+/// can facilitate sharing the callback function in a thread-safe manner.
+///
+/// # Example
+/// ```rust
+/// use std::sync::Arc;
+/// use your_crate::ResultConsumer;
+///
+/// fn main() {
+///     let consumer = ResultConsumer {
+///         function: Arc::new(|input: i32| {
+///             println!("Processing input: {}", input);
+///         }),
+///     };
+///
+///     // Example usage of the consumer
+///     (consumer.function)(42); // Output: Processing input: 42
+/// }
+/// ```
 pub struct ResultConsumer<I> {
     pub function: Arc<dyn Fn(I) -> () + Send + Sync>,
 }

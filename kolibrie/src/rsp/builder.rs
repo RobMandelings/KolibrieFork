@@ -96,6 +96,7 @@ where
         self
     }
 
+    /// Adds a relation-to-relation operator
     pub fn add_r2r(
         mut self,
         r2r: Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>,
