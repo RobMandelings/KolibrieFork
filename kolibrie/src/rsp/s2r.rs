@@ -415,17 +415,22 @@ mod tests {
             call_back: None,
             uri: "test_window".to_string()
         };
+
+        // When windows are reported, the receiver will receive window contents
         let receiver = window.register_consumer();
+
+        // The consumer will consume the received window content
         let consumer = Consumer::new();
         consumer.start(receiver);
 
-        for i in 0..10 {
+        for time in 0..10 {
             let triple = WindowTriple {
-                s: format!("s{}", i),
+                s: format!("s{}", time),
                 p: "p".to_string(),
                 o: "o".to_string(),
             };
-            window.add_to_window(triple, i);
+
+            window.add_to_window(triple, time);
         }
 
         window.stop();
@@ -456,13 +461,13 @@ mod tests {
         };
         window.register_callback(Box::new(call_back));
 
-        for i in 0..10 {
+        for time in 0..10 {
             let triple = WindowTriple {
-                s: format!("s{}", i),
+                s: format!("s{}", time),
                 p: "p".to_string(),
                 o: "o".to_string(),
             };
-            window.add_to_window(triple, i);
+            window.add_to_window(triple, time);
         }
 
         window.stop();
