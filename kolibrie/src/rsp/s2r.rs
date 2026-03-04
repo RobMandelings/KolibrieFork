@@ -187,15 +187,20 @@ where
         let event_time = ts;
         self.scope(&event_time);
 
-        let test = self
+        // Update all windows by adding the event_item to the corresponding windows
+        // (Evict the windows for which the ts falls out of bounds)
+        let updated_windows = self
             .active_windows
             .clone()
             .into_iter()
+            // Update each window. Window is filtered from the list if it gets evicted (returns None).
             .filter_map(|(window, mut content)| {
                 debug!(
                     "Processing Window [{:?}, {:?}) for element ({:?},{:?})",
                     window.open, window.close, event_item, ts
                 );
+
+                // Check whether event time is between two window times and add it if that is the case
                 if window.open <= event_time && event_time <= window.close {
                     debug!(
                         "Adding element [{:?}] to Window [{:?},{:?})",
@@ -213,11 +218,13 @@ where
             })
             .collect::<HashMap<Window, ContentContainer<I>>>();
 
+        // Gets the latest window that should fire
         let max = self
             .active_windows
             .iter()
             .filter(|(window, content)| self.report.report(window, content, ts))
             .max_by(|(w1, _), (w2, _)| w1.close.cmp(&w2.close));
+
         if let Some(max_window) = max {
             match self.tick {
                 Tick::TimeDriven => {
@@ -237,11 +244,11 @@ where
                         }
                     }
                 }
-                _ => (),
+                _ => (), // Not implemented yet?
             };
         }
 
-        self.active_windows = test;
+        self.active_windows = updated_windows;
     }
 
 
@@ -293,12 +300,17 @@ where
         }
     }
 
+    /// Creates a new channel with send and receiver, updates the consumer to allow for sending
+    /// Returns the receiver, so that when self.consumer.send() is used, the receiver is able to receive.
     pub fn register(&mut self) -> Receiver<ContentContainer<I>> {
+
+        // Create new channel that carries ContentContainer values
         let (send, recv) = channel::<ContentContainer<I>>();
         self.consumer.replace(send);
         recv
     }
 
+    /// Registers which callback function to call when you use self.callback
     pub fn register_callback(
         &mut self,
         function: Box<dyn FnMut(ContentContainer<I>) -> () + Send + 'static>,
@@ -306,7 +318,7 @@ where
         self.call_back.replace(function);
     }
 
-
+    /// Push window content clones to the callback and consumer
     pub fn flush(&mut self) {
         for (_, content) in &self.active_windows {
             if let Some(call_back) = &mut self.call_back {
@@ -317,11 +329,14 @@ where
             }
         }
     }
+
+    /// Sets consumer to none (nothing to consume, so its inactive)
     pub fn stop(&mut self) {
         self.consumer.take();
     }
 }
 
+/// Part of the Consumer struct
 #[allow(dead_code)]
 struct ConsumerInner<I>
 where
@@ -350,10 +365,13 @@ where
             }),
         }
     }
+
+    /// Start listening for content sending in a different thread
+    /// If content is received, push content to the consumer_temp (clone of inner consumer)
     fn start(&self, receiver: Receiver<ContentContainer<I>>) {
         let consumer_temp = self.inner.clone();
         thread::spawn(move || loop {
-            match receiver.recv() {
+            match receiver.recv() { // .revc() is a blocking operation (wait until you get result or err)
                 Ok(content) => {
                     debug!("Found graph {:?}", content);
                     consumer_temp.data.lock().unwrap().push(content);
