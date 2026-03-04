@@ -34,12 +34,16 @@ impl Default for ReportStrategy {
         ReportStrategy::OnWindowClose
     }
 }
+
+/// Tick is a dimension that explains what triggers the report evaluations.
+/// Possible ticks are time-driven, tuple-driven, or batch-driven.
 #[derive(Clone, Debug)]
 pub enum Tick {
     TimeDriven,
     TupleDriven,
     BatchDriven,
 }
+
 impl Default for Tick {
     fn default() -> Self {
         Tick::TimeDriven
@@ -170,6 +174,7 @@ where
             uri
         }
     }
+
     pub fn add_to_window(&mut self, event_item: I, ts: usize) {
         let event_time = ts;
         self.scope(&event_time);
