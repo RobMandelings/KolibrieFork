@@ -22,6 +22,7 @@ use std::{f64, mem};
 #[cfg(test)]
 use std::{println as warn, println as debug};
 
+/// Reporting Strategies define the conditions under which the engine emits the content of the window.
 #[derive(Clone, Debug)]
 pub enum ReportStrategy {
     NonEmptyContent,
@@ -64,13 +65,19 @@ where
 {
     pub fn new() -> Report<I> {
         Report {
-            strategies: Vec::new(),
-            last_change: ContentContainer::new(),
+            strategies: Vec::new(), // Reporting strategies to consider when checking whether window should be reported
+            last_change: ContentContainer::new(), // Used for the OnContentChange reporting strategy
         }
     }
+
+    /// Adds a new reporting strategy to the report.
     pub fn add(&mut self, strategy: ReportStrategy) {
         self.strategies.push(strategy);
     }
+
+    /// Returns true if the window should be reported.
+    /// This only happens when all reporting strategies within the Vec<ReportStrategy>
+    /// say that reporting strategy should be 'true'
     pub fn report(&mut self, window: &Window, content: &ContentContainer<I>, ts: usize) -> bool {
         self.strategies.iter().all(|strategy| match strategy {
             ReportStrategy::NonEmptyContent => content.len() > 0,
@@ -85,10 +92,11 @@ where
     }
 }
 
+// Window is represented as an opening timestamp and closing timestamp
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]
 pub struct Window {
-    open: usize,
-    close: usize,
+    open: usize, // timestamp for when the window is opened
+    close: usize, // timestamp for when the window is closed
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -235,12 +243,22 @@ where
 
         self.active_windows = test;
     }
+
+
+    /// Update active_windows based on current event time
+    /// So that only those windows are active that fit within the scope (current event time)
     fn scope(&mut self, event_time: &usize) {
+
+        // Both _temp are for debugging purposes it seems
         // long c_sup = (long) Math.ceil(((double) Math.abs(t_e - t0) / (double) slide)) * slide;
         let _temp = (*event_time as f64 - self.t_0 as f64).abs();
         let _temp = ((*event_time as f64 - self.t_0 as f64).abs() / (self.slide as f64)).ceil();
+
+        // Smallest right bound of the window that is still >= your current event_time
         let c_sup = ((*event_time as f64 - self.t_0 as f64).abs() / (self.slide as f64)).ceil()
             * self.slide as f64;
+
+        // The open-timestamp (left bound) of the window for the leftmost window that still fits in event
         // long o_i = c_sup - width;
         let mut o_i = c_sup - self.width as f64;
         debug!(
@@ -255,30 +273,40 @@ where
                 o_i,
                 (o_i + self.width as f64)
             );
+
+            // Define a new window based on open and close parameters
             let window = Window {
                 open: o_i as usize,
                 close: (o_i + self.width as f64) as usize,
             };
+
+            // If such a window does not yet exist, insert it to the list of active windows
             if let None = self.active_windows.get(&window) {
                 self.active_windows.insert(window, ContentContainer::new_with_origin(&self.uri));
             }
+
+            // Slide the window so that in the next iteration, you can create a new Window object that can be added to the Vec<Window> struct.
             o_i += self.slide as f64;
             if o_i > *event_time as f64 {
                 break;
             }
         }
     }
+
     pub fn register(&mut self) -> Receiver<ContentContainer<I>> {
         let (send, recv) = channel::<ContentContainer<I>>();
         self.consumer.replace(send);
         recv
     }
+
     pub fn register_callback(
         &mut self,
         function: Box<dyn FnMut(ContentContainer<I>) -> () + Send + 'static>,
     ) {
         self.call_back.replace(function);
     }
+
+
     pub fn flush(&mut self) {
         for (_, content) in &self.active_windows {
             if let Some(call_back) = &mut self.call_back {
