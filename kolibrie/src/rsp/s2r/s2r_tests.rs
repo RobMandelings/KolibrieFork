@@ -102,9 +102,7 @@ mod tests {
     fn test_window() {
         init_logging();
 
-        let mut report = Report::new();
-        report.add(ReportStrategy::OnWindowClose);
-
+        let report = Report::with_strategies(vec![ReportStrategy::OnWindowClose]);
         let mut window =
             CSPARQLWindow::new(10, 2, report, Tick::TimeDriven, "test_window".to_string());
 
@@ -124,9 +122,7 @@ mod tests {
 
     #[test]
     fn test_window_with_callback() {
-        let mut report = Report::new();
-        report.add(ReportStrategy::OnWindowClose);
-
+        let report = Report::with_strategies(vec![ReportStrategy::OnWindowClose]);
         let mut window: CSPARQLWindow<WindowTriple> =
             CSPARQLWindow::new(10, 2, report, Tick::TimeDriven, "test_window".to_string());
 

@@ -36,6 +36,13 @@ where
         }
     }
 
+    pub fn with_strategies(strategies: Vec<ReportStrategy>) -> Report<I> {
+        Report {
+            strategies,
+            last_change: WindowContent::new()
+        }
+    }
+
     /// Adds a new reporting strategy to the report.
     pub fn add(&mut self, strategy: ReportStrategy) {
         if self.strategies.contains(&strategy) {
