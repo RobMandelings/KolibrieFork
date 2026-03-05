@@ -1,5 +1,6 @@
 pub trait SlidingWindow<I> {
 
+
     /// Updates the sliding window with specific application
     /// Events are added at the current application time
     /// This allows updating the sliding window and triggering accordingly

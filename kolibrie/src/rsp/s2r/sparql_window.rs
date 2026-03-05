@@ -29,7 +29,7 @@ impl<I> SlidingWindow<I> for CSPARQLWindow<I> where
     I: Eq + PartialEq + Clone + Debug + Hash + Send {
 
     fn update_app_time(&mut self, app_time: usize) -> () {
-        self.set_active_windows_by_timestamp(&app_time);
+        self.create_missing_windows_for_timestamp(&app_time);
         self.trigger_consume(app_time);
     }
 
@@ -158,7 +158,7 @@ where
 
     /// Update active_windows based on current event time
     /// So that only those windows are active that fit within the scope (current event time)
-    fn set_active_windows_by_timestamp(&mut self, event_time: &usize) {
+    fn create_missing_windows_for_timestamp(&mut self, event_time: &usize) {
 
         // Smallest right bound of the window that is still >= your current event_time
         let c_sup = ((*event_time as f64 - self.t_0 as f64).abs() / (self.slide as f64)).ceil()
