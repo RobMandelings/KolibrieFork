@@ -212,6 +212,7 @@ where
                 "Adding element [{:?}] to Window [{:?},{:?})",
                 event_item, window.open, window.close
             );
+
             content.add(event_item.clone(), event_time);
             Some((window, content))
         } else {

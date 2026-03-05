@@ -1,0 +1,21 @@
+# Use the current edition of Rust your project targets
+edition = "2021"
+
+# General width settings
+max_width = 100
+use_small_heuristics = "Default"
+
+# Indentation
+tab_spaces = 4
+hard_tabs = false
+indent_style = "Block"
+
+# Imports
+reorder_imports = true
+imports_granularity = "Crate"
+group_imports = "StdExternalCrate"
+
+# Misc preferences
+newline_style = "Unix"
+normalize_comments = true
+wrap_comments = true
