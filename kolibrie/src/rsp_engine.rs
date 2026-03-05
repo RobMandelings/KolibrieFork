@@ -506,6 +506,8 @@ where
             self.process_single_thread_window_results();
         }
 
+        /// Removes leading and trailing whitespace, leading and trailing < > and removes the : from the stream IRI
+        /// `Example` "  <:sensor-stream-1> " to "sensor-stream-1" for example
         fn normalize_stream_iri(s: &str) -> String {
             let s = s.trim();
             // Some callers might pass a full IRI in `<...>` form.

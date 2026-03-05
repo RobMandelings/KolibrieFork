@@ -219,7 +219,7 @@ where
             })
             .collect::<HashMap<Window, ContentContainer<I>>>();
 
-        // Gets the latest window that should fire
+        // Gets the latest window that is ready to be reported
         let max = self
             .active_windows
             .iter()
