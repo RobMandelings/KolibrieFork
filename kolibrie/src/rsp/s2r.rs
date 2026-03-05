@@ -92,7 +92,7 @@ where
     }
 }
 
-// Window is represented as an opening timestamp and closing timestamp
+/// Window is represented as an opening timestamp and closing timestamp
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]
 pub struct Window {
     open: usize, // timestamp for when the window is opened
@@ -154,7 +154,7 @@ where
     width: usize,
     slide: usize,
     t_0: usize,
-    active_windows: HashMap<Window, ContentContainer<I>>,
+    active_windows: HashMap<Window, ContentContainer<I>>, // Each 'window' is a unique key
     report: Report<I>,
     tick: Tick,
     app_time: usize,
@@ -164,6 +164,7 @@ where
     uri: String
 }
 
+/// Represents a sliding window where a consumer gets send the window contents based on reporting strategies
 impl<I> CSPARQLWindow<I>
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send,
