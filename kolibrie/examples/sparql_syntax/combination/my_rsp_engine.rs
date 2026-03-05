@@ -49,6 +49,7 @@ fn create_result_consumer(result_container_clone: ResultContainer) -> ResultCons
 
         // Bindings: a single solution mapping
         function: Arc::new(Box::new(move |bindings: Bindings| {
+            print!("Consumed!");
             let mut results = result_container_clone.lock().unwrap();
 
             // Push the bindings to the result container

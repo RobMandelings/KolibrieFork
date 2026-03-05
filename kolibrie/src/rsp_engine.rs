@@ -566,24 +566,47 @@ where
         });
     }
 
-    pub fn add_to_windows(&mut self, stream_iri: &str, event_item: &I, ts: usize) {
-        // Find windows that match this stream IRI
-        for (window_idx, window_config) in self.window_configs.iter().enumerate() {
-            // Variable stream (e.g. `?s`) matches any stream.
-            if window_config.stream_iri.starts_with('?') {
-                if let Some(window) = self.windows.get_mut(window_idx) {
-                    window.add_to_window(event_item.clone(), ts);
-                }
-                continue;
-            }
+    /// Checks whether the stream iri provided is a wildcard (no specific stream needs to be mentioned)
+    fn is_wildcard_stream(stream_iri: &str) -> bool {
+        stream_iri.starts_with('?')
+    }
 
-            let input_norm = normalize_stream_iri(stream_iri);
-            let cfg_norm = normalize_stream_iri(&window_config.stream_iri);
-            if cfg_norm == input_norm {
-                if let Some(window) = self.windows.get_mut(window_idx) {
-                    window.add_to_window(event_item.clone(), ts);
+    fn add_to_window_idx(&mut self, window_idx: usize, event_item: &I, ts: usize)
+    where
+        I: Clone,
+    {
+        if let Some(window) = self.windows.get_mut(window_idx) {
+            window.add_to_window(event_item.clone(), ts);
+        }
+    }
+
+    pub fn add_item_to_windows(&mut self, stream_iri: &str, event_item: &I, ts: usize)
+    where
+        I: Clone,
+    {
+        let norm_input_stream_iri = normalize_stream_iri(stream_iri);
+
+        let matching_indices: Vec<usize> = self
+            .window_configs
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, window_config)| {
+                if Self::is_wildcard_stream(stream_iri) {
+                    Some(idx)
+                } else {
+                    let norm_window_stream_iri =
+                        normalize_stream_iri(&window_config.stream_iri);
+                    if norm_window_stream_iri == norm_input_stream_iri {
+                        Some(idx)
+                    } else {
+                        None
+                    }
                 }
-            }
+            })
+            .collect();
+
+        for idx in matching_indices {
+            self.add_to_window_idx(idx, event_item, ts);
         }
     }
 
@@ -595,7 +618,7 @@ where
             self.process_single_thread_window_results();
         }
 
-        self.add_to_windows(&stream_iri, &event_item, ts);
+        self.add_item_to_windows(&stream_iri, &event_item, ts);
 
     }
 
