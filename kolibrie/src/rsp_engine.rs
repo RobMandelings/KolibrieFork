@@ -10,14 +10,14 @@
 use crate::rsp::r2r::R2ROperator;
 use crate::rsp::s2r::Tick;
 
+use crossbeam::channel::{unbounded, Receiver, RecvTimeoutError, Sender};
 #[cfg(not(test))]
 use log::{debug, error}; // Use log crate when building application
 use shared::query::{Fallback, SyncPolicy};
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fmt::Debug;
 use std::hash::Hash;
-use crossbeam::channel::{unbounded, Receiver, RecvTimeoutError, Sender};
-use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Instant;
@@ -157,8 +157,8 @@ macro_rules! create_window_processor {
                 mapped_results.reserve(results.len());
 
                 for res in &results {
-                    if let Some(bindings) = (res as &dyn std::any::Any)
-                        .downcast_ref::<Vec<(String, String)>>()
+                    if let Some(bindings) =
+                        (res as &dyn std::any::Any).downcast_ref::<Vec<(String, String)>>()
                     {
                         let map: HashMap<String, String> = bindings.iter().cloned().collect();
                         mapped_results.push(map);
@@ -236,6 +236,26 @@ where
     O: Clone + Hash + Eq + Send + 'static + From<Vec<(String, String)>>,
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
 {
+    fn create_windows_on_parsed_config<T: Eq + PartialEq + Clone + Debug + Hash + Send>(
+    query_config: &RSPQueryConfig) -> Vec<CSPARQLWindow<T>> {
+        // Create windows based on parsed configuration
+        let mut windows = Vec::new();
+        for window_config in &query_config.windows {
+            let mut report = Report::new();
+            report.add(window_config.report_strategy.clone());
+            let window = CSPARQLWindow::new(
+                window_config.width,
+                window_config.slide,
+                report,
+                window_config.tick.clone(),
+                window_config.window_iri.clone(),
+            );
+            windows.push(window);
+        }
+
+        windows
+    }
+
     pub fn new(
         query_config: RSPQueryConfig,
         triples: &str,
@@ -291,20 +311,7 @@ where
             Err(e) => error!("Failed to load rules: {:?}", e),
         }
 
-        // Create windows based on parsed configuration
-        let mut windows = Vec::new();
-        for window_config in &query_config.windows {
-            let mut report = Report::new();
-            report.add(window_config.report_strategy.clone());
-            let window = CSPARQLWindow::new(
-                window_config.width,
-                window_config.slide,
-                report,
-                window_config.tick.clone(),
-                window_config.window_iri.clone(),
-            );
-            windows.push(window);
-        }
+        let windows = Self::create_windows_on_parsed_config(&query_config);
 
         // Create channel for cross-window result coordination
         let (result_sender, result_receiver) = unbounded::<WindowResult>();
@@ -342,8 +349,7 @@ where
 
     /// Register windows using macros to eliminate code duplication
     fn register_windows(&mut self, operation_mode: OperationMode) {
-        let has_joins = self.windows.len() > 1
-            || self.rsp_query_plan.static_data_plan.is_some();
+        let has_joins = self.windows.len() > 1 || self.rsp_query_plan.static_data_plan.is_some();
 
         for (window_idx, window) in self.windows.iter_mut().enumerate() {
             let query = self.rsp_query_plan.window_plans[window_idx].clone();
@@ -397,7 +403,8 @@ where
 
         thread::spawn(move || {
             // Latest results per window (replace semantics)
-            let mut last_materialized: HashMap<String, Vec<HashMap<String, String>>> = HashMap::new();
+            let mut last_materialized: HashMap<String, Vec<HashMap<String, String>>> =
+                HashMap::new();
             // Windows that have fired since the last reset
             let mut cycle_triggered: HashSet<String> = HashSet::new();
             // When the first window fired in the current cycle
@@ -413,19 +420,31 @@ where
                 };
 
                 // Receive next window result (or timeout/disconnect)
-                let maybe_result: Option<WindowResult> = if let Some(remaining) = timeout_remaining {
+                let maybe_result: Option<WindowResult> = if let Some(remaining) = timeout_remaining
+                {
                     match receiver.recv_timeout(remaining) {
                         Ok(r) => Some(r),
                         Err(RecvTimeoutError::Timeout) => {
                             // Deadline elapsed
                             if !cycle_triggered.is_empty() {
                                 match &sync_policy {
-                                    SyncPolicy::Timeout { fallback: Fallback::Steal, .. } => {
+                                    SyncPolicy::Timeout {
+                                        fallback: Fallback::Steal,
+                                        ..
+                                    } => {
                                         if last_materialized.len() == num_windows {
-                                            emit_results(&last_materialized, &static_data_plan, &static_db, &consumer);
+                                            emit_results(
+                                                &last_materialized,
+                                                &static_data_plan,
+                                                &static_db,
+                                                &consumer,
+                                            );
                                         }
                                     }
-                                    SyncPolicy::Timeout { fallback: Fallback::Drop, .. } => {
+                                    SyncPolicy::Timeout {
+                                        fallback: Fallback::Drop,
+                                        ..
+                                    } => {
                                         // discard this cycle
                                     }
                                     _ => {}
@@ -477,7 +496,12 @@ where
                             SyncPolicy::Steal => {
                                 // Emit immediately using stale data from non-firing windows
                                 if last_materialized.len() == num_windows {
-                                    emit_results(&last_materialized, &static_data_plan, &static_db, &consumer);
+                                    emit_results(
+                                        &last_materialized,
+                                        &static_data_plan,
+                                        &static_db,
+                                        &consumer,
+                                    );
                                 }
                                 cycle_triggered.clear();
                                 cycle_start = None;
@@ -503,8 +527,7 @@ where
     /// Add data to appropriate window based on stream IRI
     pub fn add_to_stream(&mut self, stream_iri: &str, event_item: I, ts: usize) {
         if matches!(self.operation_mode, OperationMode::SingleThread)
-            && (self.windows.len() > 1
-                || self.rsp_query_plan.static_data_plan.is_some())
+            && (self.windows.len() > 1 || self.rsp_query_plan.static_data_plan.is_some())
         {
             self.process_single_thread_window_results();
         }
@@ -563,7 +586,10 @@ where
 
         // Check whether to emit based on policy.
         if last_mat.len() == num_windows {
-            debug!("SingleThread: all {} windows materialized, emitting", num_windows);
+            debug!(
+                "SingleThread: all {} windows materialized, emitting",
+                num_windows
+            );
             let static_data_plan = self.rsp_query_plan.static_data_plan.clone();
             emit_results(&*last_mat, &static_data_plan, &self.static_db, &consumer);
 
@@ -630,7 +656,10 @@ where
 
     /// Return the stream IRIs registered across all configured windows.
     pub fn stream_iris(&self) -> Vec<String> {
-        self.window_configs.iter().map(|w| w.stream_iri.clone()).collect()
+        self.window_configs
+            .iter()
+            .map(|w| w.stream_iri.clone())
+            .collect()
     }
 }
 
@@ -700,12 +729,15 @@ fn natural_join(
 }
 
 /// Join results from multiple windows using natural join semantics.
-fn join_window_results(window_buffers: &HashMap<String, Vec<HashMap<String, String>>>) -> Vec<HashMap<String, String>> {
+fn join_window_results(
+    window_buffers: &HashMap<String, Vec<HashMap<String, String>>>,
+) -> Vec<HashMap<String, String>> {
     if window_buffers.is_empty() {
         return Vec::new();
     }
 
-    let mut all_windows: Vec<Vec<HashMap<String, String>>> = window_buffers.values().cloned().collect();
+    let mut all_windows: Vec<Vec<HashMap<String, String>>> =
+        window_buffers.values().cloned().collect();
 
     if all_windows.len() == 1 {
         return all_windows.into_iter().next().unwrap();
