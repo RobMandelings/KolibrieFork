@@ -13,6 +13,7 @@ use std::hash::Hash;
 pub mod s2r_tests;
 pub mod reporting;
 pub mod sparql_window;
+pub mod sliding_window;
 pub mod window;
 
 mod test_logging;
