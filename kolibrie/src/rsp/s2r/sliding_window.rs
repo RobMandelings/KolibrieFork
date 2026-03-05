@@ -1,5 +1,12 @@
 pub trait SlidingWindow {
 
-    
+    /// Updates the sliding window with specific application
+    /// Events are added at the current application time
+    /// This allows updating the sliding window and triggering accordingly
+    fn update_app_time(app_time: usize) -> ();
 
+    /// Adds the event to the window at the current application time
+    fn add_event<I>(event_item: I) {
+
+    }
 }
