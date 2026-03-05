@@ -78,7 +78,12 @@ where
     /// Returns true if the window should be reported.
     /// This only happens when all reporting strategies within the Vec<ReportStrategy>
     /// say that reporting strategy should be 'true'
-    pub fn report(&mut self, window: &Window, content: &ContentContainer<I>, ts: usize) -> bool {
+    pub fn should_report_window(
+        &mut self,
+        window: &Window,
+        content: &ContentContainer<I>,
+        ts: usize,
+    ) -> bool {
         self.strategies.iter().all(|strategy| match strategy {
             ReportStrategy::NonEmptyContent => content.len() > 0,
             ReportStrategy::OnContentChange => {
@@ -95,7 +100,7 @@ where
 /// Window is represented as an opening timestamp and closing timestamp
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]
 pub struct Window {
-    open: usize, // timestamp for when the window is opened
+    open: usize,  // timestamp for when the window is opened
     close: usize, // timestamp for when the window is closed
 }
 
@@ -106,7 +111,7 @@ where
 {
     elements: HashSet<I>,
     last_timestamp_changed: usize,
-    origin: String
+    origin: String,
 }
 
 impl<I> ContentContainer<I>
@@ -117,14 +122,14 @@ where
         ContentContainer {
             elements: HashSet::new(),
             last_timestamp_changed: 0,
-            origin: String::default()
+            origin: String::default(),
         }
     }
-    fn new_with_origin(origin : &str) -> ContentContainer<I> {
+    fn new_with_origin(origin: &str) -> ContentContainer<I> {
         ContentContainer {
             elements: HashSet::new(),
             last_timestamp_changed: 0,
-            origin: origin.to_string()
+            origin: origin.to_string(),
         }
     }
     pub fn len(&self) -> usize {
@@ -161,7 +166,7 @@ where
     consumer: Option<Sender<ContentContainer<I>>>,
     // Make callbacks Send so they can be safely transferred to worker threads
     call_back: Option<Box<dyn FnMut(ContentContainer<I>) -> () + Send + 'static>>,
-    uri: String
+    uri: String,
 }
 
 /// Represents a sliding window where a consumer gets send the window contents based on reporting strategies
@@ -169,7 +174,13 @@ impl<I> CSPARQLWindow<I>
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send,
 {
-    pub fn new(width: usize, slide: usize, report: Report<I>, tick: Tick, uri: String) -> CSPARQLWindow<I> {
+    pub fn new(
+        width: usize,
+        slide: usize,
+        report: Report<I>,
+        tick: Tick,
+        uri: String,
+    ) -> CSPARQLWindow<I> {
         CSPARQLWindow {
             slide,
             width,
@@ -180,11 +191,11 @@ where
             active_windows: HashMap::new(),
             tick,
             call_back: None,
-            uri
+            uri,
         }
     }
 
-    fn update_single_window(
+    fn add_item_to_window(
         &self,
         window: Window,
         mut content: ContentContainer<I>,
@@ -212,33 +223,22 @@ where
         }
     }
 
-    pub fn add_to_window(&mut self, event_item: I, ts: usize) {
-        let event_time = ts;
-        self.scope(&event_time);
-
-        // Update all windows by adding the event_item to the corresponding windows
-        // (Evict the windows for which the ts falls out of bounds)
-        let updated_windows = self
-            .active_windows
-            .clone()
-            .into_iter()
-            // Update each window. Window is filtered from the list if it gets evicted (returns None).
-            .filter_map(|(window, content)|
-                self.update_single_window(window, content, &event_item, event_time))
-            .collect::<HashMap<Window, ContentContainer<I>>>();
-
+    fn handle_max_window(&mut self, event_time: usize) {
         // Gets the latest window that is ready to be reported
         let max = self
             .active_windows
             .iter()
-            .filter(|(window, content)| self.report.report(window, content, ts))
+            .filter(|(window, content)| {
+                self.report
+                    .should_report_window(window, content, event_time)
+            })
             .max_by(|(w1, _), (w2, _)| w1.close.cmp(&w2.close));
 
         if let Some(max_window) = max {
             match self.tick {
                 Tick::TimeDriven => {
-                    if ts > self.app_time {
-                        self.app_time = ts;
+                    if event_time > self.app_time {
+                        self.app_time = event_time;
                         // notify consumers
                         debug!("Window triggers! {:?}", max_window);
                         // multithreaded consumer using channel
@@ -256,15 +256,31 @@ where
                 _ => (), // Not implemented yet?
             };
         }
-
-        self.active_windows = updated_windows;
     }
 
+    fn add_item_to_active_windows(
+        &self,
+        event_item: &I,
+        event_time: usize,
+    ) -> HashMap<Window, ContentContainer<I>> {
+        self.active_windows
+            .clone()
+            .into_iter()
+            .filter_map(|(window, content)| {
+                self.add_item_to_window(window, content, event_item, event_time)
+            })
+            .collect()
+    }
+
+    pub fn add_to_window(&mut self, event_item: I, event_time: usize) {
+        self.active_windows = self.add_item_to_active_windows(&event_item, event_time); // TODO: should this be before the scoping?
+        self.set_active_windows_by_timestamp(&event_time);
+        self.handle_max_window(event_time);
+    }
 
     /// Update active_windows based on current event time
     /// So that only those windows are active that fit within the scope (current event time)
-    fn scope(&mut self, event_time: &usize) {
-
+    fn set_active_windows_by_timestamp(&mut self, event_time: &usize) {
         // Both _temp are for debugging purposes it seems
         // long c_sup = (long) Math.ceil(((double) Math.abs(t_e - t0) / (double) slide)) * slide;
         let _temp = (*event_time as f64 - self.t_0 as f64).abs();
@@ -298,7 +314,8 @@ where
 
             // If such a window does not yet exist, insert it to the list of active windows
             if let None = self.active_windows.get(&window) {
-                self.active_windows.insert(window, ContentContainer::new_with_origin(&self.uri));
+                self.active_windows
+                    .insert(window, ContentContainer::new_with_origin(&self.uri));
             }
 
             // Slide the window so that in the next iteration, you can create a new Window object that can be added to the Vec<Window> struct.
@@ -312,7 +329,6 @@ where
     /// Creates a new channel with send and receiver, updates the consumer to allow for sending
     /// Returns the receiver, so that when self.consumer.send() is used, the receiver is able to receive.
     pub fn register_consumer(&mut self) -> Receiver<ContentContainer<I>> {
-
         // Create new channel that carries ContentContainer values
         let (send, recv) = channel::<ContentContainer<I>>();
         self.consumer.replace(send);
@@ -380,7 +396,8 @@ where
     fn start(&self, receiver: Receiver<ContentContainer<I>>) {
         let consumer_temp = self.inner.clone();
         thread::spawn(move || loop {
-            match receiver.recv() { // .revc() is a blocking operation (wait until you get result or err)
+            match receiver.recv() {
+                // .revc() is a blocking operation (wait until you get result or err)
                 Ok(content) => {
                     debug!("Found graph {:?}", content);
                     consumer_temp.data.lock().unwrap().push(content);
@@ -422,7 +439,7 @@ mod tests {
             tick: Tick::TimeDriven,
             consumer: None,
             call_back: None,
-            uri: "test_window".to_string()
+            uri: "test_window".to_string(),
         };
 
         // When windows are reported, the receiver will receive window contents
@@ -460,7 +477,7 @@ mod tests {
             tick: Tick::TimeDriven,
             consumer: None,
             call_back: None,
-            uri: "test_window".to_string()
+            uri: "test_window".to_string(),
         };
         let recieved_data = Arc::new(Mutex::new(Vec::new()));
         let data_clone = Arc::clone(&recieved_data);
