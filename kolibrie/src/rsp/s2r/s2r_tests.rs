@@ -98,6 +98,8 @@ mod tests {
         thread::sleep(Duration::from_secs(1));
         assert_eq!(5, consumer.len());
     }
+
+
     #[test]
     fn test_window_with_callback() {
         let mut report = Report::new();
@@ -106,11 +108,11 @@ mod tests {
         let mut window: CSPARQLWindow<WindowTriple> =
             CSPARQLWindow::new(10, 2, report, Tick::TimeDriven, "test_window".to_string());
 
-        let recieved_data = Arc::new(Mutex::new(Vec::new()));
-        let data_clone = Arc::clone(&recieved_data);
+        let received_data = Arc::new(Mutex::new(Vec::new()));
+        let received_data_for_callback = Arc::clone(&received_data);
         let call_back = move |content| {
             println!("Content: {:?}", content);
-            recieved_data.lock().unwrap().push(content);
+            received_data_for_callback.lock().unwrap().push(content);
         };
         window.register_callback(Box::new(call_back));
 
@@ -124,6 +126,6 @@ mod tests {
         }
 
         window.stop();
-        assert_eq!(5, data_clone.lock().unwrap().len());
+        assert_eq!(5, received_data.lock().unwrap().len());
     }
 }
