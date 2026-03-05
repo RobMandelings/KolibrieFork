@@ -575,16 +575,16 @@ where
     where
         I: Clone,
     {
-        let norm_input_stream_iri = normalize_stream_iri(stream_iri);
+        let matching_indices: Vec<usize> = if Self::is_wildcard_stream(stream_iri) {
+            // all windows match
+            (0..self.window_configs.len()).collect()
+        } else {
+            let norm_input_stream_iri = normalize_stream_iri(stream_iri);
 
-        let matching_indices: Vec<usize> = self
-            .window_configs
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, window_config)| {
-                if Self::is_wildcard_stream(stream_iri) {
-                    Some(idx)
-                } else {
+            self.window_configs
+                .iter()
+                .enumerate()
+                .filter_map(|(idx, window_config)| {
                     let norm_window_stream_iri =
                         normalize_stream_iri(&window_config.stream_iri);
                     if norm_window_stream_iri == norm_input_stream_iri {
@@ -592,9 +592,9 @@ where
                     } else {
                         None
                     }
-                }
-            })
-            .collect();
+                })
+                .collect()
+        };
 
         for idx in matching_indices {
             if let Some(window) = self.windows.get_mut(idx) {

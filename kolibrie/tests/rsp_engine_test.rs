@@ -387,6 +387,7 @@ fn rsp_ql_single_thread_multi_window_integration() {
     );
 }
 
+/// Simple RSP-QL testing here
 #[test]
 fn rsp_ql_single_window() {
     let result_container = Arc::new(Mutex::new(Vec::new()));
