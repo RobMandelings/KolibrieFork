@@ -28,9 +28,29 @@ where
 impl<I> SlidingWindow<I> for CSPARQLWindow<I> where
     I: Eq + PartialEq + Clone + Debug + Hash + Send {
 
-    fn update_app_time(&mut self, app_time: usize) -> () {
-        self.create_missing_windows_for_timestamp(&app_time);
-        self.trigger_consume(app_time);
+    fn check_next_tick(&mut self, ts: usize) -> bool {
+        match self.tick {
+            Tick::TimeDriven => ts > self.app_time,
+            _ => {
+                panic!("Not yet implemented");
+            }
+        }
+    }
+
+    fn update_app_time(&mut self, ts: usize) -> () {
+        self.create_missing_windows_for_timestamp(&ts);
+
+        if self.check_next_tick(ts) {
+
+            // Update app time based on new tick
+            if let Tick::TimeDriven = self.tick {
+                if ts > self.app_time {
+                    self.app_time = ts;
+                }
+            }
+        }
+
+        self.trigger_consume(ts);
     }
 
     fn add_event(&mut self, event_item: I) {
