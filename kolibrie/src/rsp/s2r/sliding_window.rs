@@ -14,7 +14,7 @@ pub trait SlidingWindow<I> {
 
     fn add_to_window(&mut self, event_item: I, ts: usize) -> ();
 
-    /// Checks whether the next tick is triggered based on the configured Tick
+    /// Checks whether to advance a tick (based on how Ticks are configured)
     fn check_next_tick(&self, ts: usize) -> bool;
 
 }
