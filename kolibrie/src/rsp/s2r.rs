@@ -184,6 +184,34 @@ where
         }
     }
 
+    fn update_single_window(
+        &self,
+        window: Window,
+        mut content: ContentContainer<I>,
+        event_item: &I,
+        event_time: usize,
+    ) -> Option<(Window, ContentContainer<I>)> {
+        debug!(
+            "Processing Window [{:?}, {:?}) for element ({:?},{:?})",
+            window.open, window.close, event_item, event_time
+        );
+
+        if window.open <= event_time && event_time <= window.close {
+            debug!(
+                "Adding element [{:?}] to Window [{:?},{:?})",
+                event_item, window.open, window.close
+            );
+            content.add(event_item.clone(), event_time);
+            Some((window, content))
+        } else {
+            debug!(
+                "Scheduling for Eviction [{:?},{:?})",
+                window.open, window.close
+            );
+            None
+        }
+    }
+
     pub fn add_to_window(&mut self, event_item: I, ts: usize) {
         let event_time = ts;
         self.scope(&event_time);
@@ -195,28 +223,8 @@ where
             .clone()
             .into_iter()
             // Update each window. Window is filtered from the list if it gets evicted (returns None).
-            .filter_map(|(window, mut content)| {
-                debug!(
-                    "Processing Window [{:?}, {:?}) for element ({:?},{:?})",
-                    window.open, window.close, event_item, ts
-                );
-
-                // Check whether event time is between two window times and add it if that is the case
-                if window.open <= event_time && event_time <= window.close {
-                    debug!(
-                        "Adding element [{:?}] to Window [{:?},{:?})",
-                        event_item, window.open, window.close
-                    );
-                    content.add(event_item.clone(), ts);
-                    Some((window, content))
-                } else {
-                    debug!(
-                        "Scheduling for Eviction [{:?},{:?})",
-                        window.open, window.close
-                    );
-                    None
-                }
-            })
+            .filter_map(|(window, content)|
+                self.update_single_window(window, content, &event_item, event_time))
             .collect::<HashMap<Window, ContentContainer<I>>>();
 
         // Gets the latest window that is ready to be reported
