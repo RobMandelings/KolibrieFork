@@ -30,6 +30,7 @@ use std::{println as debug, println as error};
 // Re-exports to preserve the public API used by kolibrie-http-server and examples.
 pub use crate::rsp::builder::{RSPBuilder, RSPQueryConfig};
 use crate::rsp::s2r::reporting::{Report, ReportStrategy};
+use crate::rsp::s2r::sliding_window::SlidingWindow;
 use crate::rsp::s2r::sparql_window::CSPARQLWindow;
 use crate::rsp::s2r::window::WindowContent;
 pub use crate::rsp::simple_r2r::SimpleR2R;

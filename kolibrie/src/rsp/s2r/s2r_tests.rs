@@ -66,6 +66,7 @@ mod tests {
     use crate::rsp::s2r::sparql_window::CSPARQLWindow;
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
+    use crate::rsp::s2r::sliding_window::SlidingWindow;
     use crate::rsp::s2r::test_logging::init_logging;
     use crate::rsp::s2r::Tick;
     use crate::rsp::s2r::window::WindowTriple;

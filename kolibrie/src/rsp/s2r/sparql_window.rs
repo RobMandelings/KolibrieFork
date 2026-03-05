@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::mpsc::{channel, Receiver, Sender};
+use crate::rsp::s2r::sliding_window::SlidingWindow;
 use crate::rsp::s2r::window::{WindowBounds, WindowContent};
 
 pub struct CSPARQLWindow<I>
@@ -22,6 +23,26 @@ where
     // Make callbacks Send so they can be safely transferred to worker threads
     callback: Option<Box<dyn FnMut(WindowContent<I>) -> () + Send + 'static>>,
     uri: String,
+}
+
+impl<I> SlidingWindow<I> for CSPARQLWindow<I> where
+    I: Eq + PartialEq + Clone + Debug + Hash + Send {
+
+    fn update_app_time(&mut self, app_time: usize) -> () {
+        todo!()
+    }
+
+    fn add_event(&mut self, event_item: I) {
+        todo!()
+    }
+
+    fn add_to_window(&mut self, event_item: I, ts: usize) {
+        self.set_active_windows_by_timestamp(&ts);
+        self.trigger_consume(ts);
+
+        // Why is this item added only after the scoping?
+        self.add_item_to_active_windows(&event_item, ts);
+    }
 }
 
 /// Represents a sliding window where a consumer gets send the window contents based on reporting strategies
@@ -134,14 +155,6 @@ where
                 self.add_item_if_within_bounds(window, content, event_item, event_time)
             })
             .collect();
-    }
-
-    pub fn add_to_window(&mut self, event_item: I, event_time: usize) {
-        self.set_active_windows_by_timestamp(&event_time);
-        self.trigger_consume(event_time);
-
-        // Why is this item added only after the scoping?
-        self.add_item_to_active_windows(&event_item, event_time);
     }
 
     /// Update active_windows based on current event time
