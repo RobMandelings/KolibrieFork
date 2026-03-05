@@ -10,7 +10,7 @@
 
 use crate::sparql_database::SparqlDatabase;
 use crate::rsp::r2s::{Relation2StreamOperator, StreamOperator};
-use crate::rsp::s2r::{WindowContent, Tick, WindowTriple};
+use crate::rsp::s2r::Tick;
 use shared::triple::Triple;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::fmt;
@@ -18,6 +18,7 @@ use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 use crate::rsp::s2r::reporting::{Report, ReportStrategy};
 use crate::rsp::s2r::sparql_window::CSPARQLWindow;
+use crate::rsp::s2r::window::{WindowContent, WindowTriple};
 
 #[derive(Debug, Clone)]
 pub struct WindowConfig {

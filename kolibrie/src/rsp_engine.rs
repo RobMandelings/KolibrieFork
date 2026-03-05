@@ -8,7 +8,7 @@
 */
 
 use crate::rsp::r2r::R2ROperator;
-use crate::rsp::s2r::{WindowContent, Tick};
+use crate::rsp::s2r::Tick;
 
 #[cfg(not(test))]
 use log::{debug, error}; // Use log crate when building application
@@ -16,7 +16,7 @@ use shared::query::{Fallback, SyncPolicy};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
-use crossbeam::channel::{unbounded, RecvTimeoutError, Receiver, Sender};
+use crossbeam::channel::{unbounded, Receiver, RecvTimeoutError, Sender};
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -31,6 +31,7 @@ use crate::streamertail_optimizer::{ExecutionEngine, LogicalOperator, PhysicalOp
 pub use crate::rsp::builder::{RSPBuilder, RSPQueryConfig};
 use crate::rsp::s2r::reporting::{Report, ReportStrategy};
 use crate::rsp::s2r::sparql_window::CSPARQLWindow;
+use crate::rsp::s2r::window::WindowContent;
 pub use crate::rsp::simple_r2r::SimpleR2R;
 
 #[derive(Clone, Copy)]

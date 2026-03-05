@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 use std::hash::Hash;
-use crate::rsp::s2r::{WindowBounds, WindowContent};
+use crate::rsp::s2r::window::WindowContent;
+use crate::rsp::s2r::window::WindowBounds;
 
 /// Reporting Strategies define the conditions under which the engine emits the content of the window.
 #[derive(Clone, Debug)]

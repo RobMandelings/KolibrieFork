@@ -1,10 +1,11 @@
 use crate::rsp::s2r::reporting::Report;
-use crate::rsp::s2r::{Tick, WindowBounds, WindowContent};
+use crate::rsp::s2r::Tick;
 use log::{debug, warn};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::mpsc::{channel, Receiver, Sender};
+use crate::rsp::s2r::window::{WindowBounds, WindowContent};
 
 pub struct CSPARQLWindow<I>
 where

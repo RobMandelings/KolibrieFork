@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use std::sync::mpsc::Receiver;
 use std::thread;
 use log::debug;
-use crate::rsp::s2r::WindowContent;
+use crate::rsp::s2r::window::WindowContent;
 
 /// Part of the Consumer struct
 #[allow(dead_code)]
@@ -66,7 +66,8 @@ mod tests {
     use crate::rsp::s2r::sparql_window::CSPARQLWindow;
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
-    use crate::rsp::s2r::{Tick, WindowTriple};
+    use crate::rsp::s2r::Tick;
+    use crate::rsp::s2r::window::WindowTriple;
 
     #[test]
     fn test_window() {

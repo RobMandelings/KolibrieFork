@@ -28,11 +28,13 @@ use shared::rule::Rule;
 use shared::terms::*;
 use shared::query::*;
 // Add RSP imports
-use crate::rsp::s2r::{Tick, WindowTriple, WindowContent};
+use crate::rsp::s2r::Tick;
 use crate::rsp::r2s::{Relation2StreamOperator, StreamOperator};
 use std::collections::HashMap;
 use crate::rsp::s2r::reporting::{Report, ReportStrategy};
 use crate::rsp::s2r::sparql_window::CSPARQLWindow;
+// Add RSP imports
+use crate::rsp::s2r::window::{WindowContent, WindowTriple};
 
 // Helper function to recognize identifiers
 pub fn identifier(input: &str) -> IResult<&str, &str> {
