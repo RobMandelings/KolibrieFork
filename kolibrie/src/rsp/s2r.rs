@@ -303,9 +303,6 @@ where
     /// So that only those windows are active that fit within the scope (current event time)
     fn set_active_windows_by_timestamp(&mut self, event_time: &usize) {
         // Both _temp are for debugging purposes it seems
-        // long c_sup = (long) Math.ceil(((double) Math.abs(t_e - t0) / (double) slide)) * slide;
-        let _temp = (*event_time as f64 - self.t_0 as f64).abs();
-        let _temp = ((*event_time as f64 - self.t_0 as f64).abs() / (self.slide as f64)).ceil();
 
         // Smallest right bound of the window that is still >= your current event_time
         let c_sup = ((*event_time as f64 - self.t_0 as f64).abs() / (self.slide as f64)).ceil()
@@ -313,24 +310,24 @@ where
 
         // The open-timestamp (left bound) of the window for the leftmost window that still fits in event
         // long o_i = c_sup - width;
-        let mut o_i = c_sup - self.width as f64;
+        let mut cur_left_bound = c_sup - self.width as f64;
         debug!(
             "Calculating the Windows to Open. First one opens at [{:?}] and closes at [{:?}]",
-            o_i, c_sup
+            cur_left_bound, c_sup
         );
         // log.debug("Calculating the Windows to Open. First one opens at [" + o_i + "] and closes at [" + c_sup + "]");
         //
         loop {
             debug!(
                 "Computing Window [{:?},{:?}) if absent",
-                o_i,
-                (o_i + self.width as f64)
+                cur_left_bound,
+                (cur_left_bound + self.width as f64)
             );
 
             // Define a new window based on open and close parameters
             let window = Window {
-                open: o_i as usize,
-                close: (o_i + self.width as f64) as usize,
+                open: cur_left_bound as usize,
+                close: (cur_left_bound + self.width as f64) as usize,
             };
 
             // If such a window does not yet exist, insert it to the list of active windows
@@ -340,8 +337,8 @@ where
             }
 
             // Slide the window so that in the next iteration, you can create a new Window object that can be added to the Vec<Window> struct.
-            o_i += self.slide as f64;
-            if o_i > *event_time as f64 {
+            cur_left_bound += self.slide as f64;
+            if cur_left_bound > *event_time as f64 {
                 break;
             }
         }
