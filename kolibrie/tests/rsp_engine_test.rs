@@ -12,7 +12,7 @@ use kolibrie::rsp_engine::{
 };
 use shared::query::{Fallback, SyncPolicy};
 use shared::triple::Triple;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Once};
 use std::thread;
 use std::time::Duration;
 
@@ -387,9 +387,21 @@ fn rsp_ql_single_thread_multi_window_integration() {
     );
 }
 
+static INIT: Once = Once::new();
+
+pub fn init_logging() {
+    INIT.call_once(|| {
+        env_logger::builder()
+            .is_test(true)
+            .filter_level(log::LevelFilter::Debug)
+            .init();
+    });
+}
+
 /// Simple RSP-QL testing here
 #[test]
 fn rsp_ql_single_window() {
+    init_logging();
     let result_container = Arc::new(Mutex::new(Vec::new()));
     let result_container_clone = Arc::clone(&result_container);
     let function = Box::new(move |r: Vec<(String, String)>| {

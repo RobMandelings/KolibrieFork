@@ -123,6 +123,9 @@ where
         }
     }
 
+    /// Of all the windows to report, return the latest (rightmost) window
+    /// For OnWindowClose reporting, there will probably only be one window to report (simples case)
+    /// But you can also have OnWindowClose and OnContentChange
     fn get_latest_window_to_report(&mut self, event_time: usize) -> Option<WindowBounds> {
         // Gets the latest window that is ready to be reported
         self.active_windows
@@ -155,6 +158,7 @@ where
         }
     }
 
+    /// Reports the window if the window should be reported
     fn report_window_if_should_report(&mut self, ts: usize) {
         let max = self.get_latest_window_to_report(ts);
         if let Some(max_window) = max {
