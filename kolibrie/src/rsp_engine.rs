@@ -566,7 +566,7 @@ where
         });
     }
 
-    pub fn add_to_windows(&mut self, input_norm: &str, event_item: &I, ts: usize) {
+    pub fn add_to_windows(&mut self, stream_iri: &str, event_item: &I, ts: usize) {
         // Find windows that match this stream IRI
         for (window_idx, window_config) in self.window_configs.iter().enumerate() {
             // Variable stream (e.g. `?s`) matches any stream.
@@ -577,6 +577,7 @@ where
                 continue;
             }
 
+            let input_norm = normalize_stream_iri(stream_iri);
             let cfg_norm = normalize_stream_iri(&window_config.stream_iri);
             if cfg_norm == input_norm {
                 if let Some(window) = self.windows.get_mut(window_idx) {
@@ -594,8 +595,7 @@ where
             self.process_single_thread_window_results();
         }
 
-        let input_norm = normalize_stream_iri(stream_iri);
-        self.add_to_windows(&input_norm, &event_item, ts);
+        self.add_to_windows(&stream_iri, &event_item, ts);
 
     }
 
