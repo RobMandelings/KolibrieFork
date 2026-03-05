@@ -387,6 +387,81 @@ fn rsp_ql_single_thread_multi_window_integration() {
     );
 }
 
+#[test]
+fn rsp_ql_single_window() {
+    let result_container = Arc::new(Mutex::new(Vec::new()));
+    let result_container_clone = Arc::clone(&result_container);
+    let function = Box::new(move |r: Vec<(String, String)>| {
+        println!("Static-join Bindings: {:?}", r);
+        result_container_clone.lock().unwrap().push(r);
+    });
+
+    // The ResultConsumer only sees the matches to the query, nothing else
+    let result_consumer = ResultConsumer {
+        function: Arc::new(function),
+    };
+    let r2r = Box::new(SimpleR2R::with_execution_mode(QueryExecutionMode::Volcano));
+
+    // Query: window pattern + static pattern joined on ?sensor
+
+    // Find binding for <sensor, room> such that ?sensor <locatedIn> ?room is a matching triple
+    // Find binding for sensor such that ?sensor a ... is a matching triple
+    let rsp_ql_query = r#"
+        REGISTER RSTREAM <http://out/stream> AS
+        SELECT *
+        FROM NAMED WINDOW :wind ON :stream1 [RANGE 10 STEP 2]
+        WHERE {
+            WINDOW :wind {
+                ?sensor a <http://www.w3.org/test/Sensor> .
+            }
+            ?sensor <http://www.w3.org/test/locatedIn> ?room .
+        }
+    "#;
+
+    let mut engine: RSPEngine<Triple, Vec<(String, String)>> = RSPBuilder::new()
+        .add_rsp_ql_query(rsp_ql_query)
+        .add_consumer(result_consumer)
+        .add_r2r(r2r)
+        .set_operation_mode(OperationMode::SingleThread)
+        .build()
+        .expect("Failed to build RSP engine");
+
+    // Add the location triple to the static background store.
+    let location_triple_str =
+        "<http://test.be/sensor0> <http://www.w3.org/test/locatedIn> <http://test.be/room1> .";
+    engine.add_static_ntriples(location_triple_str);
+
+    // Stream: sensor data
+    for i in 0..5 {
+        let data = format!(
+            "<http://test.be/sensor{}> a <http://www.w3.org/test/Sensor> .",
+            i
+        );
+        let triples = engine.parse_data(&data);
+        for triple in triples {
+            engine.add_to_stream("stream1", triple, i);
+        }
+    }
+
+    engine.stop();
+
+    let results = result_container.lock().unwrap();
+    println!("Static-join total results: {}", results.len());
+
+    // At least one result must have both ?sensor and ?room
+    let has_static_join = results.iter().any(|binding| {
+        let has_sensor = binding.iter().any(|(k, _)| k == "sensor");
+        let has_room = binding.iter().any(|(k, _)| k == "room");
+        has_sensor && has_room
+    });
+
+    assert!(
+        has_static_join,
+        "Expected joined results with both ?sensor and ?room, got: {:?}",
+        *results
+    );
+}
+
 /// Single window + static WHERE patterns: results must contain both
 /// the window variable (?sensor) and the static variable (?room).
 #[test]
