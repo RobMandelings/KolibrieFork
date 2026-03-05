@@ -270,6 +270,68 @@ where
         shared_dict
     }
 
+    fn sync_r2r_dictionary_if_simple(
+        store: &mut Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>,
+        query_config: &RSPQueryConfig,
+    ) {
+        if let Some(simple_r2r) = store.as_any_mut().downcast_mut::<SimpleR2R>() {
+            debug!("Synchronizing R2R dictionary with Query dictionary");
+
+            let mut store_dict = simple_r2r.item.dictionary.write().unwrap();
+            let query_dict = query_config.database.dictionary.read().unwrap();
+
+            store_dict.merge(&*query_dict);
+
+            drop(store_dict);
+            drop(query_dict);
+        }
+    }
+
+    fn build_static_db(
+        shared_dict: Option<Arc<RwLock<Dictionary>>>, // use your real type here
+    ) -> Arc<Mutex<SparqlDatabase>> {
+        let mut static_sdb = SparqlDatabase::new();
+        if let Some(d) = shared_dict {
+            static_sdb.dictionary = d;
+        }
+        Arc::new(Mutex::new(static_sdb))
+    }
+
+    fn load_initial_triples(
+        store: &mut Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>,
+        triples: &str,
+        syntax: &str,
+    ) {
+        if let Err(parsing_error) = store.load_triples(triples, syntax.to_string()) {
+            error!("Unable to load ABox: {:?}", parsing_error.to_string());
+        }
+    }
+
+    fn load_rules_or_log_error(
+        store: &mut Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>,
+        rules: &str,
+    ) {
+        match store.load_rules(rules) {
+            Ok(_) => debug!("Rules loaded successfully"),
+            Err(e) => error!("Failed to load rules: {:?}", e),
+        }
+    }
+
+    fn configure_operation_mode(engine: &mut RSPEngine<I, O>) {
+        match engine.operation_mode {
+            mode @ (OperationMode::SingleThread | OperationMode::MultiThread) => {
+                engine.register_windows(mode);
+                if matches!(mode, OperationMode::MultiThread) {
+                    let has_joins = engine.windows.len() > 1
+                        || engine.rsp_query_plan.static_data_plan.is_some();
+                    if has_joins {
+                        engine.start_cross_window_coordinator();
+                    }
+                }
+            }
+        }
+    }
+
     pub fn new(
         query_config: RSPQueryConfig,
         triples: &str,
@@ -284,37 +346,12 @@ where
     ) -> RSPEngine<I, O> {
         let mut store = r2r;
         let shared_dict = Self::create_shared_dict(&mut store);
+        Self::sync_r2r_dictionary_if_simple(&mut store, &query_config);
 
-        if let Some(simple_r2r) = store.as_any_mut().downcast_mut::<SimpleR2R>() {
-            debug!("Synchronizing R2R dictionary with Query dictionary");
+        let static_db = Self::build_static_db(shared_dict);
 
-            // Acquire locks on both dictionaries
-            let mut store_dict = simple_r2r.item.dictionary.write().unwrap();
-            let query_dict = query_config.database.dictionary.read().unwrap();
-
-            store_dict.merge(&*query_dict);
-
-            drop(store_dict);
-            drop(query_dict);
-        }
-
-        // Build the static-data store sharing the same dictionary as the R2R store.
-        let mut static_sdb = SparqlDatabase::new();
-        if let Some(d) = shared_dict {
-            static_sdb.dictionary = d;
-        }
-        let static_db = Arc::new(Mutex::new(static_sdb));
-
-        // Load initial data
-        match store.load_triples(triples, syntax) {
-            Err(parsing_error) => error!("Unable to load ABox: {:?}", parsing_error.to_string()),
-            _ => (),
-        }
-
-        match store.load_rules(rules) {
-            Ok(_) => debug!("Rules loaded successfully"),
-            Err(e) => error!("Failed to load rules: {:?}", e),
-        }
+        Self::load_initial_triples(&mut store, triples, &syntax);
+        Self::load_rules_or_log_error(&mut store, rules);
 
         let windows = Self::create_windows_on_parsed_config(&query_config);
 
@@ -336,18 +373,7 @@ where
             static_db,
         };
 
-        match operation_mode {
-            mode @ (OperationMode::SingleThread | OperationMode::MultiThread) => {
-                engine.register_windows(mode);
-                if matches!(mode, OperationMode::MultiThread) {
-                    let has_joins = engine.windows.len() > 1
-                        || engine.rsp_query_plan.static_data_plan.is_some();
-                    if has_joins {
-                        engine.start_cross_window_coordinator();
-                    }
-                }
-            }
-        }
+        Self::configure_operation_mode(&mut engine);
 
         engine
     }
