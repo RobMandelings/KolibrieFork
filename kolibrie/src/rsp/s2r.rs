@@ -114,7 +114,7 @@ where
     app_time: usize, // Current application time: the time of the latest event item that was processed.
     consumer: Option<Sender<WindowContent<I>>>,
     // Make callbacks Send so they can be safely transferred to worker threads
-    call_back: Option<Box<dyn FnMut(WindowContent<I>) -> () + Send + 'static>>,
+    callback: Option<Box<dyn FnMut(WindowContent<I>) -> () + Send + 'static>>,
     uri: String,
 }
 
@@ -139,7 +139,7 @@ where
             consumer: None,
             active_windows: HashMap::new(),
             tick,
-            call_back: None,
+            callback: None,
             uri,
         }
     }
@@ -211,7 +211,7 @@ where
                             }
                         }
                         // single threaded consumer using callback
-                        if let Some(call_back) = &mut self.call_back {
+                        if let Some(call_back) = &mut self.callback {
                             (call_back)(content_for_window.clone());
                         }
                     }
@@ -302,13 +302,13 @@ where
         &mut self,
         function: Box<dyn FnMut(WindowContent<I>) -> () + Send + 'static>,
     ) {
-        self.call_back.replace(function);
+        self.callback.replace(function);
     }
 
     /// Push window content clones to the callback and consumer
     pub fn flush(&mut self) {
         for (_, content) in &self.active_windows {
-            if let Some(call_back) = &mut self.call_back {
+            if let Some(call_back) = &mut self.callback {
                 (call_back)(content.clone());
             }
             if let Some(sender) = &self.consumer {
@@ -381,6 +381,7 @@ pub struct WindowTriple {
     pub p: String,
     pub o: String,
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -401,7 +402,7 @@ mod tests {
             report,
             tick: Tick::TimeDriven,
             consumer: None,
-            call_back: None,
+            callback: None,
             uri: "test_window".to_string(),
         };
 
@@ -427,10 +428,10 @@ mod tests {
         assert_eq!(5, consumer.len());
     }
     #[test]
-    fn test_window_with_call_back() {
+    fn test_window_with_callback() {
         let mut report = Report::new();
         report.add(ReportStrategy::OnWindowClose);
-        let mut window = CSPARQLWindow {
+        let mut window: CSPARQLWindow<WindowTriple> = CSPARQLWindow {
             width: 10,
             slide: 2,
             app_time: 0,
@@ -439,7 +440,7 @@ mod tests {
             report,
             tick: Tick::TimeDriven,
             consumer: None,
-            call_back: None,
+            callback: None,
             uri: "test_window".to_string(),
         };
         let recieved_data = Arc::new(Mutex::new(Vec::new()));
