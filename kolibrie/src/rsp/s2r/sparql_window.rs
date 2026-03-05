@@ -166,6 +166,8 @@ where
         }
     }
 
+    /// If the item fits within the bounds of the window, add the item to the window
+    /// If the item falls outside bounds, the window is evicted
     fn add_item_to_active_windows(&mut self, event_item: &I, event_time: usize) -> () {
         self.active_windows = self
             .active_windows
