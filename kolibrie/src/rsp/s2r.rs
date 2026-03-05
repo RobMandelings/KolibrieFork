@@ -303,7 +303,7 @@ where
 
     /// Creates a new channel with send and receiver, updates the consumer to allow for sending
     /// Returns the receiver, so that when self.consumer.send() is used, the receiver is able to receive.
-    pub fn register_consumer(&mut self) -> Receiver<ContentContainer<I>> {
+    pub fn register(&mut self) -> Receiver<ContentContainer<I>> {
 
         // Create new channel that carries ContentContainer values
         let (send, recv) = channel::<ContentContainer<I>>();
@@ -418,7 +418,7 @@ mod tests {
         };
 
         // When windows are reported, the receiver will receive window contents
-        let receiver = window.register_consumer();
+        let receiver = window.register();
 
         // The consumer will consume the received window content
         let consumer = Consumer::new();
