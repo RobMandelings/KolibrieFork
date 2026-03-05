@@ -104,6 +104,12 @@ pub struct Window {
     close: usize, // timestamp for when the window is closed
 }
 
+impl Window {
+    pub fn within_bounds(&self, event_time: usize) -> bool {
+        self.open <= event_time && event_time <= self.close
+    }
+}
+
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct ContentContainer<I>
 where
@@ -195,7 +201,10 @@ where
         }
     }
 
-    fn add_item_to_window(
+    /// `Returns`:
+    ///     - Some(Content): If the item fits within window bounds, the item is added to the ContentContainer and the Content is returned.
+    ///     - None: If the item does not fit within window bounds, nothing is added to the ContentContainer
+    fn add_item_if_within_bounds(
         &self,
         window: Window,
         mut content: ContentContainer<I>,
@@ -207,12 +216,13 @@ where
             window.open, window.close, event_item, event_time
         );
 
-        if window.open <= event_time && event_time <= window.close {
+        if window.within_bounds(event_time) {
             debug!(
                 "Adding element [{:?}] to Window [{:?},{:?})",
                 event_item, window.open, window.close
             );
 
+            // Add the item if it fits within bounds
             content.add(event_item.clone(), event_time);
             Some((window, content))
         } else {
@@ -260,21 +270,21 @@ where
     }
 
     fn add_item_to_active_windows(
-        &self,
+        &mut self,
         event_item: &I,
         event_time: usize,
-    ) -> HashMap<Window, ContentContainer<I>> {
-        self.active_windows
+    ) -> () {
+        self.active_windows = self.active_windows
             .clone()
             .into_iter()
             .filter_map(|(window, content)| {
-                self.add_item_to_window(window, content, event_item, event_time)
+                self.add_item_if_within_bounds(window, content, event_item, event_time)
             })
-            .collect()
+            .collect();
     }
 
     pub fn add_to_window(&mut self, event_item: I, event_time: usize) {
-        self.active_windows = self.add_item_to_active_windows(&event_item, event_time); // TODO: should this be before the scoping?
+        self.add_item_to_active_windows(&event_item, event_time); // TODO: should this be before the scoping?
         self.set_active_windows_by_timestamp(&event_time);
         self.handle_max_window(event_time);
     }
