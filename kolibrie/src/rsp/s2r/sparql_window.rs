@@ -49,7 +49,7 @@ impl<I> SlidingWindow<I> for CSPARQLWindow<I> where
                 }
             }
 
-            self.trigger_consume(ts);
+            self.report_window_if_should_report(ts);
         }
     }
 
@@ -155,7 +155,7 @@ where
         }
     }
 
-    fn trigger_consume(&mut self, ts: usize) {
+    fn report_window_if_should_report(&mut self, ts: usize) {
         let max = self.get_latest_window_to_report(ts);
         if let Some(max_window) = max {
             self.report_window(&max_window);

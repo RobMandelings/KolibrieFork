@@ -12,11 +12,11 @@ pub trait SlidingWindow<I> {
     /// Adds the event to the window at the current application time
     fn add_event(&mut self, event_item: I);
 
+
     fn add_to_window(&mut self, event_item: I, ts: usize) -> ();
 
     /// Checks whether the next tick is triggered based on the configured Tick
     fn check_next_tick(&self, ts: usize) -> bool;
-
 
 }
 
