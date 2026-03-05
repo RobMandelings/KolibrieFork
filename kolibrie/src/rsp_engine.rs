@@ -8,7 +8,7 @@
 */
 
 use crate::rsp::r2r::R2ROperator;
-use crate::rsp::s2r::{CSPARQLWindow, WindowContent, Report, ReportStrategy, Tick};
+use crate::rsp::s2r::{CSPARQLWindow, WindowContent, Tick};
 
 #[cfg(not(test))]
 use log::{debug, error}; // Use log crate when building application
@@ -29,6 +29,7 @@ use crate::streamertail_optimizer::{ExecutionEngine, LogicalOperator, PhysicalOp
 
 // Re-exports to preserve the public API used by kolibrie-http-server and examples.
 pub use crate::rsp::builder::{RSPBuilder, RSPQueryConfig};
+use crate::rsp::s2r::reporting::{Report, ReportStrategy};
 pub use crate::rsp::simple_r2r::SimpleR2R;
 
 #[derive(Clone, Copy)]

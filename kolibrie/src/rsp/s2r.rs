@@ -21,20 +21,9 @@ use std::thread;
 use std::{f64, mem};
 #[cfg(test)]
 use std::{println as warn, println as debug};
+use crate::rsp::s2r::reporting::Report;
 
-/// Reporting Strategies define the conditions under which the engine emits the content of the window.
-#[derive(Clone, Debug)]
-pub enum ReportStrategy {
-    NonEmptyContent,
-    OnContentChange,
-    OnWindowClose,
-    Periodic(usize),
-}
-impl Default for ReportStrategy {
-    fn default() -> Self {
-        ReportStrategy::OnWindowClose
-    }
-}
+pub mod reporting;
 
 /// Tick is a dimension that explains what triggers the report evaluations.
 /// Possible ticks are time-driven, tuple-driven, or batch-driven.
@@ -48,52 +37,6 @@ pub enum Tick {
 impl Default for Tick {
     fn default() -> Self {
         Tick::TimeDriven
-    }
-}
-
-pub struct Report<I>
-where
-    I: Eq + PartialEq + Clone + Debug + Hash + Send,
-{
-    strategies: Vec<ReportStrategy>,
-    last_change: WindowContent<I>,
-}
-
-impl<I> Report<I>
-where
-    I: Eq + PartialEq + Clone + Debug + Hash + Send,
-{
-    pub fn new() -> Report<I> {
-        Report {
-            strategies: Vec::new(), // Reporting strategies to consider when checking whether window should be reported
-            last_change: WindowContent::new(), // Used for the OnContentChange reporting strategy
-        }
-    }
-
-    /// Adds a new reporting strategy to the report.
-    pub fn add(&mut self, strategy: ReportStrategy) {
-        self.strategies.push(strategy);
-    }
-
-    /// Returns true if the window should be reported.
-    /// This only happens when all reporting strategies within the Vec<ReportStrategy>
-    /// say that reporting strategy should be 'true'
-    pub fn should_report_window(
-        &mut self,
-        window: &WindowBounds,
-        content: &WindowContent<I>,
-        ts: usize,
-    ) -> bool {
-        self.strategies.iter().all(|strategy| match strategy {
-            ReportStrategy::NonEmptyContent => content.len() > 0,
-            ReportStrategy::OnContentChange => {
-                let comp = content.eq(&self.last_change);
-                self.last_change = content.clone();
-                comp
-            }
-            ReportStrategy::OnWindowClose => window.close < ts,
-            ReportStrategy::Periodic(period) => ts % period == 0,
-        })
     }
 }
 
@@ -443,6 +386,7 @@ mod tests {
     use super::*;
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
+    use crate::rsp::s2r::reporting::ReportStrategy;
 
     #[test]
     fn test_window() {

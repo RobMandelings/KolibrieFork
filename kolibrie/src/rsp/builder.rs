@@ -10,7 +10,7 @@
 use crate::parser::parse_combined_query;
 use crate::rsp::r2r::R2ROperator;
 use crate::rsp::r2s::StreamOperator;
-use crate::rsp::s2r::{ReportStrategy, Tick};
+use crate::rsp::s2r::{Tick};
 use crate::rsp_engine::{
     OperationMode, QueryExecutionMode, RSPEngine, RSPQueryPlan, RSPWindow, ResultConsumer,
 };
@@ -23,6 +23,7 @@ use shared::terms::Term;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
+use crate::rsp::s2r::reporting::ReportStrategy;
 
 /// RSP Query configuration extracted from parsed RSP-QL
 #[derive(Debug)]
