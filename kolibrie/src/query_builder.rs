@@ -10,7 +10,7 @@
 
 use crate::sparql_database::SparqlDatabase;
 use crate::rsp::r2s::{Relation2StreamOperator, StreamOperator};
-use crate::rsp::s2r::{CSPARQLWindow, ContentContainer, Report, ReportStrategy, Tick, WindowTriple};
+use crate::rsp::s2r::{CSPARQLWindow, WindowContent, Report, ReportStrategy, Tick, WindowTriple};
 use shared::triple::Triple;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::fmt;
@@ -55,7 +55,7 @@ pub struct QueryBuilder<'a> {
     stream_operator: Option<StreamOperator>,
     r2s_operator: Option<Relation2StreamOperator<Triple>>,
     window_instance: Option<CSPARQLWindow<WindowTriple>>,
-    window_receiver: Option<Receiver<ContentContainer<WindowTriple>>>,
+    window_receiver: Option<Receiver<WindowContent<WindowTriple>>>,
     stream_results: Arc<Mutex<Vec<Vec<Triple>>>>,
     current_timestamp: usize,
     is_streaming: bool,
@@ -801,7 +801,7 @@ impl<'a> QueryBuilder<'a> {
     // Helper method to execute query on window content
     fn execute_query_on_window_content(
         &self,
-        content: &ContentContainer<WindowTriple>,
+        content: &WindowContent<WindowTriple>,
     ) -> Vec<Triple> {
         let mut matching_triples = Vec::new();
 

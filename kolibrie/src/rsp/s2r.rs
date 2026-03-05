@@ -56,7 +56,7 @@ where
     I: Eq + PartialEq + Clone + Debug + Hash + Send,
 {
     strategies: Vec<ReportStrategy>,
-    last_change: ContentContainer<I>,
+    last_change: WindowContent<I>,
 }
 
 impl<I> Report<I>
@@ -66,7 +66,7 @@ where
     pub fn new() -> Report<I> {
         Report {
             strategies: Vec::new(), // Reporting strategies to consider when checking whether window should be reported
-            last_change: ContentContainer::new(), // Used for the OnContentChange reporting strategy
+            last_change: WindowContent::new(), // Used for the OnContentChange reporting strategy
         }
     }
 
@@ -80,8 +80,8 @@ where
     /// say that reporting strategy should be 'true'
     pub fn should_report_window(
         &mut self,
-        window: &Window,
-        content: &ContentContainer<I>,
+        window: &WindowBounds,
+        content: &WindowContent<I>,
         ts: usize,
     ) -> bool {
         self.strategies.iter().all(|strategy| match strategy {
@@ -99,19 +99,19 @@ where
 
 /// Window is represented as an opening timestamp and closing timestamp
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]
-pub struct Window {
+pub struct WindowBounds {
     open: usize,  // timestamp for when the window is opened
     close: usize, // timestamp for when the window is closed
 }
 
-impl Window {
+impl WindowBounds {
     pub fn within_bounds(&self, event_time: usize) -> bool {
         self.open <= event_time && event_time <= self.close
     }
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct ContentContainer<I>
+pub struct WindowContent<I>
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send,
 {
@@ -120,19 +120,19 @@ where
     origin: String,
 }
 
-impl<I> ContentContainer<I>
+impl<I> WindowContent<I>
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send,
 {
-    fn new() -> ContentContainer<I> {
-        ContentContainer {
+    fn new() -> WindowContent<I> {
+        WindowContent {
             elements: HashSet::new(),
             last_timestamp_changed: 0,
             origin: String::default(),
         }
     }
-    fn new_with_origin(origin: &str) -> ContentContainer<I> {
-        ContentContainer {
+    fn new_with_origin(origin: &str) -> WindowContent<I> {
+        WindowContent {
             elements: HashSet::new(),
             last_timestamp_changed: 0,
             origin: origin.to_string(),
@@ -165,13 +165,13 @@ where
     width: usize,
     slide: usize,
     t_0: usize,
-    active_windows: HashMap<Window, ContentContainer<I>>, // Each 'window' is a unique key
+    active_windows: HashMap<WindowBounds, WindowContent<I>>, // Each 'window' is a unique key
     report: Report<I>,
     tick: Tick,
-    app_time: usize,
-    consumer: Option<Sender<ContentContainer<I>>>,
+    app_time: usize, // Current application time: the time of the latest event item that was processed.
+    consumer: Option<Sender<WindowContent<I>>>,
     // Make callbacks Send so they can be safely transferred to worker threads
-    call_back: Option<Box<dyn FnMut(ContentContainer<I>) -> () + Send + 'static>>,
+    call_back: Option<Box<dyn FnMut(WindowContent<I>) -> () + Send + 'static>>,
     uri: String,
 }
 
@@ -206,11 +206,11 @@ where
     ///     - None: If the item does not fit within window bounds, nothing is added to the ContentContainer
     fn add_item_if_within_bounds(
         &self,
-        window: Window,
-        mut content: ContentContainer<I>,
+        window: WindowBounds,
+        mut content: WindowContent<I>,
         event_item: &I,
         event_time: usize,
-    ) -> Option<(Window, ContentContainer<I>)> {
+    ) -> Option<(WindowBounds, WindowContent<I>)> {
         debug!(
             "Processing Window [{:?}, {:?}) for element ({:?},{:?})",
             window.open, window.close, event_item, event_time
@@ -234,7 +234,7 @@ where
         }
     }
 
-    fn get_latest_window_to_report(&mut self, event_time: usize) -> Option<Window> {
+    fn get_latest_window_to_report(&mut self, event_time: usize) -> Option<WindowBounds> {
         // Gets the latest window that is ready to be reported
         self
             .active_windows
@@ -258,6 +258,7 @@ where
                         // notify consumers
                         debug!("Window triggers! {:?}", max_window);
 
+                        // The content that will be send to the consumer
                         let content_for_window = self.active_windows.get(&max_window).unwrap();
 
                         // multithreaded consumer using channel
@@ -325,7 +326,7 @@ where
             );
 
             // Define a new window based on open and close parameters
-            let window = Window {
+            let window = WindowBounds {
                 open: cur_left_bound as usize,
                 close: (cur_left_bound + self.width as f64) as usize,
             };
@@ -333,7 +334,7 @@ where
             // If such a window does not yet exist, insert it to the list of active windows
             if let None = self.active_windows.get(&window) {
                 self.active_windows
-                    .insert(window, ContentContainer::new_with_origin(&self.uri));
+                    .insert(window, WindowContent::new_with_origin(&self.uri));
             }
 
             // Slide the window so that in the next iteration, you can create a new Window object that can be added to the Vec<Window> struct.
@@ -346,9 +347,9 @@ where
 
     /// Creates a new channel with send and receiver, updates the consumer to allow for sending
     /// Returns the receiver, so that when self.consumer.send() is used, the receiver is able to receive.
-    pub fn register_consumer(&mut self) -> Receiver<ContentContainer<I>> {
+    pub fn register_consumer(&mut self) -> Receiver<WindowContent<I>> {
         // Create new channel that carries ContentContainer values
-        let (send, recv) = channel::<ContentContainer<I>>();
+        let (send, recv) = channel::<WindowContent<I>>();
         self.consumer.replace(send);
         recv
     }
@@ -356,7 +357,7 @@ where
     /// Registers which callback function to call when you use self.callback
     pub fn register_callback(
         &mut self,
-        function: Box<dyn FnMut(ContentContainer<I>) -> () + Send + 'static>,
+        function: Box<dyn FnMut(WindowContent<I>) -> () + Send + 'static>,
     ) {
         self.call_back.replace(function);
     }
@@ -385,7 +386,7 @@ struct ConsumerInner<I>
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send,
 {
-    data: Mutex<Vec<ContentContainer<I>>>,
+    data: Mutex<Vec<WindowContent<I>>>,
 }
 
 #[allow(dead_code)]
@@ -411,7 +412,7 @@ where
 
     /// Start listening for content sending in a different thread
     /// If content is received, push content to the consumer_temp (clone of inner consumer)
-    fn start(&self, receiver: Receiver<ContentContainer<I>>) {
+    fn start(&self, receiver: Receiver<WindowContent<I>>) {
         let consumer_temp = self.inner.clone();
         thread::spawn(move || loop {
             match receiver.recv() {

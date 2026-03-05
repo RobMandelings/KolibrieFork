@@ -8,7 +8,7 @@
 */
 
 use crate::rsp::r2r::R2ROperator;
-use crate::rsp::s2r::{CSPARQLWindow, ContentContainer, Report, ReportStrategy, Tick};
+use crate::rsp::s2r::{CSPARQLWindow, WindowContent, Report, ReportStrategy, Tick};
 
 #[cfg(not(test))]
 use log::{debug, error}; // Use log crate when building application
@@ -122,7 +122,7 @@ macro_rules! create_window_processor {
     ($window_iri:expr, $query:expr, $query_execution_mode:expr,
      $r2r_store:expr, $has_joins:expr, $window_result_sender:expr, $r2s_consumer_func:expr) => {{
         let mut prev_window_triples: Vec<I> = Vec::new();
-        move |content: ContentContainer<I>| {
+        move |content: WindowContent<I>| {
             debug!(
                 "Processing window {} with query: {:?} using {:?} execution",
                 $window_iri, $query, $query_execution_mode

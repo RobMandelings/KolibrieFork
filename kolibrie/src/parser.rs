@@ -28,7 +28,7 @@ use shared::rule::Rule;
 use shared::terms::*;
 use shared::query::*;
 // Add RSP imports
-use crate::rsp::s2r::{CSPARQLWindow, Report, ReportStrategy, Tick, WindowTriple, ContentContainer};
+use crate::rsp::s2r::{CSPARQLWindow, Report, ReportStrategy, Tick, WindowTriple, WindowContent};
 use crate::rsp::r2s::{Relation2StreamOperator, StreamOperator};
 use std::collections::HashMap;
 
@@ -1956,7 +1956,7 @@ pub fn process_rule_definition(
                 let rule_clone = dynamic_rule.clone();
                 let _stream_op_clone = stream_operator.clone();
 
-                rsp_window.register_callback(Box::new(move |content: ContentContainer<WindowTriple>| {
+                rsp_window.register_callback(Box::new(move |content: WindowContent<WindowTriple>| {
                     println!("Processing window content with {} triples", content.len());
 
                     // Convert window content back to Knowledge Graph format
