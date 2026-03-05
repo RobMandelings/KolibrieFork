@@ -146,7 +146,6 @@ where
     /// Update active_windows based on current event time
     /// So that only those windows are active that fit within the scope (current event time)
     fn set_active_windows_by_timestamp(&mut self, event_time: &usize) {
-        // Both _temp are for debugging purposes it seems
 
         // Smallest right bound of the window that is still >= your current event_time
         let c_sup = ((*event_time as f64 - self.t_0 as f64).abs() / (self.slide as f64)).ceil()
