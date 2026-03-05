@@ -186,7 +186,7 @@ macro_rules! register_window {
         $window.register_callback(Box::new($processor));
     };
     (MultiThread, $window:expr, $processor:expr, $window_iri:expr) => {{
-        let receiver = $window.register();
+        let receiver = $window.register_consumer();
         thread::spawn(move || {
             loop {
                 match receiver.recv() {
