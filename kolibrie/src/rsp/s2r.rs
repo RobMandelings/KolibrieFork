@@ -15,6 +15,8 @@ pub mod reporting;
 pub mod sparql_window;
 pub mod window;
 
+mod test_logging;
+
 /// Tick is a dimension that explains what triggers the report evaluations.
 /// Possible ticks are time-driven, tuple-driven, or batch-driven.
 #[derive(Clone, Debug)]

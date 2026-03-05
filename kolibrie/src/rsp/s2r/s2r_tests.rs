@@ -66,11 +66,14 @@ mod tests {
     use crate::rsp::s2r::sparql_window::CSPARQLWindow;
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
+    use crate::rsp::s2r::test_logging::init_logging;
     use crate::rsp::s2r::Tick;
     use crate::rsp::s2r::window::WindowTriple;
 
     #[test]
     fn test_window() {
+        init_logging();
+
         let mut report = Report::new();
         report.add(ReportStrategy::OnWindowClose);
 
@@ -109,11 +112,13 @@ mod tests {
             CSPARQLWindow::new(10, 2, report, Tick::TimeDriven, "test_window".to_string());
 
         let received_data = Arc::new(Mutex::new(Vec::new()));
+
         let received_data_for_callback = Arc::clone(&received_data);
         let call_back = move |content| {
             println!("Content: {:?}", content);
             received_data_for_callback.lock().unwrap().push(content);
         };
+
         window.register_callback(Box::new(call_back));
 
         for time in 0..10 {
