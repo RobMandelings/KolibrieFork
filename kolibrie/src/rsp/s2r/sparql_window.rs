@@ -28,7 +28,7 @@ where
 impl<I> SlidingWindow<I> for CSPARQLWindow<I> where
     I: Eq + PartialEq + Clone + Debug + Hash + Send {
 
-    fn check_next_tick(&mut self, ts: usize) -> bool {
+    fn check_next_tick(&self, ts: usize) -> bool {
         match self.tick {
             Tick::TimeDriven => ts > self.app_time,
             _ => {
