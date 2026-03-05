@@ -571,15 +571,6 @@ where
         stream_iri.starts_with('?')
     }
 
-    fn add_to_window_idx(&mut self, window_idx: usize, event_item: &I, ts: usize)
-    where
-        I: Clone,
-    {
-        if let Some(window) = self.windows.get_mut(window_idx) {
-            window.add_to_window(event_item.clone(), ts);
-        }
-    }
-
     pub fn add_item_to_windows(&mut self, stream_iri: &str, event_item: &I, ts: usize)
     where
         I: Clone,
@@ -606,7 +597,9 @@ where
             .collect();
 
         for idx in matching_indices {
-            self.add_to_window_idx(idx, event_item, ts);
+            if let Some(window) = self.windows.get_mut(idx) {
+                window.add_to_window(event_item.clone(), ts);
+            }
         }
     }
 
