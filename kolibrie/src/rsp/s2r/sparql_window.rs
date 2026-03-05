@@ -29,7 +29,8 @@ impl<I> SlidingWindow<I> for CSPARQLWindow<I> where
     I: Eq + PartialEq + Clone + Debug + Hash + Send {
 
     fn update_app_time(&mut self, app_time: usize) -> () {
-        todo!()
+        self.set_active_windows_by_timestamp(&app_time);
+        self.trigger_consume(app_time);
     }
 
     fn add_event(&mut self, event_item: I) {
@@ -37,9 +38,7 @@ impl<I> SlidingWindow<I> for CSPARQLWindow<I> where
     }
 
     fn add_to_window(&mut self, event_item: I, ts: usize) {
-        self.set_active_windows_by_timestamp(&ts);
-        self.trigger_consume(ts);
-
+        self.update_app_time(ts);
         // Why is this item added only after the scoping?
         self.add_item_to_active_windows(&event_item, ts);
     }
@@ -61,7 +60,7 @@ where
             slide,
             width,
             t_0: 0,
-            app_time: 0,
+            app_time: 0, // app_time stands for "application time" - it tracks the latest timestamp that the application has processed so far
             report,
             consumer: None,
             active_windows: HashMap::new(),

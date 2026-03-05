@@ -32,6 +32,7 @@ use crate::rsp::s2r::Tick;
 use crate::rsp::r2s::{Relation2StreamOperator, StreamOperator};
 use std::collections::HashMap;
 use crate::rsp::s2r::reporting::{Report, ReportStrategy};
+use crate::rsp::s2r::sliding_window::SlidingWindow;
 use crate::rsp::s2r::sparql_window::CSPARQLWindow;
 // Add RSP imports
 use crate::rsp::s2r::window::{WindowContent, WindowTriple};

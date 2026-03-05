@@ -17,6 +17,7 @@ use std::fmt;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 use crate::rsp::s2r::reporting::{Report, ReportStrategy};
+use crate::rsp::s2r::sliding_window::SlidingWindow;
 use crate::rsp::s2r::sparql_window::CSPARQLWindow;
 use crate::rsp::s2r::window::{WindowContent, WindowTriple};
 
