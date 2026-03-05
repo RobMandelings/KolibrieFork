@@ -4,7 +4,7 @@ use crate::rsp::s2r::window::WindowContent;
 use crate::rsp::s2r::window::WindowBounds;
 
 /// Reporting Strategies define the conditions under which the engine emits the content of the window.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ReportStrategy {
     NonEmptyContent,
     OnContentChange,
@@ -38,6 +38,10 @@ where
 
     /// Adds a new reporting strategy to the report.
     pub fn add(&mut self, strategy: ReportStrategy) {
+        if self.strategies.contains(&strategy) {
+            // TODO fix: do not panic
+            panic!("ReportStrategy {:?} already added", strategy);
+        }
         self.strategies.push(strategy);
     }
 
