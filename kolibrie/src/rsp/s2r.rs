@@ -234,17 +234,22 @@ where
         }
     }
 
-    fn handle_max_window(&mut self, event_time: usize) {
+    fn get_latest_window_to_report(&mut self, event_time: usize) -> Option<Window> {
         // Gets the latest window that is ready to be reported
-        let max = self
+        self
             .active_windows
             .iter()
             .filter(|(window, content)| {
                 self.report
                     .should_report_window(window, content, event_time)
             })
-            .max_by(|(w1, _), (w2, _)| w1.close.cmp(&w2.close));
+            .max_by(|(w1, _), (w2, _)| w1.close.cmp(&w2.close))
+            .map(|(window, _)| window.clone()) // key is Window, so clone it
+    }
 
+    fn trigger_consume(&mut self, event_time: usize) {
+
+        let max = self.get_latest_window_to_report(event_time);
         if let Some(max_window) = max {
             match self.tick {
                 Tick::TimeDriven => {
@@ -252,15 +257,18 @@ where
                         self.app_time = event_time;
                         // notify consumers
                         debug!("Window triggers! {:?}", max_window);
+
+                        let content_for_window = self.active_windows.get(&max_window).unwrap();
+
                         // multithreaded consumer using channel
                         if let Some(sender) = &self.consumer {
-                            if let Err(e) = sender.send(max_window.1.clone()) {
+                            if let Err(e) = sender.send(content_for_window.clone()) {
                                 warn!("Failed to send window content to consumer: {:?}", e);
                             }
                         }
                         // single threaded consumer using callback
                         if let Some(call_back) = &mut self.call_back {
-                            (call_back)(max_window.1.clone());
+                            (call_back)(content_for_window.clone());
                         }
                     }
                 }
@@ -284,9 +292,11 @@ where
     }
 
     pub fn add_to_window(&mut self, event_item: I, event_time: usize) {
-        self.add_item_to_active_windows(&event_item, event_time); // TODO: should this be before the scoping?
         self.set_active_windows_by_timestamp(&event_time);
-        self.handle_max_window(event_time);
+        self.trigger_consume(event_time);
+
+        // Why is this item added only after the scoping?
+        self.add_item_to_active_windows(&event_item, event_time);
     }
 
     /// Update active_windows based on current event time
