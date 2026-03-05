@@ -135,25 +135,30 @@ where
             .map(|(window, _)| window.clone()) // key is Window, so clone it
     }
 
+    /// Reports the window contents to the consumers
+    fn report_window(&mut self, window: &WindowBounds) {
+        // notify consumers
+        debug!("Window triggers! {:?}", window);
+
+        // The content that will be send to the consumer
+        let content_for_window = self.active_windows.get(&window).unwrap();
+
+        // multithreaded consumer using channel
+        if let Some(sender) = &self.consumer {
+            if let Err(e) = sender.send(content_for_window.clone()) {
+                warn!("Failed to send window content to consumer: {:?}", e);
+            }
+        }
+        // single threaded consumer using callback
+        if let Some(call_back) = &mut self.callback {
+            (call_back)(content_for_window.clone());
+        }
+    }
+
     fn trigger_consume(&mut self, ts: usize) {
         let max = self.get_latest_window_to_report(ts);
         if let Some(max_window) = max {
-            // notify consumers
-            debug!("Window triggers! {:?}", max_window);
-
-            // The content that will be send to the consumer
-            let content_for_window = self.active_windows.get(&max_window).unwrap();
-
-            // multithreaded consumer using channel
-            if let Some(sender) = &self.consumer {
-                if let Err(e) = sender.send(content_for_window.clone()) {
-                    warn!("Failed to send window content to consumer: {:?}", e);
-                }
-            }
-            // single threaded consumer using callback
-            if let Some(call_back) = &mut self.callback {
-                (call_back)(content_for_window.clone());
-            }
+            self.report_window(&max_window);
         }
     }
 
