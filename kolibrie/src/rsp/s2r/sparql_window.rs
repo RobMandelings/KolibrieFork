@@ -157,36 +157,6 @@ where
         }
     }
 
-    fn _old_trigger_consume(&mut self, event_time: usize) {
-        let max = self.get_latest_window_to_report(event_time);
-        if let Some(max_window) = max {
-            match self.tick {
-                Tick::TimeDriven => {
-                    if event_time > self.app_time {
-                        self.app_time = event_time;
-                        // notify consumers
-                        debug!("Window triggers! {:?}", max_window);
-
-                        // The content that will be send to the consumer
-                        let content_for_window = self.active_windows.get(&max_window).unwrap();
-
-                        // multithreaded consumer using channel
-                        if let Some(sender) = &self.consumer {
-                            if let Err(e) = sender.send(content_for_window.clone()) {
-                                warn!("Failed to send window content to consumer: {:?}", e);
-                            }
-                        }
-                        // single threaded consumer using callback
-                        if let Some(call_back) = &mut self.callback {
-                            (call_back)(content_for_window.clone());
-                        }
-                    }
-                }
-                _ => (), // Not implemented yet?
-            };
-        }
-    }
-
     fn add_item_to_active_windows(&mut self, event_item: &I, event_time: usize) -> () {
         self.active_windows = self
             .active_windows
