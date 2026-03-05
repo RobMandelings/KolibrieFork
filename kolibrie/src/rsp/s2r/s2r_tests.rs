@@ -70,6 +70,34 @@ mod tests {
     use crate::rsp::s2r::Tick;
     use crate::rsp::s2r::window::WindowTriple;
 
+    fn add_triples_to_window(window: &mut CSPARQLWindow<WindowTriple>) {
+        for time in 0..10 {
+            let triple = WindowTriple {
+                s: format!("s{}", time),
+                p: "p".to_string(),
+                o: "o".to_string(),
+            };
+
+            window.add_to_window(triple, time);
+        }
+    }
+
+    type SharedVec<T> = Arc<Mutex<Vec<T>>>;
+
+    fn setup_callback<T: Debug>() -> (SharedVec<T>, impl Fn(T)) {
+        let received_data = Arc::new(Mutex::new(Vec::new()));
+
+        let received_data_for_callback = Arc::clone(&received_data);
+        // Function that will be called to consume the reported window content
+        let callback_fn = move |content| {
+            println!("Content: {:?}", content);
+            received_data_for_callback.lock().unwrap().push(content);
+        };
+
+        (received_data, callback_fn)
+
+    }
+
     #[test]
     fn test_window() {
         init_logging();
@@ -86,16 +114,7 @@ mod tests {
         // The consumer will consume the received window content
         let consumer = Consumer::new();
         consumer.start(receiver);
-
-        for time in 0..10 {
-            let triple = WindowTriple {
-                s: format!("s{}", time),
-                p: "p".to_string(),
-                o: "o".to_string(),
-            };
-
-            window.add_to_window(triple, time);
-        }
+        add_triples_to_window(&mut window);
 
         window.stop();
         thread::sleep(Duration::from_secs(1));
@@ -111,24 +130,10 @@ mod tests {
         let mut window: CSPARQLWindow<WindowTriple> =
             CSPARQLWindow::new(10, 2, report, Tick::TimeDriven, "test_window".to_string());
 
-        let received_data = Arc::new(Mutex::new(Vec::new()));
+        let (received_data, callback_fn) = setup_callback();
 
-        let received_data_for_callback = Arc::clone(&received_data);
-        let call_back = move |content| {
-            println!("Content: {:?}", content);
-            received_data_for_callback.lock().unwrap().push(content);
-        };
-
-        window.register_callback(Box::new(call_back));
-
-        for time in 0..10 {
-            let triple = WindowTriple {
-                s: format!("s{}", time),
-                p: "p".to_string(),
-                o: "o".to_string(),
-            };
-            window.add_to_window(triple, time);
-        }
+        window.register_callback(Box::new(callback_fn));
+        add_triples_to_window(&mut window);
 
         window.stop();
         assert_eq!(5, received_data.lock().unwrap().len());
