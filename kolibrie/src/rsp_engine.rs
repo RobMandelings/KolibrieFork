@@ -207,6 +207,17 @@ macro_rules! register_window {
     }};
 }
 
+/// Removes leading and trailing whitespace, leading and trailing < > and removes the : from the stream IRI
+/// `Example` "  <:sensor-stream-1> " to "sensor-stream-1" for example
+fn normalize_stream_iri(s: &str) -> String {
+    let s = s.trim();
+    // Some callers might pass a full IRI in `<...>` form.
+    let s = s.trim_start_matches('<').trim_end_matches('>');
+    // Accept prefixed notation with an optional leading colon, e.g. `:stream1`.
+    let s = s.strip_prefix(':').unwrap_or(s);
+    s.to_string()
+}
+
 pub struct RSPEngine<I, O>
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send,
@@ -555,27 +566,7 @@ where
         });
     }
 
-    /// Add data to appropriate window based on stream IRI
-    pub fn add_to_stream(&mut self, stream_iri: &str, event_item: I, ts: usize) {
-        if matches!(self.operation_mode, OperationMode::SingleThread)
-            && (self.windows.len() > 1 || self.rsp_query_plan.static_data_plan.is_some())
-        {
-            self.process_single_thread_window_results();
-        }
-
-        /// Removes leading and trailing whitespace, leading and trailing < > and removes the : from the stream IRI
-        /// `Example` "  <:sensor-stream-1> " to "sensor-stream-1" for example
-        fn normalize_stream_iri(s: &str) -> String {
-            let s = s.trim();
-            // Some callers might pass a full IRI in `<...>` form.
-            let s = s.trim_start_matches('<').trim_end_matches('>');
-            // Accept prefixed notation with an optional leading colon, e.g. `:stream1`.
-            let s = s.strip_prefix(':').unwrap_or(s);
-            s.to_string()
-        }
-
-        let input_norm = normalize_stream_iri(stream_iri);
-
+    pub fn add_to_windows(&mut self, input_norm: &str, event_item: &I, ts: usize) {
         // Find windows that match this stream IRI
         for (window_idx, window_config) in self.window_configs.iter().enumerate() {
             // Variable stream (e.g. `?s`) matches any stream.
@@ -593,6 +584,19 @@ where
                 }
             }
         }
+    }
+
+    /// Add data to appropriate window based on stream IRI
+    pub fn add_to_stream(&mut self, stream_iri: &str, event_item: I, ts: usize) {
+        if matches!(self.operation_mode, OperationMode::SingleThread)
+            && (self.windows.len() > 1 || self.rsp_query_plan.static_data_plan.is_some())
+        {
+            self.process_single_thread_window_results();
+        }
+
+        let input_norm = normalize_stream_iri(stream_iri);
+        self.add_to_windows(&input_norm, &event_item, ts);
+
     }
 
     pub fn process_single_thread_window_results(&mut self)
