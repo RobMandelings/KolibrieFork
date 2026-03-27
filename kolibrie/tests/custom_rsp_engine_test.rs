@@ -8,6 +8,11 @@ fn rsp_ql_istream_semantics() {
     let rc = Arc::clone(&result_container);
     let result_consumer = ResultConsumer {
         function: Arc::new(move |r: Vec<(String, String)>| {
+            println!("Result arrived:");
+            for (var, val) in &r {
+                println!("  {} = {}", var, val);
+            }
+
             rc.lock().unwrap().push(r);
         }),
     };

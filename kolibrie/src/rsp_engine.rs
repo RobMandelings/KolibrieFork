@@ -362,6 +362,8 @@ where
             let window_result_sender = self.window_result_sender.clone();
             let r2r_store = self.r2r.clone();
 
+            // This function is called to actually output the emitted results back into the
+            // Consumer function that you defined yourself
             let r2s_consumer_func: Arc<dyn Fn(Vec<O>, usize) + Send + Sync> = if has_joins {
                 Arc::new(|_, _| {})
             } else {
@@ -376,7 +378,8 @@ where
             };
 
             // Create processor using macro
-            // This processor
+            // The processor is what actually consumes the emitted window content (the function)
+            // Based on the r2s_consumer_func that was provided from outside (in the test case scenarios)
             let mut processor = create_window_processor!(
                 window_iri,
                 query,
@@ -387,7 +390,9 @@ where
                 r2s_consumer_func
             );
 
-            // Register based on mode
+            // Register the consumers based on the mode.
+            // In SingleThreaded: consumer is a simple callback
+            // In MultiThreaded: consumer is over some channel
             match operation_mode {
                 OperationMode::SingleThread => {
                     register_window!(SingleThread, window, processor);
@@ -544,7 +549,7 @@ where
 
         let input_norm = normalize_stream_iri(stream_iri);
 
-        // Find windows that match this stream IRI
+        // Find windows that match this stream IRI and add the event to these windows
         for (window_idx, window_config) in self.window_configs.iter().enumerate() {
             // Variable stream (e.g. `?s`) matches any stream.
             if window_config.stream_iri.starts_with('?') {
@@ -567,6 +572,8 @@ where
     where
         O: From<Vec<(String, String)>>,
     {
+
+        // The consumer function that will be called. We clone to get ownership, but it points to the same function
         let consumer = self.r2s_consumer.function.clone();
         let num_windows = self.windows.len();
         let sync_policy = self.sync_policy.clone();
@@ -575,6 +582,8 @@ where
         let mut last_mat = self.single_thread_last_materialized.lock().unwrap();
         let mut had_new_results = false;
         let mut max_ts: usize = 0;
+
+        // Non-blocking drain of the channel: receive all results
         while let Ok(window_result) = self.window_result_receiver.try_recv() {
             max_ts = max_ts.max(window_result.timestamp);
             last_mat.insert(window_result.window_iri.clone(), window_result.results);
@@ -586,6 +595,7 @@ where
         }
 
         // Check whether to emit based on policy.
+        // Only emit when all windows have been materialized
         if last_mat.len() == num_windows {
             debug!("SingleThread: all {} windows materialized, emitting", num_windows);
             let static_data_plan = self.rsp_query_plan.static_data_plan.clone();

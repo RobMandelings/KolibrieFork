@@ -141,6 +141,7 @@ pub enum Fallback {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+/// (To verify) Determines whether to emit based on multiple active windows simultaneously
 pub enum SyncPolicy {
     /// Emit immediately using stale data from non-firing windows (τ=0, fallback=steal)
     Steal,
