@@ -957,7 +957,7 @@ impl SparqlDatabase {
     }
 
     // Parses ntriples
-    pub fn parse_ntriples(&mut self, ntriples_data: &str) -> Vec<Vec<(String, String, String)>> {
+    pub fn parse_ntriples(&self, ntriples_data: &str) -> Vec<Vec<(String, String, String)>> {
         let lines: Vec<&str> = ntriples_data.lines().collect();
         let chunk_size = 1000;
         let chunks: Vec<&[&str]> = lines.chunks(chunk_size).collect();
@@ -997,7 +997,7 @@ impl SparqlDatabase {
     }
 
     // Encode triples
-    pub fn encode_triples(&mut self, non_encoded_triples: Vec<Vec<(String, String, String)>>) -> Vec<Triple>{
+    pub fn encode_triples(&self, non_encoded_triples: Vec<Vec<(String, String, String)>>) -> Vec<Triple>{
         let mut encoded_triples = Vec::new();
         for triple_strings in non_encoded_triples {
             for (subject, predicate, object) in triple_strings {
@@ -1012,7 +1012,8 @@ impl SparqlDatabase {
         encoded_triples
     }
 
-    pub fn parse_and_encode_ntriples(&mut self, ntriples_data: &str) -> Vec<Triple>{
+    /// Returns encoded triples after parsing the string
+    pub fn parse_and_encode_ntriples(&self, ntriples_data: &str) -> Vec<Triple>{
         let partial_results = self.parse_ntriples(ntriples_data);
 
         self.encode_triples(partial_results)

@@ -18,6 +18,7 @@ pub trait AsAnyMut {
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
+/// E.g., SimpleR2R implements this trait
 pub trait R2ROperator<I, R, O>: Send + AsAnyMut {
     fn load_triples(&mut self, data: &str, syntax: String) -> Result<(), String>;
     fn load_rules(&mut self, data: &str) -> Result<(), &'static str>;
@@ -26,5 +27,5 @@ pub trait R2ROperator<I, R, O>: Send + AsAnyMut {
     fn materialize(&mut self) -> Vec<I>;
     fn execute_query(&mut self, op: &PhysicalOperator) -> Vec<O>;
 
-    fn parse_data(&mut self, data: &str) -> Vec<I>;
+    fn parse_data(&self, data: &str) -> Vec<I>;
 }

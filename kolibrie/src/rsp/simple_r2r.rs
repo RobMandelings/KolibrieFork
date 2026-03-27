@@ -142,7 +142,8 @@ impl R2ROperator<Triple, Vec<PhysicalOperator>, Vec<(String, String)>> for Simpl
             .collect()
     }
 
-    fn parse_data(&mut self, data: &str) -> Vec<Triple> {
+    /// Parse data and returns encoded triples
+    fn parse_data(&self, data: &str) -> Vec<Triple> {
         self.item.parse_and_encode_ntriples(data)
     }
 }

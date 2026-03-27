@@ -47,7 +47,7 @@ fn rsp_ql_istream_semantics() {
         .expect("Failed to build ISTREAM engine");
 
     // Prime dictionary so query and data share term IDs.
-    engine.parse_data("<http://test/s0> a <http://test/IType> .");
+    // engine.parse_data("<http://test/s0> a <http://test/IType> .");
 
     // ts=1: A → no fire (opens first window).
     for t in engine.parse_data("<http://test/subjectA> a <http://test/IType> .") {
@@ -116,6 +116,8 @@ fn rsp_ql_istream_semantics() {
 fn rsp_ql_dstream_semantics() {
     let result_container = Arc::new(Mutex::new(Vec::<Vec<(String, String)>>::new()));
     let rc = Arc::clone(&result_container);
+
+    // Input type of result consumer: Vec<(String, String)>. I suppose this means 'bindings'.
     let result_consumer = ResultConsumer {
         function: Arc::new(move |r: Vec<(String, String)>| {
             rc.lock().unwrap().push(r);
@@ -139,7 +141,8 @@ fn rsp_ql_dstream_semantics() {
         .expect("Failed to build DSTREAM engine");
 
     // Prime dictionary.
-    engine.parse_data("<http://test/s0> a <http://test/DType> .");
+    // TODO check with Lado: I don't think this priming does anything.
+    // engine.parse_data("<http://test/s0> a <http://test/DType> .");
 
     // ts=1: A into windows; no fire.
     for t in engine.parse_data("<http://test/subjectA> a <http://test/DType> .") {

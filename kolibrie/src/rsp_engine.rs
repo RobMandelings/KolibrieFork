@@ -73,6 +73,7 @@ pub struct WindowResult {
     pub timestamp: usize,
 }
 
+/// Result consumer that consumes input of some generic type I
 pub struct ResultConsumer<I> {
     pub function: Arc<dyn Fn(I) -> () + Send + Sync>,
 }
@@ -165,6 +166,7 @@ macro_rules! register_window {
     }};
 }
 
+/// RSP input with generic input type I and output type O
 pub struct RSPEngine<I, O>
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send,
@@ -610,7 +612,8 @@ where
         }
     }
 
-    pub fn parse_data(&mut self, data: &str) -> Vec<I> {
+    /// Parses the data and returns a Vec of input elements (whatever you said would be the input)
+    pub fn parse_data(&self, data: &str) -> Vec<I> {
         self.r2r.lock().unwrap().parse_data(data)
     }
 

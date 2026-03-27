@@ -109,6 +109,7 @@ where
         self
     }
 
+    /// Add a consumer that will consume the results of reported window content
     pub fn add_consumer(mut self, consumer: ResultConsumer<O>) -> RSPBuilder<'a, I, O> {
         self.result_consumer = Some(consumer);
         self
