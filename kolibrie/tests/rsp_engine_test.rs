@@ -97,7 +97,6 @@ fn rsp_ql_istream_semantics() {
         "ISTREAM firing 3 must emit subjectC, got: {:?}",
         results[2]
     );
-
 }
 
 /// DSTREAM: sliding window (RANGE=3 STEP=1) — 5 window firings, 1 DSTREAM emission.

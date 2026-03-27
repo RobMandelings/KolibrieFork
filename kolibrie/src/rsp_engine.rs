@@ -82,7 +82,12 @@ pub struct ResultConsumer<I> {
 macro_rules! create_window_processor {
     ($window_iri:expr, $query:expr, $query_execution_mode:expr,
      $r2r_store:expr, $has_joins:expr, $window_result_sender:expr, $r2s_consumer_func:expr) => {{
+
+        // You use these to decide which triples to evict from the store
+        // The R2R store maintains the current state of triples, so you need to know which ones to remove
         let mut prev_window_triples: Vec<I> = Vec::new();
+
+        // The processor receives the window content from the sliding window
         move |content: ContentContainer<I>| {
             debug!(
                 "Processing window {} with query: {:?} using {:?} execution",
@@ -90,6 +95,8 @@ macro_rules! create_window_processor {
             );
 
             let ts = content.get_last_timestamp_changed();
+
+            // Store is a boxed trait object implementing R2R Operator (Box<dyn R2ROperator>)
             let mut store = $r2r_store.lock().unwrap();
 
             // Evict triples from the previous firing of this window
@@ -143,6 +150,9 @@ macro_rules! create_window_processor {
 }
 
 /// Macro to register windows based on operation mode
+/// Processor: is the thing that processes the window content
+/// In case of SingleThreaded operation, a single callback is registered
+/// In case of MultiThreaded, you register to get a receiver, then you spawn a thread to receive contents
 macro_rules! register_window {
     (SingleThread, $window:expr, $processor:expr) => {
         $window.register_callback(Box::new($processor));
@@ -212,6 +222,8 @@ where
         reasoning_rules: Vec<Rule>,
         sparql_rules: Vec<String>,
     ) -> RSPEngine<I, O> {
+
+        // Not only an operator but also stores the triples inside for e.g. executing queries
         let mut store = r2r;
 
         // The PhysicalOperator plans created in `rsp_query_plan` contain integer IDs (constants)
@@ -224,10 +236,11 @@ where
             .downcast_mut::<SimpleR2R>()
             .map(|s| Arc::clone(&s.item.dictionary));
 
+        // Store exposes as_any_mut() -> Any, need to downcast to get SimpleR2R
         if let Some(simple_r2r) = store.as_any_mut().downcast_mut::<SimpleR2R>() {
             debug!("Synchronizing R2R dictionary with Query dictionary");
 
-            // Acquire locks on both dictionaries
+            // Acquire locks on both dictionaries, then merge the query_dict into store_dict
             let mut store_dict = simple_r2r.item.dictionary.write().unwrap();
             let query_dict = query_config.database.dictionary.read().unwrap();
 
@@ -244,7 +257,7 @@ where
         }
         let static_db = Arc::new(Mutex::new(static_sdb));
 
-        // Load initial data
+        // Load initial triples into the R2R store
         match store.load_triples(triples, syntax) {
             Err(parsing_error) => error!("Unable to load ABox: {:?}", parsing_error.to_string()),
             _ => (),
@@ -298,6 +311,7 @@ where
         }
 
         // Create channel for cross-window result coordination
+        // Unbounded so unlimited capacity (might run into memory issues)
         let (result_sender, result_receiver) = unbounded::<WindowResult>();
 
         let stream_type = query_config.stream_type.clone();
@@ -362,6 +376,7 @@ where
             };
 
             // Create processor using macro
+            // This processor
             let mut processor = create_window_processor!(
                 window_iri,
                 query,

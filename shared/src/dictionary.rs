@@ -12,7 +12,8 @@ use std::collections::HashMap;
 use crate::triple::Triple;
 use crate::quoted_triple_store::{QuotedTripleStore, is_quoted_triple_id, QUOTED_TRIPLE_ID_BIT};
 
-// Dictionary for encoding and decoding strings
+/// Dictionary for encoding and decoding strings
+/// Maps readable strings/ids/IRIs their encoded version and vice versa
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Dictionary {
     pub string_to_id: HashMap<String, u32>,
@@ -79,6 +80,8 @@ impl Dictionary {
         format!("{} {} {} .", s, p, o)
     }
 
+    /// Merges the dictionary with another dictionary
+    /// Self is mutated to reflect the merged dictionary
     pub fn merge(&mut self, other: &Dictionary) {
         for (key, value) in other.string_to_id.iter() {
             self.string_to_id.entry(key.clone()).or_insert(*value);

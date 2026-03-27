@@ -31,6 +31,7 @@ pub struct RSPQueryConfig<'a> {
     pub windows: Vec<RSPWindow>,
     pub output_stream: String,
     pub stream_type: StreamOperator,
+    /// Graph pattern is a set of triple patterns (def. RSP-QL paper)
     pub static_patterns: Vec<(&'a str, &'a str, &'a str)>, // Static graph patterns outside windows
     pub database: SparqlDatabase,                           // used prefixes
     /// Effective synchronization policy for multi-window coordination.
@@ -99,11 +100,13 @@ where
         self
     }
 
+    /// Adds triples (as strings, not parsed yet) to the RSPBuilder
     pub fn add_triples(mut self, triples: &'a str) -> RSPBuilder<'a, I, O> {
         self.triples = Some(triples);
         self
     }
 
+    /// Adds rules (as strings, not parsed yet) to the RSPBuilder
     pub fn add_rules(mut self, rules: &'a str) -> RSPBuilder<'a, I, O> {
         self.rules = Some(rules);
         self
@@ -133,7 +136,8 @@ where
         self
     }
 
-    /// Parse the RSP-QL query and extract window configurations
+    /// Parse the RSP-QL query (includes window configurations etc)
+    /// Result: if ok, the RSPQueryConfig, otherwise error message
     fn parse_rsp_ql_query<'b>(&self, query: &'b str) -> Result<RSPQueryConfig<'b>, String> {
         match parse_combined_query(query) {
             Ok((_, parsed_query)) => {
@@ -315,7 +319,7 @@ where
         });
         let operation_mode = self.operation_mode;
 
-        // Parse the RSP-QL query
+        // Parse RSP-QL query and return RSPQueryConfig object instead
         let query_config = self.parse_rsp_ql_query(rsp_ql_query)?;
 
         let sync_policy = query_config.sync_policy.clone();

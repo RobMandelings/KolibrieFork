@@ -214,13 +214,13 @@ where
                         self.app_time = ts;
                         // notify consumers
                         debug!("Window triggers! {:?}", max_window);
-                        // multithreaded consumer using channel
+                        // Send window content to consumer (multithreaded case)
                         if let Some(sender) = &self.consumer {
                             if let Err(e) = sender.send(max_window.1.clone()) {
                                 warn!("Failed to send window content to consumer: {:?}", e);
                             }
                         }
-                        // single threaded consumer using callback
+                        // Send window content to consumer (single-threaded case)
                         if let Some(call_back) = &mut self.call_back {
                             (call_back)(max_window.1.clone());
                         }
@@ -267,11 +267,17 @@ where
             }
         }
     }
+
+    /// Registers (REPLACES) a new channel with sender and receiver to send window results to a receiver
+    /// Used for Multithreaded operations
+    /// Does not 'add a new consumer' (no support for multiple consumers yet)
     pub fn register(&mut self) -> Receiver<ContentContainer<I>> {
         let (send, recv) = channel::<ContentContainer<I>>();
         self.consumer.replace(send);
         recv
     }
+
+    /// Registers a callback function to the CSPARQLWindow that is called when window content should be consumed
     pub fn register_callback(
         &mut self,
         function: Box<dyn FnMut(ContentContainer<I>) -> () + Send + 'static>,

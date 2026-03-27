@@ -65,6 +65,8 @@ impl AsAnyMut for SimpleR2R {
 /// is `Vec<PhysicalOperator>` (a list of physical plans). The output `O` is
 /// a binding map `HashMap<String, String>` per row.
 impl R2ROperator<Triple, Vec<PhysicalOperator>, Vec<(String, String)>> for SimpleR2R {
+
+    /// TODO: load_triples is NOT supported yet!
     fn load_triples(&mut self, _data: &str, _syntax: String) -> Result<(), String> {
         error!("Unsupported operation");
         Err("something went wrong".to_string())
@@ -127,6 +129,7 @@ impl R2ROperator<Triple, Vec<PhysicalOperator>, Vec<(String, String)>> for Simpl
         derived
     }
 
+    /// Returns a Vec of solution mappings
     fn execute_query(&mut self, op: &PhysicalOperator) -> Vec<Vec<(String, String)>> {
         debug!("SimpleR2R executing query with PhysicalOperator");
 
