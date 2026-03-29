@@ -6,6 +6,8 @@ use shared::triple::Triple;
 fn rsp_ql_istream_semantics() {
     let result_container = Arc::new(Mutex::new(Vec::<Vec<(String, String)>>::new()));
     let rc = Arc::clone(&result_container);
+
+    // What is eventually called after the processing
     let result_consumer = ResultConsumer {
         function: Arc::new(move |r: Vec<(String, String)>| {
             println!("Result arrived:");

@@ -22,6 +22,7 @@ use log::{debug, error};
 #[cfg(test)]
 use std::{println as debug, println as error};
 
+
 pub struct SimpleR2R {
     pub item: SparqlDatabase,
     pub execution_mode: QueryExecutionMode,
@@ -64,6 +65,7 @@ impl AsAnyMut for SimpleR2R {
 /// Implement the R2R operator trait for SimpleR2R. Note: the `R` generic parameter
 /// is `Vec<PhysicalOperator>` (a list of physical plans). The output `O` is
 /// a binding map `HashMap<String, String>` per row.
+/// Vec<(String, String)> is one binding "map" per row
 impl R2ROperator<Triple, Vec<PhysicalOperator>, Vec<(String, String)>> for SimpleR2R {
 
     /// TODO: load_triples is NOT supported yet!

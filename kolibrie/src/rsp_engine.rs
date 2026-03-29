@@ -79,6 +79,10 @@ pub struct ResultConsumer<I> {
 }
 
 /// Macro to generate the window processing logic
+/// If has_joins is true: use window_result_sender, if not, then use r2s_consumer_func
+/// Difference r2s_consumer function and window_processor: the r2s_consumer function already has the solution mappings, simply needs to push them
+/// The window processor receives the raw window content, updates the R2R store to reflect the current state, then performs the query to get solution mappings
+/// (I think) The R2R store also contains long-running static data.
 macro_rules! create_window_processor {
     ($window_iri:expr, $query:expr, $query_execution_mode:expr,
      $r2r_store:expr, $has_joins:expr, $window_result_sender:expr, $r2s_consumer_func:expr) => {{
@@ -94,6 +98,7 @@ macro_rules! create_window_processor {
                 $window_iri, $query, $query_execution_mode
             );
 
+            // First step is to update the store to reflect the last correct changes
             let ts = content.get_last_timestamp_changed();
 
             // Store is a boxed trait object implementing R2R Operator (Box<dyn R2ROperator>)
@@ -114,6 +119,7 @@ macro_rules! create_window_processor {
             // Run forward-chaining inference to materialise derived facts
             store.materialize();
 
+            // Run the query on the R2R and get solution mappings
             let results = store.execute_query(&$query);
             debug!("Got # results {} for window {}", results.len(), $window_iri);
 
@@ -121,6 +127,8 @@ macro_rules! create_window_processor {
             drop(store);
 
             if $has_joins {
+
+                // Convert the Vec<Vec<(String, String)> to Vec<HashMap<String,String>> to put in WindowResult
                 let mut mapped_results: Vec<HashMap<String, String>> = Vec::new();
                 mapped_results.reserve(results.len());
 
@@ -133,6 +141,7 @@ macro_rules! create_window_processor {
                     }
                 }
 
+                // The WindowResult accepts Vec<HashMap<String, String>>, not Vec<Vec<(String,String)>>
                 let window_res = WindowResult {
                     window_iri: $window_iri.clone(),
                     results: mapped_results,
@@ -149,16 +158,18 @@ macro_rules! create_window_processor {
     }};
 }
 
-/// Macro to register windows based on operation mode
-/// Processor: is the thing that processes the window content
+/// Macro to register the consumers of window content (processor) based on operation mode
 /// In case of SingleThreaded operation, a single callback is registered
 /// In case of MultiThreaded, you register to get a receiver, then you spawn a thread to receive contents
+/// Processor: is the thing that processes the window content
 macro_rules! register_window {
     (SingleThread, $window:expr, $processor:expr) => {
         $window.register_callback(Box::new($processor));
     };
     (MultiThread, $window:expr, $processor:expr, $window_iri:expr) => {{
         let receiver = $window.register();
+
+        // Window IRI is moved inside of the closure
         thread::spawn(move || {
             loop {
                 match receiver.recv() {
@@ -357,27 +368,32 @@ where
         for (window_idx, window) in self.windows.iter_mut().enumerate() {
             let query = self.rsp_query_plan.window_plans[window_idx].clone();
             let window_iri = self.window_configs[window_idx].window_iri.clone();
+
+            // Window IRI is moved inside closure of thread, therefore you clone it
             let window_iri_for_thread = window_iri.clone(); // Clone for MultiThread usage
             let query_execution_mode = self.query_execution_mode;
             let window_result_sender = self.window_result_sender.clone();
             let r2r_store = self.r2r.clone();
 
             // This function is called to actually output the emitted results back into the
-            // Consumer function that you defined yourself
+            // Consumer function that was provided as parameter to the RSPEngine
             let r2s_consumer_func: Arc<dyn Fn(Vec<O>, usize) + Send + Sync> = if has_joins {
                 Arc::new(|_, _| {})
             } else {
                 let r2s_op = Arc::clone(&self.r2s_operator);
                 let consumer_fn = self.r2s_consumer.function.clone();
+
+                // Takes ALL solution mappings along with their timestamp
+                // Then runs consumer_fn for each of the solution mappings
                 Arc::new(move |results: Vec<O>, ts: usize| {
                     let filtered = r2s_op.lock().unwrap().eval(results, ts);
                     for r in filtered {
+                        // For each solution mapping in the set of solution mappings, call the consumer function
                         (consumer_fn)(r);
                     }
                 })
             };
 
-            // Create processor using macro
             // The processor is what actually consumes the emitted window content (the function)
             // Based on the r2s_consumer_func that was provided from outside (in the test case scenarios)
             let mut processor = create_window_processor!(
