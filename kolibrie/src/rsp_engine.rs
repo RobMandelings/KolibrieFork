@@ -255,6 +255,7 @@ where
             let mut store_dict = simple_r2r.item.dictionary.write().unwrap();
             let query_dict = query_config.database.dictionary.read().unwrap();
 
+            // The store dict is the same thing as the shared_dict (to which the static_sdb dictionary gets assigned to)
             store_dict.merge(&*query_dict);
 
             drop(store_dict);
