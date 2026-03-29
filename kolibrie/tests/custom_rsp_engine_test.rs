@@ -1,9 +1,24 @@
 use std::sync::{Arc, Mutex};
 use kolibrie::rsp_engine::{OperationMode, QueryExecutionMode, RSPBuilder, RSPEngine, ResultConsumer, SimpleR2R};
 use shared::triple::Triple;
+//
+fn init_logger() {
+    use env_logger::Builder;
+    use log::LevelFilter;
+
+    let mut builder = Builder::from_default_env();
+    builder
+        .is_test(true)
+        .filter_level(LevelFilter::Debug) // or Info/Warn/Error
+        .init();
+}
+
 
 #[test]
 fn rsp_ql_istream_semantics() {
+
+    init_logger();
+
     let result_container = Arc::new(Mutex::new(Vec::<Vec<(String, String)>>::new()));
     let rc = Arc::clone(&result_container);
 

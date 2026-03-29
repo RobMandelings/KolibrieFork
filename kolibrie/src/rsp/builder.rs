@@ -40,13 +40,13 @@ pub struct RSPQueryConfig<'a> {
 
 pub struct RSPBuilder<'a, I, O> {
     rsp_ql_query: Option<&'a str>,
-    triples: Option<&'a str>,
+    triples: Option<&'a str>, /// Initial triples to load into R2R store. Still need to be parsed.
     rules: Option<&'a str>,
     result_consumer: Option<ResultConsumer<O>>,
     r2r: Option<Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>>,
     operation_mode: OperationMode,
     query_execution_mode: QueryExecutionMode,
-    syntax: String,
+    syntax: String, /// Syntax format of the triples to parse (e.g. "ntriples")
     /// Engine-level default policy; overridden by per-window `WITH POLICY` clause.
     sync_policy: SyncPolicy,
     reasoning_rules: Vec<Rule>,
