@@ -1131,8 +1131,10 @@ impl SparqlDatabase {
                                 break;
                             }
                         }
-                        parts.push(current_part.trim().to_string());
-                        current_part.clear();
+                        if qt_depth == 0 {
+                            parts.push(current_part.trim().to_string());
+                            current_part.clear();
+                        }
                     }
                 }
                 '\\' if (in_uri || in_literal) && !escaped => {
