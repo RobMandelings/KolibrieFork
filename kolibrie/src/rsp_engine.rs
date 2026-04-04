@@ -81,14 +81,16 @@ pub struct ResultConsumer<I> {
     pub function: Arc<dyn Fn(I) -> () + Send + Sync>,
 }
 
-fn create_window_processor<I, O>(
+/// Creates a closure that receives the content of a window and processes the content through the pipeline
+/// After processing, the solutions are sent to the last stage of the pipeline: R2S
+fn create_window_content_processor<I, O>(
     window_iri: String,
     query: PhysicalOperator,
     query_execution_mode: QueryExecutionMode,
     r2r_store: Arc<Mutex<Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>>>,
     has_joins: bool,
     window_result_sender: Sender<WindowResult>,
-    r2s_consumer_func: Arc<dyn Fn(Vec<O>, usize) + Send + Sync>,
+    r2s_consumer_func: Arc<dyn Fn(Vec<O>, usize) + Send + Sync>, // Consumes the solution mappings to put it onto the output stream
 ) -> impl FnMut(ContentContainer<I>) + Send + 'static
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
@@ -158,6 +160,7 @@ where
             if let Err(e) = window_result_sender.send(window_res) {
                 error!("Failed to send window result to buffer: {:?}", e);
             }
+
         } else {
             r2s_consumer_func(results, ts);
         }
@@ -169,82 +172,83 @@ where
 /// Difference r2s_consumer function and window_processor: the r2s_consumer function already has the solution mappings, simply needs to push them
 /// The window processor receives the raw window content, updates the R2R store to reflect the current state, then performs the query to get solution mappings
 /// (I think) The R2R store also contains long-running static data.
-macro_rules! create_window_processor {
-    ($window_iri:expr, $query:expr, $query_execution_mode:expr,
-     $r2r_store:expr, $has_joins:expr, $window_result_sender:expr, $r2s_consumer_func:expr) => {{
+// macro_rules! create_window_processor {
+//     ($window_iri:expr, $query:expr, $query_execution_mode:expr,
+//      $r2r_store:expr, $has_joins:expr, $window_result_sender:expr, $r2s_consumer_func:expr) => {{
+//
+//         // You use these to decide which triples to evict from the store
+//         // The R2R store maintains the current state of triples, so you need to know which ones to remove
+//         let mut prev_window_triples: Vec<I> = Vec::new();
+//
+//         // The processor receives the window content from the sliding window
+//         move |content: ContentContainer<I>| {
+//             debug!(
+//                 "Processing window {} with query: {:?} using {:?} execution",
+//                 $window_iri, $query, $query_execution_mode
+//             );
+//
+//             // First step is to update the store to reflect the last correct changes
+//             let ts = content.get_last_timestamp_changed();
+//
+//             // Store is a boxed trait object implementing R2R Operator (Box<dyn R2ROperator>)
+//             let mut store = $r2r_store.lock().unwrap();
+//
+//             // Evict triples from the previous firing of this window
+//             for t in &prev_window_triples {
+//                 store.remove(t);
+//             }
+//             prev_window_triples.clear();
+//
+//             // Add current window triples and track them for next eviction
+//             for t in content.into_iter() {
+//                 prev_window_triples.push(t.clone());
+//                 store.add(t);
+//             }
+//
+//             // Run forward-chaining inference to materialise derived facts
+//             store.materialize();
+//
+//             // Run the query on the R2R and get solution mappings
+//             let results = store.execute_query(&$query);
+//             debug!("Got # results {} for window {}", results.len(), $window_iri);
+//
+//             // Release lock early to reduce contention
+//             drop(store);
+//
+//             if $has_joins {
+//
+//                 // Convert the Vec<Vec<(String, String)> to Vec<HashMap<String,String>> to put in WindowResult
+//                 let mut mapped_results: Vec<HashMap<String, String>> = Vec::new();
+//                 mapped_results.reserve(results.len());
+//
+//                 for res in &results {
+//                     if let Some(bindings) = (res as &dyn std::any::Any)
+//                         .downcast_ref::<Vec<(String, String)>>()
+//                     {
+//                         let map: HashMap<String, String> = bindings.iter().cloned().collect();
+//                         mapped_results.push(map);
+//                     }
+//                 }
+//
+//                 // The WindowResult accepts Vec<HashMap<String, String>>, not Vec<Vec<(String,String)>>
+//                 let window_res = WindowResult {
+//                     window_iri: $window_iri.clone(),
+//                     results: mapped_results,
+//                     timestamp: ts,
+//                 };
+//
+//                 if let Err(e) = $window_result_sender.send(window_res) {
+//                     error!("Failed to send window result to buffer: {:?}", e);
+//                 }
+//             } else {
+//                 ($r2s_consumer_func)(results, ts);
+//             }
+//         }
+//     }};
+// }
 
-        // You use these to decide which triples to evict from the store
-        // The R2R store maintains the current state of triples, so you need to know which ones to remove
-        let mut prev_window_triples: Vec<I> = Vec::new();
-
-        // The processor receives the window content from the sliding window
-        move |content: ContentContainer<I>| {
-            debug!(
-                "Processing window {} with query: {:?} using {:?} execution",
-                $window_iri, $query, $query_execution_mode
-            );
-
-            // First step is to update the store to reflect the last correct changes
-            let ts = content.get_last_timestamp_changed();
-
-            // Store is a boxed trait object implementing R2R Operator (Box<dyn R2ROperator>)
-            let mut store = $r2r_store.lock().unwrap();
-
-            // Evict triples from the previous firing of this window
-            for t in &prev_window_triples {
-                store.remove(t);
-            }
-            prev_window_triples.clear();
-
-            // Add current window triples and track them for next eviction
-            for t in content.into_iter() {
-                prev_window_triples.push(t.clone());
-                store.add(t);
-            }
-
-            // Run forward-chaining inference to materialise derived facts
-            store.materialize();
-
-            // Run the query on the R2R and get solution mappings
-            let results = store.execute_query(&$query);
-            debug!("Got # results {} for window {}", results.len(), $window_iri);
-
-            // Release lock early to reduce contention
-            drop(store);
-
-            if $has_joins {
-
-                // Convert the Vec<Vec<(String, String)> to Vec<HashMap<String,String>> to put in WindowResult
-                let mut mapped_results: Vec<HashMap<String, String>> = Vec::new();
-                mapped_results.reserve(results.len());
-
-                for res in &results {
-                    if let Some(bindings) = (res as &dyn std::any::Any)
-                        .downcast_ref::<Vec<(String, String)>>()
-                    {
-                        let map: HashMap<String, String> = bindings.iter().cloned().collect();
-                        mapped_results.push(map);
-                    }
-                }
-
-                // The WindowResult accepts Vec<HashMap<String, String>>, not Vec<Vec<(String,String)>>
-                let window_res = WindowResult {
-                    window_iri: $window_iri.clone(),
-                    results: mapped_results,
-                    timestamp: ts,
-                };
-
-                if let Err(e) = $window_result_sender.send(window_res) {
-                    error!("Failed to send window result to buffer: {:?}", e);
-                }
-            } else {
-                ($r2s_consumer_func)(results, ts);
-            }
-        }
-    }};
-}
-
-fn register_window<I, P>(
+/// This registers the processor of the window content so that the window knows how to send consumer.
+fn register_processor_for_window<I, P>(
     operation_mode: OperationMode,
     window: &mut CSPARQLWindow<I>,
     mut processor: P,
@@ -258,7 +262,7 @@ fn register_window<I, P>(
             window.register_callback(Box::new(processor));
         }
         OperationMode::MultiThread => {
-            let receiver = window.register();
+            let receiver = window.register_channel();
 
             thread::spawn(move || {
                 loop {
@@ -282,30 +286,30 @@ fn register_window<I, P>(
 /// In case of SingleThreaded operation, a single callback is registered
 /// In case of MultiThreaded, you register to get a receiver, then you spawn a thread to receive contents
 /// Processor: is the thing that processes the window content
-macro_rules! register_window {
-    (SingleThread, $window:expr, $processor:expr) => {
-        $window.register_callback(Box::new($processor));
-    };
-    (MultiThread, $window:expr, $processor:expr, $window_iri:expr) => {{
-        let receiver = $window.register();
-
-        // Window IRI is moved inside of the closure
-        thread::spawn(move || {
-            loop {
-                match receiver.recv() {
-                    Ok(content) => {
-                        $processor(content);
-                    }
-                    Err(_) => {
-                        debug!("Shutting down window {}!", $window_iri);
-                        break;
-                    }
-                }
-            }
-            debug!("Shutdown complete for window {}!", $window_iri);
-        });
-    }};
-}
+// macro_rules! register_window {
+//     (SingleThread, $window:expr, $processor:expr) => {
+//         $window.register_callback(Box::new($processor));
+//     };
+//     (MultiThread, $window:expr, $processor:expr, $window_iri:expr) => {{
+//         let receiver = $window.register();
+//
+//         // Window IRI is moved inside of the closure
+//         thread::spawn(move || {
+//             loop {
+//                 match receiver.recv() {
+//                     Ok(content) => {
+//                         $processor(content);
+//                     }
+//                     Err(_) => {
+//                         debug!("Shutting down window {}!", $window_iri);
+//                         break;
+//                     }
+//                 }
+//             }
+//             debug!("Shutdown complete for window {}!", $window_iri);
+//         });
+//     }};
+// }
 
 /// RSP input with generic input type I and output type O
 pub struct RSPEngine<I, O>
@@ -558,7 +562,7 @@ where
                 })
             };
 
-            let processor = create_window_processor(
+            let processor = create_window_content_processor(
                 window_iri,
                 query,
                 query_execution_mode,
@@ -571,7 +575,7 @@ where
             // Register the consumers based on the mode.
             // In SingleThreaded: consumer is a simple callback
             // In MultiThreaded: consumer is over some channel
-            register_window(operation_mode, window, processor, window_iri_for_thread);
+            register_processor_for_window(operation_mode, window, processor, window_iri_for_thread);
         }
     }
 

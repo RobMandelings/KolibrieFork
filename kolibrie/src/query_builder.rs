@@ -694,7 +694,7 @@ impl<'a> QueryBuilder<'a> {
                 config.tick_strategy.clone(),
                 String::default(),
             );
-            let receiver = window.register();
+            let receiver = window.register_channel();
             self.window_receiver = Some(receiver);
             self.window_instance = Some(window);
         }

@@ -272,7 +272,7 @@ where
     /// Registers (REPLACES) a new channel with sender and receiver to send window results to a receiver
     /// Used for Multithreaded operations
     /// Does not 'add a new consumer' (no support for multiple consumers yet)
-    pub fn register(&mut self) -> Receiver<ContentContainer<I>> {
+    pub fn register_channel(&mut self) -> Receiver<ContentContainer<I>> {
         let (send, recv) = channel::<ContentContainer<I>>();
         self.consumer.replace(send);
         recv
@@ -375,7 +375,7 @@ mod tests {
             call_back: None,
             uri: "test_window".to_string()
         };
-        let receiver = window.register();
+        let receiver = window.register_channel();
         let consumer = Consumer::new();
         consumer.start(receiver);
 
