@@ -35,6 +35,7 @@ use crate::streamertail_optimizer::{ExecutionEngine, LogicalOperator, PhysicalOp
 // Re-exports to preserve the public API used by kolibrie-http-server and examples.
 pub use crate::rsp::builder::{RSPBuilder, RSPQueryConfig};
 pub use crate::rsp::simple_r2r::SimpleR2R;
+use crate::sliding_window::SlidingWindow;
 
 #[derive(Clone, Copy)]
 pub enum OperationMode {
@@ -195,6 +196,7 @@ where
     I: Eq + PartialEq + Clone + Debug + Hash + Send,
     O: Hash,
 {
+    custom_windows: Vec<SlidingWindowOperator<I, ExpireStrategy<I>>>,
     windows: Vec<CSPARQLWindow<I>>,
     r2r: Arc<Mutex<Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>>>,
     r2s_consumer: ResultConsumer<O>,
@@ -326,7 +328,7 @@ where
             windows.push(window);
         }
 
-        let mut windows2 = Self::create_windows(&query_config.windows);
+        let mut custom_windows = Self::create_windows(&query_config.windows);
 
         // Create channel for cross-window result coordination
         // Unbounded so unlimited capacity (might run into memory issues)
@@ -336,6 +338,7 @@ where
         let r2s_operator = Arc::new(Mutex::new(Relation2StreamOperator::new(stream_type, 0)));
 
         let mut engine = RSPEngine {
+            custom_windows,
             windows,
             r2r: Arc::new(Mutex::new(store)),
             r2s_consumer: result_consumer,
@@ -396,16 +399,19 @@ where
             let expire = ExpireStrategy::new();
             let op: SlidingWindowOperator<I, ExpireStrategy<I>> = SlidingWindowOperator::new(window_params, expire);
             ops.push(op);
-
         }
         ops
     }
 
-    /// Register windows using macros to eliminate code duplication
-    fn register_windows(&mut self, operation_mode: OperationMode) {
+    fn has_joins(&self) -> bool {
         let has_joins = self.windows.len() > 1
             || self.rsp_query_plan.static_data_plan.is_some();
+        has_joins
+    }
 
+    /// Register windows using macros to eliminate code duplication
+    fn register_windows(&mut self, operation_mode: OperationMode) {
+        let has_joins = self.has_joins();
         for (window_idx, window) in self.windows.iter_mut().enumerate() {
             let query = self.rsp_query_plan.window_plans[window_idx].clone();
             let window_iri = self.window_configs[window_idx].window_iri.clone();
@@ -418,7 +424,7 @@ where
 
             // This function is called to actually output the emitted results back into the
             // Consumer function that was provided as parameter to the RSPEngine
-            let r2s_consumer_func: Arc<dyn Fn(Vec<O>, usize) + Send + Sync> = if has_joins {
+            let r2s_aggregate_consumer: Arc<dyn Fn(Vec<O>, usize) + Send + Sync> = if has_joins {
                 Arc::new(|_, _| {})
             } else {
                 let r2s_op = Arc::clone(&self.r2s_operator);
@@ -430,7 +436,7 @@ where
                     let filtered = r2s_op.lock().unwrap().eval(results, ts);
                     for r in filtered {
                         // For each solution mapping in the set of solution mappings, call the consumer function
-                        (consumer_fn)(r);
+                        consumer_fn(r);
                     }
                 })
             };
@@ -444,7 +450,7 @@ where
                 r2r_store,
                 has_joins,
                 window_result_sender,
-                r2s_consumer_func
+                r2s_aggregate_consumer
             );
 
             // Register the consumers based on the mode.
