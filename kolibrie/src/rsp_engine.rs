@@ -26,6 +26,8 @@ use std::time::Instant;
 #[cfg(test)]
 use std::{println as debug, println as error};
 use datalog::reasoning::Reasoner;
+use prototypes::{ExpireStrategy, SlidingWindowOperator, WindowParams};
+use prototypes::prototype::event::Time;
 use crate::parser::process_rule_definition;
 use crate::sparql_database::SparqlDatabase;
 use crate::streamertail_optimizer::{ExecutionEngine, LogicalOperator, PhysicalOperator};
@@ -308,6 +310,8 @@ where
         }
 
         // Create windows based on parsed configuration
+
+        // TODO support for tick and different reporting strategies
         let mut windows = Vec::new();
         for window_config in &query_config.windows {
             let mut report = Report::new();
@@ -321,6 +325,8 @@ where
             );
             windows.push(window);
         }
+
+        let mut windows2 = Self::create_windows(&query_config.windows);
 
         // Create channel for cross-window result coordination
         // Unbounded so unlimited capacity (might run into memory issues)
@@ -359,6 +365,40 @@ where
         }
 
         engine
+    }
+
+    fn group_by_stream_iri(windows: &Vec<RSPWindow>) -> HashMap<String, Vec<&RSPWindow>> {
+        let mut groups: HashMap<String, Vec<&RSPWindow>> = HashMap::new();
+
+        for w in windows {
+            groups
+                .entry(w.stream_iri.clone())
+                .or_insert_with(Vec::new)
+                .push(w);
+        }
+        groups
+    }
+
+    fn create_windows(window_configs: &Vec<RSPWindow>) -> Vec<SlidingWindowOperator<I, ExpireStrategy<I>>> {
+        let mut ops = Vec::new();
+
+        let grouped = Self::group_by_stream_iri(window_configs);
+        for (stream_iri, windows) in grouped {
+            let window_params: Vec<WindowParams> = windows
+                .iter()
+                .map(|window| WindowParams {
+                    size: window.width as Time,
+                    slide: window.slide as Time,
+                    offset: 0,
+                })
+                .collect();
+
+            let expire = ExpireStrategy::new();
+            let op: SlidingWindowOperator<I, ExpireStrategy<I>> = SlidingWindowOperator::new(window_params, expire);
+            ops.push(op);
+
+        }
+        ops
     }
 
     /// Register windows using macros to eliminate code duplication
