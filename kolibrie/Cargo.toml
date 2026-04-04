@@ -31,6 +31,7 @@ crossbeam = { workspace = true }
 pyo3 = { workspace = true }
 gpu = { path = "../gpu" }
 shared = { path = "../shared" }
+prototypes = { path = "../prototypes" }
 datalog =  { path = "../datalog" }
 ml = { path = "../ml" }
 chrono = "0.4.40"
