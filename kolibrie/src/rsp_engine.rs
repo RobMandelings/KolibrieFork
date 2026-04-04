@@ -421,6 +421,11 @@ where
         }
     }
 
+    pub fn decode(&self, input: &I) -> String {
+        let guard = self.r2r.lock().expect("mutex poisoned");
+        guard.decode(input)
+    }
+
     /// Start a coordinator thread that collects and joins results from multiple windows
     /// (and optionally joins with static background data), respecting `sync_policy`.
     fn start_cross_window_coordinator(&self)

@@ -22,6 +22,7 @@ use std::{f64, mem};
 #[cfg(test)]
 use std::{println as warn, println as debug};
 
+
 #[derive(Clone, Debug)]
 pub enum ReportStrategy {
     NonEmptyContent,

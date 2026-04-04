@@ -20,12 +20,13 @@ pub trait AsAnyMut {
 
 /// E.g., SimpleR2R implements this trait
 pub trait R2ROperator<I, R, O>: Send + AsAnyMut {
+
     fn load_triples(&mut self, data: &str, syntax: String) -> Result<(), String>;
     fn load_rules(&mut self, data: &str) -> Result<(), &'static str>;
     fn add(&mut self, data: I);
     fn remove(&mut self, data: &I);
     fn materialize(&mut self) -> Vec<I>;
     fn execute_query(&mut self, op: &PhysicalOperator) -> Vec<O>;
-
+    fn decode(&self, data: &I) -> String;
     fn parse_data(&self, data: &str) -> Vec<I>;
 }

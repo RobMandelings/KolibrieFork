@@ -147,6 +147,16 @@ impl R2ROperator<Triple, Vec<PhysicalOperator>, Vec<(String, String)>> for Simpl
             .collect()
     }
 
+    fn decode(&self, triple: &Triple) -> String {
+        let dictionary = self.item.dictionary.read().unwrap();
+
+        let subject = dictionary.decode(triple.subject).unwrap_or("unknown");
+        let predicate = dictionary.decode(triple.predicate).unwrap_or("unknown");
+        let object = dictionary.decode(triple.object).unwrap_or("unknown");
+
+        format!("{} {} {}", subject, predicate, object)
+    }
+
     /// Parse data and returns encoded triples
     fn parse_data(&self, data: &str) -> Vec<Triple> {
         self.item.parse_and_encode_ntriples(data)

@@ -10,6 +10,7 @@
 
 mod storage_trait;
 mod storage_manager;
+pub mod csv_graph_iter;
 pub mod cuda;
 pub mod error_handler;
 pub mod execute_ml;
