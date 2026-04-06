@@ -11,9 +11,7 @@ use crate::parser::parse_combined_query;
 use crate::rsp::r2r::R2ROperator;
 use crate::rsp::r2s::StreamOperator;
 use crate::rsp::s2r::{ReportStrategy, Tick};
-use crate::rsp_engine::{
-    OperationMode, QueryExecutionMode, RSPEngine, RSPQueryPlan, RSPWindow, ResultConsumer,
-};
+use crate::rsp_engine::{AggregateConsumer, OperationMode, QueryExecutionMode, RSPEngine, RSPQueryPlan, RSPWindow, ResultConsumer};
 use crate::sparql_database::SparqlDatabase;
 use crate::streamertail_optimizer::{
     build_logical_plan, LogicalOperator, PhysicalOperator, Streamertail,
@@ -43,6 +41,7 @@ pub struct RSPBuilder<'a, I, O> {
     triples: Option<&'a str>, /// Initial triples to load into R2R store. Still need to be parsed.
     rules: Option<&'a str>,
     result_consumer: Option<ResultConsumer<O>>,
+    aggregate_result_consumer: Option<AggregateConsumer<O>>,
     r2r: Option<Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>>,
     operation_mode: OperationMode,
     query_execution_mode: QueryExecutionMode,
@@ -64,6 +63,7 @@ where
             triples: None,
             rules: None,
             result_consumer: None,
+            aggregate_result_consumer: None,
             r2r: None,
             operation_mode: OperationMode::MultiThread,
             query_execution_mode: QueryExecutionMode::Volcano,
@@ -115,6 +115,11 @@ where
     /// Add a consumer that will consume the results of reported window content
     pub fn add_consumer(mut self, consumer: ResultConsumer<O>) -> RSPBuilder<'a, I, O> {
         self.result_consumer = Some(consumer);
+        self
+    }
+
+    pub fn add_aggregate_consumer(mut self, consumer: AggregateConsumer<O>) -> Self {
+        self.aggregate_result_consumer = Some(consumer);
         self
     }
 
@@ -317,6 +322,9 @@ where
         let result_consumer = self.result_consumer.take().unwrap_or(ResultConsumer {
             function: Arc::new(Box::new(|r| println!("Bindings: {:?}", r))),
         });
+        let aggregate_result_consumer = self.aggregate_result_consumer.take().unwrap_or(AggregateConsumer {
+            function: Arc::new(Box::new(|r, ts| println!("Bindings: {:?}", r))),
+        });
         let operation_mode = self.operation_mode;
 
         // Parse RSP-QL query and return RSPQueryConfig object instead
@@ -333,6 +341,7 @@ where
             syntax,
             rules,
             result_consumer,
+            aggregate_result_consumer,
             r2r,
             operation_mode,
             self.query_execution_mode,

@@ -2,8 +2,9 @@ use std::env;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::sync::{Arc, Mutex};
+use log::debug;
 use kolibrie::csv_graph_iter::CsvGraphIter;
-use kolibrie::rsp_engine::{OperationMode, QueryExecutionMode, RSPBuilder, RSPEngine, ResultConsumer, SimpleR2R};
+use kolibrie::rsp_engine::{AggregateConsumer, OperationMode, QueryExecutionMode, RSPBuilder, RSPEngine, ResultConsumer, SimpleR2R};
 use shared::triple::Triple;
 //
 fn init_logger() {
@@ -109,7 +110,7 @@ fn rsp_ql_istream_semantics() {
 #[test]
 fn rsp_ql_city_bench() {
 
-    // init_logger();
+    init_logger();
 
     let result_container = Arc::new(Mutex::new(Vec::<Vec<(String, String)>>::new()));
     let rc = Arc::clone(&result_container);
@@ -125,6 +126,19 @@ fn rsp_ql_city_bench() {
             rc.lock().unwrap().push(r);
         }),
     };
+
+    let agg_consumer = AggregateConsumer {
+        function: Arc::new(move |results: Vec<Vec<(String, String)>>, ts| {
+            println!("{}", results.len());
+            // println!("Result arrived:");
+            // for (var, val) in &r {
+            //     println!("  {} = {}", var, val);
+            // }
+            //
+            // rc.lock().unwrap().push(r);
+        }),
+    };
+
     let r2r = Box::new(SimpleR2R::with_execution_mode(QueryExecutionMode::Volcano));
 
     let query = r#"
@@ -137,6 +151,7 @@ fn rsp_ql_city_bench() {
     let mut engine: RSPEngine<Triple, Vec<(String, String)>> = RSPBuilder::new()
         .add_rsp_ql_query(query)
         .add_consumer(result_consumer)
+        .add_aggregate_consumer(agg_consumer)
         .add_r2r(r2r)
         .set_operation_mode(OperationMode::SingleThread)
         .build()
@@ -149,12 +164,15 @@ fn rsp_ql_city_bench() {
     CsvGraphIter::export_n3("streams/AarhusParkingData.stream", "output_file.n3", 5).expect("TODO: panic message");
 
     let mut i = 1;
-    for graph_result in iter.take(25) {
+    for graph_result in iter.take(50) {
         let graph = graph_result.unwrap();
+        let triples = engine.parse_data(&graph);
+        debug!("Nr triples: {}", triples.len());
 
         for triple in engine.parse_data(&graph) {
             // choose a timestamp here, e.g. parsed from streamtime/updatetime
-            engine.add(triple, i);
+            debug!("Adding triple");
+            engine.add_2(triple, i);
         }
         i += 1;
     }

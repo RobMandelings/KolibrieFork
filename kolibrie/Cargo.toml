@@ -42,6 +42,13 @@ bincode = "1.3"
 env_logger = "0.11.10"
 csv = "1.4.0"
 
+[profile.dev]
+opt-level = 0
+debug = true
+incremental = true
+codegen-units = 256
+lto = "off"
+
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.161"
 
