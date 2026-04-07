@@ -34,6 +34,7 @@ use std::time::Instant;
 #[cfg(test)]
 use std::{println as debug, println as error};
 use std::rc::Rc;
+use prototypes::prototype::slide_strategy::iter_expire_strategy::{IterExpireStrategy, IterReport};
 // Re-exports to preserve the public API used by kolibrie-http-server and examples.
 pub use crate::rsp::builder::{RSPBuilder, RSPQueryConfig};
 pub use crate::rsp::simple_r2r::SimpleR2R;
@@ -90,6 +91,64 @@ pub struct ResultConsumer<I> {
 /// Result consumer that consumes input of some generic type I
 pub struct AggregateConsumer<I> {
     pub function: Arc<dyn Fn(Vec<I>, usize) -> () + Send + Sync>,
+}
+
+/// Creates a closure that receives the content of a window and processes the content through the pipeline
+/// After processing, the solutions are sent to the last stage of the pipeline: R2S
+fn create_window_content_processor_iter<I, O>(
+    window_iri: String,
+    query: PhysicalOperator,
+    query_execution_mode: QueryExecutionMode,
+    r2r_store: Arc<Mutex<Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>>>,
+    window_result_sender: Sender<WindowResult>,
+    r2s_consumer_func: Arc<dyn Fn(Vec<O>, usize) + Send + Sync>, // Consumes the solution mappings to put it onto the output stream
+) -> impl FnMut(IterReport<I>) + Send + 'static
+where
+    I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
+    O: Send + 'static,
+{
+    // You use these to decide which triples to evict from the store
+    // The R2R store maintains the current state of triples, so you need to know which ones to remove
+    let mut prev_window_triples: Vec<I> = Vec::new();
+
+    // The processor receives the window content from the sliding window
+    move |report: IterReport<I>| {
+        debug!(
+            "Processing window {} with query: {:?} using {:?} execution",
+            window_iri, query, query_execution_mode
+        );
+
+        // First step is to update the store to reflect the last correct changes
+        let ts = report.last_timestamp_changed as usize;
+
+        // Store is a boxed trait object implementing R2R Operator (Box<dyn R2ROperator>)
+        let mut store = r2r_store.lock().unwrap();
+
+        // Evict triples from the previous firing of this window
+        for t in &prev_window_triples {
+            store.remove(t);
+        }
+        prev_window_triples.clear();
+
+        // Add current window triples and track them for next eviction
+        for t in report.get_iter() {
+            prev_window_triples.push(t.clone());
+
+            // TODO You HAVE to clone here. References don't matter here
+            store.add(t.clone());
+        }
+
+        // Run forward-chaining inference to materialise derived facts
+        store.materialize();
+
+        // Run the query on the R2R and get solution mappings
+        let results = store.execute_query(&query);
+        debug!("Got # results {} for window {}", results.len(), window_iri);
+
+        // Release lock early to reduce contention
+        drop(store);
+        r2s_consumer_func(results, ts);
+    }
 }
 
 /// Creates a closure that receives the content of a window and processes the content through the pipeline
@@ -405,7 +464,7 @@ where
     O: Hash,
 {
     window_mapping: WindowMapping, // Helper mapping that maps the window_idx (from the previous implementation) to (stream_iri, window_iri) pair
-    custom_windows: HashMap<IRI, SlidingWindowOperator<I, ContExpireStrategy<I>>>,
+    custom_windows: HashMap<IRI, SlidingWindowOperator<I, IterExpireStrategy<I>>>,
     windows: Vec<CSPARQLWindow<I>>,
     r2r: Arc<Mutex<Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>>>,
     r2s_aggregate_consumer: AggregateConsumer<O>,
@@ -616,7 +675,7 @@ where
 
     fn create_windows(
         window_configs: &Vec<RSPWindow>,
-    ) -> (HashMap<IRI, SlidingWindowOperator<I, ContExpireStrategy<I>>>) {
+    ) -> (HashMap<IRI, SlidingWindowOperator<I, IterExpireStrategy<I>>>) {
         let mut ops = HashMap::new();
 
         let grouped = Self::group_by_stream_iri(window_configs);
@@ -633,8 +692,8 @@ where
                 })
                 .collect();
 
-            let expire = ContExpireStrategy::new();
-            let op: SlidingWindowOperator<I, ContExpireStrategy<I>> =
+            let expire = IterExpireStrategy::new();
+            let op: SlidingWindowOperator<I, IterExpireStrategy<I>> =
                 SlidingWindowOperator::new(stream_iri.clone(), window_params, expire);
 
             ops.insert(stream_iri, op);
@@ -650,10 +709,10 @@ where
     /// Register windows using macros to eliminate code duplication
     fn register_custom_windows(&mut self) {
         // First: collect all processors per (stream_iri, window_iri)
-        let mut to_register: Vec<(IRI, Vec<(IRI, Box<dyn FnMut(ContReport<I>)>)>)> = Vec::new();
+        let mut to_register: Vec<(IRI, Vec<(IRI, Box<dyn FnMut(IterReport<I>)>)>)> = Vec::new();
 
         for (stream_iri, s2r_operator) in &self.custom_windows {
-            let mut consumers_by_window_iri: Vec<(IRI, Box<dyn FnMut(ContReport<I>)>)> = Vec::new();
+            let mut consumers_by_window_iri: Vec<(IRI, Box<dyn FnMut(IterReport<I>)>)> = Vec::new();
 
             for window_iri in s2r_operator.sliding_windows.keys() {
                 let idx = *self
@@ -674,7 +733,7 @@ where
                 // };
 
                 let r2s_aggregate_consumer = self.r2s_aggregate_consumer.function.clone();
-                let content_processor = Box::new(create_window_content_processor2(
+                let content_processor = Box::new(create_window_content_processor_iter(
                     window_iri.clone(),
                     self.rsp_query_plan.window_plans[idx].clone(),
                     self.query_execution_mode,
