@@ -19,7 +19,7 @@ use datalog::reasoning::Reasoner;
 #[cfg(not(test))]
 use log::{debug, error}; // Use log crate when building application
 use prototypes::prototype::event::Time;
-use prototypes::prototype::slide_strategy::expire_strategy2::{BatchExpireStrategy, BatchReport};
+use prototypes::prototype::slide_strategy::cont_expire_strategy::{ContExpireStrategy, ContReport};
 use prototypes::prototype::window_params::S2RWindowConfig;
 use prototypes::{ExpireStrategy, SlidingWindowOperator, WindowParams, IRI};
 use shared::query::{Fallback, SyncPolicy};
@@ -101,7 +101,7 @@ fn create_window_content_processor2<I, O>(
     r2r_store: Arc<Mutex<Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>>>,
     window_result_sender: Sender<WindowResult>,
     r2s_consumer_func: Arc<dyn Fn(Vec<O>, usize) + Send + Sync>, // Consumes the solution mappings to put it onto the output stream
-) -> impl FnMut(BatchReport<I>) + Send + 'static
+) -> impl FnMut(ContReport<I>) + Send + 'static
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
     O: Send + 'static,
@@ -111,7 +111,7 @@ where
     let mut prev_window_triples: Vec<I> = Vec::new();
 
     // The processor receives the window content from the sliding window
-    move |report: BatchReport<I>| {
+    move |report: ContReport<I>| {
         debug!(
             "Processing window {} with query: {:?} using {:?} execution",
             window_iri, query, query_execution_mode
@@ -405,7 +405,7 @@ where
     O: Hash,
 {
     window_mapping: WindowMapping, // Helper mapping that maps the window_idx (from the previous implementation) to (stream_iri, window_iri) pair
-    custom_windows: HashMap<IRI, SlidingWindowOperator<I, BatchExpireStrategy<I>>>,
+    custom_windows: HashMap<IRI, SlidingWindowOperator<I, ContExpireStrategy<I>>>,
     windows: Vec<CSPARQLWindow<I>>,
     r2r: Arc<Mutex<Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>>>,
     r2s_aggregate_consumer: AggregateConsumer<O>,
@@ -616,7 +616,7 @@ where
 
     fn create_windows(
         window_configs: &Vec<RSPWindow>,
-    ) -> (HashMap<IRI, SlidingWindowOperator<I, BatchExpireStrategy<I>>>) {
+    ) -> (HashMap<IRI, SlidingWindowOperator<I, ContExpireStrategy<I>>>) {
         let mut ops = HashMap::new();
 
         let grouped = Self::group_by_stream_iri(window_configs);
@@ -633,8 +633,8 @@ where
                 })
                 .collect();
 
-            let expire = BatchExpireStrategy::new();
-            let op: SlidingWindowOperator<I, BatchExpireStrategy<I>> =
+            let expire = ContExpireStrategy::new();
+            let op: SlidingWindowOperator<I, ContExpireStrategy<I>> =
                 SlidingWindowOperator::new(stream_iri.clone(), window_params, expire);
 
             ops.insert(stream_iri, op);
@@ -650,10 +650,10 @@ where
     /// Register windows using macros to eliminate code duplication
     fn register_custom_windows(&mut self) {
         // First: collect all processors per (stream_iri, window_iri)
-        let mut to_register: Vec<(IRI, Vec<(IRI, Box<dyn FnMut(BatchReport<I>)>)>)> = Vec::new();
+        let mut to_register: Vec<(IRI, Vec<(IRI, Box<dyn FnMut(ContReport<I>)>)>)> = Vec::new();
 
         for (stream_iri, s2r_operator) in &self.custom_windows {
-            let mut consumers_by_window_iri: Vec<(IRI, Box<dyn FnMut(BatchReport<I>)>)> = Vec::new();
+            let mut consumers_by_window_iri: Vec<(IRI, Box<dyn FnMut(ContReport<I>)>)> = Vec::new();
 
             for window_iri in s2r_operator.sliding_windows.keys() {
                 let idx = *self
