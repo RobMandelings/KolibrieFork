@@ -21,7 +21,8 @@ use std::thread;
 use std::{f64, mem};
 #[cfg(test)]
 use std::{println as warn, println as debug};
-
+use prototypes::prototype::event::Time;
+use prototypes::prototype::slide_strategy::ItemsReport;
 
 #[derive(Clone, Debug)]
 pub enum ReportStrategy {
@@ -133,6 +134,17 @@ where
     pub fn into_iter(mut self) -> IntoIter<I> {
         let map = mem::take(&mut self.elements);
         map.into_iter()
+    }
+}
+
+impl<I> ItemsReport<I> for ContentContainer<I>
+where I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static, {
+    fn get_last_timestamp_changed(&self) -> Time {
+        self.last_timestamp_changed as Time
+    }
+
+    fn iter_items(&self) -> impl Iterator<Item=&I> {
+        self.iter()
     }
 }
 
