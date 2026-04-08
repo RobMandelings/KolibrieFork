@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 use log::debug;
 use kolibrie::csv_graph_iter::CsvGraphIter;
 use kolibrie::rsp_engine::{AggregateConsumer, OperationMode, QueryExecutionMode, RSPBuilder, RSPEngine, ResultConsumer, SimpleR2R};
+use prototypes::{ArcStrategy, ExpireStrategy, RcStrategy};
 use prototypes::prototype::slide_strategy::iter_expire_strategy::IterExpireStrategy;
 use shared::triple::Triple;
 //
@@ -149,7 +150,7 @@ fn rsp_ql_city_bench() {
         WHERE { WINDOW :w { ?a <http://example.org/ontology/vehicleCount> ?b . } }
     "#;
 
-    let mut engine: RSPEngine<Triple, Vec<(String, String)>, IterExpireStrategy<Triple>> = RSPBuilder::new()
+    let mut engine: RSPEngine<Triple, Vec<(String, String)>, ExpireStrategy<Triple>> = RSPBuilder::new()
         .add_rsp_ql_query(query)
         .add_consumer(result_consumer)
         .add_aggregate_consumer(agg_consumer)
