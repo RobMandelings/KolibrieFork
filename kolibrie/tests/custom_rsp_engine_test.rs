@@ -163,6 +163,7 @@ fn rsp_ql_city_bench() {
     let iter = CsvGraphIter::from_path("streams/AarhusParkingData.stream").unwrap();
     CsvGraphIter::export_n3("streams/AarhusParkingData.stream", "output_file.n3", 5).expect("TODO: panic message");
 
+    // TODO bottleneck file reading, make sure to not measure this by accident
     let mut i = 1;
     for graph_result in iter.take(50) {
         let graph = graph_result.unwrap();

@@ -19,7 +19,7 @@ use datalog::reasoning::Reasoner;
 #[cfg(not(test))]
 use log::{debug, error}; // Use log crate when building application
 use prototypes::prototype::event::Time;
-use prototypes::prototype::slide_strategy::cont_expire_strategy::{ContExpireStrategy, ContReport};
+// use prototypes::prototype::slide_strategy::slice_expire_strategy::{SliceExpireStrategy, ContReport};
 use prototypes::prototype::window_params::S2RWindowConfig;
 use prototypes::{ExpireStrategy, SlidingWindowOperator, WindowParams, IRI};
 use shared::query::{Fallback, SyncPolicy};
@@ -35,6 +35,7 @@ use std::time::Instant;
 use std::{println as debug, println as error};
 use std::rc::Rc;
 use prototypes::prototype::slide_strategy::iter_expire_strategy::{IterExpireStrategy, IterReport};
+use prototypes::prototype::slide_strategy::IterItems;
 // Re-exports to preserve the public API used by kolibrie-http-server and examples.
 pub use crate::rsp::builder::{RSPBuilder, RSPQueryConfig};
 pub use crate::rsp::simple_r2r::SimpleR2R;
@@ -131,7 +132,7 @@ where
         prev_window_triples.clear();
 
         // Add current window triples and track them for next eviction
-        for t in report.get_iter() {
+        for t in report.iter_items() {
             prev_window_triples.push(t.clone());
 
             // TODO You HAVE to clone here. References don't matter here
@@ -153,61 +154,61 @@ where
 
 /// Creates a closure that receives the content of a window and processes the content through the pipeline
 /// After processing, the solutions are sent to the last stage of the pipeline: R2S
-fn create_window_content_processor2<I, O>(
-    window_iri: String,
-    query: PhysicalOperator,
-    query_execution_mode: QueryExecutionMode,
-    r2r_store: Arc<Mutex<Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>>>,
-    window_result_sender: Sender<WindowResult>,
-    r2s_consumer_func: Arc<dyn Fn(Vec<O>, usize) + Send + Sync>, // Consumes the solution mappings to put it onto the output stream
-) -> impl FnMut(ContReport<I>) + Send + 'static
-where
-    I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
-    O: Send + 'static,
-{
-    // You use these to decide which triples to evict from the store
-    // The R2R store maintains the current state of triples, so you need to know which ones to remove
-    let mut prev_window_triples: Vec<I> = Vec::new();
-
-    // The processor receives the window content from the sliding window
-    move |report: ContReport<I>| {
-        debug!(
-            "Processing window {} with query: {:?} using {:?} execution",
-            window_iri, query, query_execution_mode
-        );
-
-        // First step is to update the store to reflect the last correct changes
-        let ts = report.last_timestamp_changed as usize;
-
-        // Store is a boxed trait object implementing R2R Operator (Box<dyn R2ROperator>)
-        let mut store = r2r_store.lock().unwrap();
-
-        // Evict triples from the previous firing of this window
-        for t in &prev_window_triples {
-            store.remove(t);
-        }
-        prev_window_triples.clear();
-
-        // Add current window triples and track them for next eviction
-        for t in report.content {
-            prev_window_triples.push(t.clone());
-
-            // TODO You HAVE to clone here. References don't matter here
-            store.add(t.clone());
-        }
-
-        // Run forward-chaining inference to materialise derived facts
-        store.materialize();
-
-        // Run the query on the R2R and get solution mappings
-        let results = store.execute_query(&query);
-        debug!("Got # results {} for window {}", results.len(), window_iri);
-
-        // Release lock early to reduce contention
-        drop(store);
-        r2s_consumer_func(results, ts);
-    }
-}
+// fn create_window_content_processor2<I, O>(
+//     window_iri: String,
+//     query: PhysicalOperator,
+//     query_execution_mode: QueryExecutionMode,
+//     r2r_store: Arc<Mutex<Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>>>,
+//     window_result_sender: Sender<WindowResult>,
+//     r2s_consumer_func: Arc<dyn Fn(Vec<O>, usize) + Send + Sync>, // Consumes the solution mappings to put it onto the output stream
+// ) -> impl FnMut(ContReport<I>) + Send + 'static
+// where
+//     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
+//     O: Send + 'static,
+// {
+//     // You use these to decide which triples to evict from the store
+//     // The R2R store maintains the current state of triples, so you need to know which ones to remove
+//     let mut prev_window_triples: Vec<I> = Vec::new();
+//
+//     // The processor receives the window content from the sliding window
+//     move |report: ContReport<I>| {
+//         debug!(
+//             "Processing window {} with query: {:?} using {:?} execution",
+//             window_iri, query, query_execution_mode
+//         );
+//
+//         // First step is to update the store to reflect the last correct changes
+//         let ts = report.last_timestamp_changed as usize;
+//
+//         // Store is a boxed trait object implementing R2R Operator (Box<dyn R2ROperator>)
+//         let mut store = r2r_store.lock().unwrap();
+//
+//         // Evict triples from the previous firing of this window
+//         for t in &prev_window_triples {
+//             store.remove(t);
+//         }
+//         prev_window_triples.clear();
+//
+//         // Add current window triples and track them for next eviction
+//         for t in report.content {
+//             prev_window_triples.push(t.clone());
+//
+//             // TODO You HAVE to clone here. References don't matter here
+//             store.add(t.clone());
+//         }
+//
+//         // Run forward-chaining inference to materialise derived facts
+//         store.materialize();
+//
+//         // Run the query on the R2R and get solution mappings
+//         let results = store.execute_query(&query);
+//         debug!("Got # results {} for window {}", results.len(), window_iri);
+//
+//         // Release lock early to reduce contention
+//         drop(store);
+//         r2s_consumer_func(results, ts);
+//     }
+// }
 
 /// Creates a closure that receives the content of a window and processes the content through the pipeline
 /// After processing, the solutions are sent to the last stage of the pipeline: R2S

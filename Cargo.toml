@@ -35,7 +35,7 @@ clap = { version = "4.5.45", features = ["derive"] }
 debug = true
 
 [profile.dev]
-opt-level = 2
+opt-level = 3
 debug = true
 debug-assertions = true
 overflow-checks = true
