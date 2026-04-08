@@ -6,6 +6,7 @@
 * License, v. 2.0. If a copy of the MPL was not distributed with this file,
 * you can obtain one at [https://mozilla.org/MPL/2.0/](https://mozilla.org/MPL/2.0/).
 */
+mod content_processor;
 
 use crate::rsp::r2r::R2ROperator;
 use crate::rsp::r2s::Relation2StreamOperator;
@@ -20,25 +21,26 @@ use datalog::reasoning::Reasoner;
 use log::{debug, error}; // Use log crate when building application
 use prototypes::prototype::event::Time;
 // use prototypes::prototype::slide_strategy::slice_expire_strategy::{SliceExpireStrategy, ContReport};
+use prototypes::prototype::slide_strategy::iter_expire_strategy::{IterConsumer, IterExpireContainer, IterExpireStrategy, IterReport};
+use prototypes::prototype::slide_strategy::ItemsReport;
 use prototypes::prototype::window_params::S2RWindowConfig;
-use prototypes::{ExpireStrategy, SlidingWindowOperator, WindowParams, IRI};
+use prototypes::{ExpireStrategy, SlidingWindowOperator, WindowParams, WindowSnapshotStrategy, IRI};
 use shared::query::{Fallback, SyncPolicy};
 use shared::rule::Rule;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Instant;
 #[cfg(test)]
 use std::{println as debug, println as error};
-use std::rc::Rc;
-use prototypes::prototype::slide_strategy::iter_expire_strategy::{IterExpireStrategy, IterReport};
-use prototypes::prototype::slide_strategy::IterItems;
 // Re-exports to preserve the public API used by kolibrie-http-server and examples.
 pub use crate::rsp::builder::{RSPBuilder, RSPQueryConfig};
 pub use crate::rsp::simple_r2r::SimpleR2R;
+use crate::rsp_engine::content_processor::{create_iter_expire_window_processor, process_window_report};
 use crate::sliding_window::SlidingWindow;
 
 /// For compatibility with the existing architecture: map (stream_iri, window_iri) to the original index of that specific window
@@ -92,64 +94,6 @@ pub struct ResultConsumer<I> {
 /// Result consumer that consumes input of some generic type I
 pub struct AggregateConsumer<I> {
     pub function: Arc<dyn Fn(Vec<I>, usize) -> () + Send + Sync>,
-}
-
-/// Creates a closure that receives the content of a window and processes the content through the pipeline
-/// After processing, the solutions are sent to the last stage of the pipeline: R2S
-fn create_window_content_processor_iter<I, O>(
-    window_iri: String,
-    query: PhysicalOperator,
-    query_execution_mode: QueryExecutionMode,
-    r2r_store: Arc<Mutex<Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>>>,
-    window_result_sender: Sender<WindowResult>,
-    r2s_consumer_func: Arc<dyn Fn(Vec<O>, usize) + Send + Sync>, // Consumes the solution mappings to put it onto the output stream
-) -> impl FnMut(IterReport<I>) + Send + 'static
-where
-    I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
-    O: Send + 'static,
-{
-    // You use these to decide which triples to evict from the store
-    // The R2R store maintains the current state of triples, so you need to know which ones to remove
-    let mut prev_window_triples: Vec<I> = Vec::new();
-
-    // The processor receives the window content from the sliding window
-    move |report: IterReport<I>| {
-        debug!(
-            "Processing window {} with query: {:?} using {:?} execution",
-            window_iri, query, query_execution_mode
-        );
-
-        // First step is to update the store to reflect the last correct changes
-        let ts = report.last_timestamp_changed as usize;
-
-        // Store is a boxed trait object implementing R2R Operator (Box<dyn R2ROperator>)
-        let mut store = r2r_store.lock().unwrap();
-
-        // Evict triples from the previous firing of this window
-        for t in &prev_window_triples {
-            store.remove(t);
-        }
-        prev_window_triples.clear();
-
-        // Add current window triples and track them for next eviction
-        for t in report.iter_items() {
-            prev_window_triples.push(t.clone());
-
-            // TODO You HAVE to clone here. References don't matter here
-            store.add(t.clone());
-        }
-
-        // Run forward-chaining inference to materialise derived facts
-        store.materialize();
-
-        // Run the query on the R2R and get solution mappings
-        let results = store.execute_query(&query);
-        debug!("Got # results {} for window {}", results.len(), window_iri);
-
-        // Release lock early to reduce contention
-        drop(store);
-        r2s_consumer_func(results, ts);
-    }
 }
 
 /// Creates a closure that receives the content of a window and processes the content through the pipeline
@@ -459,13 +403,14 @@ fn register_processor_for_window<I, P>(
 // }
 
 /// RSP input with generic input type I and output type O
-pub struct RSPEngine<I, O>
+pub struct RSPEngine<I, O, S>
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
     O: Hash,
+    S: WindowSnapshotStrategy<I>,
 {
     window_mapping: WindowMapping, // Helper mapping that maps the window_idx (from the previous implementation) to (stream_iri, window_iri) pair
-    custom_windows: HashMap<IRI, SlidingWindowOperator<I, IterExpireStrategy<I>>>,
+    custom_windows: HashMap<IRI, SlidingWindowOperator<I, S>>,
     windows: Vec<CSPARQLWindow<I>>,
     r2r: Arc<Mutex<Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>>>,
     r2s_aggregate_consumer: AggregateConsumer<O>,
@@ -488,10 +433,11 @@ where
     r2s_operator: Arc<Mutex<Relation2StreamOperator<O>>>,
 }
 
-impl<I, O> RSPEngine<I, O>
+impl<I, O, S> RSPEngine<I, O, S>
 where
     O: Clone + Hash + Eq + Send + 'static + From<Vec<(String, String)>>,
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
+    S: WindowSnapshotStrategy<I>,
 {
     pub fn new(
         query_config: RSPQueryConfig,
@@ -507,7 +453,7 @@ where
         sync_policy: SyncPolicy,
         reasoning_rules: Vec<Rule>,
         sparql_rules: Vec<String>,
-    ) -> RSPEngine<I, O> {
+    ) -> RSPEngine<I, O, S> {
         // Not only an operator but also stores the triples inside for e.g. executing queries
         let mut store = r2r;
 
@@ -676,7 +622,7 @@ where
 
     fn create_windows(
         window_configs: &Vec<RSPWindow>,
-    ) -> (HashMap<IRI, SlidingWindowOperator<I, IterExpireStrategy<I>>>) {
+    ) -> (HashMap<IRI, SlidingWindowOperator<I, S>>) {
         let mut ops = HashMap::new();
 
         let grouped = Self::group_by_stream_iri(window_configs);
@@ -693,9 +639,8 @@ where
                 })
                 .collect();
 
-            let expire = IterExpireStrategy::new();
-            let op: SlidingWindowOperator<I, IterExpireStrategy<I>> =
-                SlidingWindowOperator::new(stream_iri.clone(), window_params, expire);
+            let op: SlidingWindowOperator<I, S> =
+                SlidingWindowOperator::new(stream_iri.clone(), window_params, S::new());
 
             ops.insert(stream_iri, op);
         }
@@ -707,13 +652,44 @@ where
         has_joins
     }
 
+    /// Creates a closure that receives the content of a window and processes the content through the pipeline
+    /// After processing, the solutions are sent to the last stage of the pipeline: R2S
+    /// R stands for 'report'
+    pub fn create_iter_expire_window_processor(&self,
+        window_iri: String,
+        query: PhysicalOperator,
+        query_execution_mode: QueryExecutionMode,
+        r2r_store: Arc<Mutex<Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>>>,
+        window_result_sender: Sender<WindowResult>,
+        r2s_consumer_func: Arc<dyn Fn(Vec<O>, usize) + Send + Sync>, // Consumes the solution mappings to put it onto the output stream
+    ) -> impl FnMut(S::ReportType<'_>) + Send + 'static
+    {
+        // You use these to decide which triples to evict from the store
+        // The R2R store maintains the current state of triples, so you need to know which ones to remove
+        let mut prev_window_triples: Vec<I> = Vec::new();
+
+        // The processor receives the window content from the sliding window
+        move |report: S::ReportType<'_>| {
+            process_window_report(
+                report,
+                &window_iri,
+                &query,
+                &query_execution_mode,
+                &r2r_store,
+                &mut prev_window_triples,
+                &window_result_sender,
+                &r2s_consumer_func,
+            );
+        }
+    }
+
     /// Register windows using macros to eliminate code duplication
     fn register_custom_windows(&mut self) {
         // First: collect all processors per (stream_iri, window_iri)
-        let mut to_register: Vec<(IRI, Vec<(IRI, Box<dyn FnMut(IterReport<I>)>)>)> = Vec::new();
+        let mut to_register: Vec<(IRI, Vec<(IRI, Box<dyn for<'a> FnMut(S::ReportType<'a>)>)>)> = Vec::new();
 
         for (stream_iri, s2r_operator) in &self.custom_windows {
-            let mut consumers_by_window_iri: Vec<(IRI, Box<dyn FnMut(IterReport<I>)>)> = Vec::new();
+            let mut consumers_by_window_iri: Vec<(IRI, Box<dyn for<'a> FnMut(S::ReportType<'a>)>)> = Vec::new();
 
             for window_iri in s2r_operator.sliding_windows.keys() {
                 let idx = *self
@@ -734,7 +710,7 @@ where
                 // };
 
                 let r2s_aggregate_consumer = self.r2s_aggregate_consumer.function.clone();
-                let content_processor = Box::new(create_window_content_processor_iter(
+                let content_processor = Box::new(self.create_iter_expire_window_processor(
                     window_iri.clone(),
                     self.rsp_query_plan.window_plans[idx].clone(),
                     self.query_execution_mode,
@@ -1000,7 +976,10 @@ where
     }
 
     pub fn add_to_stream2(&mut self, stream_iri: &str, event_item: I, ts: usize) {
-        self.custom_windows.get_mut(stream_iri).unwrap().event_arrives_with_ts(event_item, ts as Time);
+        self.custom_windows
+            .get_mut(stream_iri)
+            .unwrap()
+            .event_arrives_with_ts(event_item, ts as Time);
     }
 
     /// Add data to appropriate window based on stream IRI

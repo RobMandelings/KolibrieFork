@@ -22,6 +22,7 @@ use shared::terms::Term;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
+use prototypes::WindowSnapshotStrategy;
 
 /// RSP Query configuration extracted from parsed RSP-QL
 #[derive(Debug)]
@@ -36,7 +37,8 @@ pub struct RSPQueryConfig<'a> {
     pub sync_policy: SyncPolicy,
 }
 
-pub struct RSPBuilder<'a, I, O> {
+pub struct RSPBuilder<'a, I, O, S> {
+    _phantom: std::marker::PhantomData<S>,
     rsp_ql_query: Option<&'a str>,
     triples: Option<&'a str>, /// Initial triples to load into R2R store. Still need to be parsed.
     rules: Option<&'a str>,
@@ -52,13 +54,15 @@ pub struct RSPBuilder<'a, I, O> {
     sparql_rules: Vec<String>,
 }
 
-impl<'a, I, O> RSPBuilder<'a, I, O>
+impl<'a, I, O, S> RSPBuilder<'a, I, O, S>
 where
     O: Clone + Eq + Send + Debug + Hash + 'static + From<Vec<(String, String)>>,
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
+    S: WindowSnapshotStrategy<I>
 {
-    pub fn new() -> RSPBuilder<'a, I, O> {
-        RSPBuilder {
+    pub fn new() -> Self {
+        RSPBuilder::<I, O, S> {
+            _phantom: Default::default(),
             rsp_ql_query: None,
             triples: None,
             rules: None,
@@ -76,44 +80,44 @@ where
 
     /// Override the engine-level default synchronization policy.
     /// A per-window `WITH POLICY` clause in the query string takes precedence.
-    pub fn set_sync_policy(mut self, policy: SyncPolicy) -> RSPBuilder<'a, I, O> {
+    pub fn set_sync_policy(mut self, policy: SyncPolicy) -> Self {
         self.sync_policy = policy;
         self
     }
 
     /// Supply pre-parsed reasoning rules (forward-chaining inference applied per window firing).
-    pub fn add_reasoning_rules(mut self, rules: Vec<Rule>) -> RSPBuilder<'a, I, O> {
+    pub fn add_reasoning_rules(mut self, rules: Vec<Rule>) -> Self {
         self.reasoning_rules = rules;
         self
     }
 
     /// Supply SPARQL RULE strings (`RULE :Name :- CONSTRUCT{} WHERE{}`) to be parsed after
     /// dictionary merge in `RSPEngine::new()` so term IDs are consistent.
-    pub fn add_sparql_rules(mut self, rules: Vec<String>) -> RSPBuilder<'a, I, O> {
+    pub fn add_sparql_rules(mut self, rules: Vec<String>) -> Self {
         self.sparql_rules = rules;
         self
     }
 
     /// Add RSP-QL query instead of separate window parameters and SPARQL query
-    pub fn add_rsp_ql_query(mut self, query: &'a str) -> RSPBuilder<'a, I, O> {
+    pub fn add_rsp_ql_query(mut self, query: &'a str) -> Self {
         self.rsp_ql_query = Some(query);
         self
     }
 
     /// Adds triples (as strings, not parsed yet) to the RSPBuilder
-    pub fn add_triples(mut self, triples: &'a str) -> RSPBuilder<'a, I, O> {
+    pub fn add_triples(mut self, triples: &'a str) -> Self {
         self.triples = Some(triples);
         self
     }
 
     /// Adds rules (as strings, not parsed yet) to the RSPBuilder
-    pub fn add_rules(mut self, rules: &'a str) -> RSPBuilder<'a, I, O> {
+    pub fn add_rules(mut self, rules: &'a str) -> Self {
         self.rules = Some(rules);
         self
     }
 
     /// Add a consumer that will consume the results of reported window content
-    pub fn add_consumer(mut self, consumer: ResultConsumer<O>) -> RSPBuilder<'a, I, O> {
+    pub fn add_consumer(mut self, consumer: ResultConsumer<O>) -> Self {
         self.result_consumer = Some(consumer);
         self
     }
@@ -126,17 +130,17 @@ where
     pub fn add_r2r(
         mut self,
         r2r: Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>,
-    ) -> RSPBuilder<'a, I, O> {
+    ) -> Self {
         self.r2r = Some(r2r);
         self
     }
 
-    pub fn set_operation_mode(mut self, operation_mode: OperationMode) -> RSPBuilder<'a, I, O> {
+    pub fn set_operation_mode(mut self, operation_mode: OperationMode) -> Self {
         self.operation_mode = operation_mode;
         self
     }
 
-    pub fn set_query_execution_mode(mut self, mode: QueryExecutionMode) -> RSPBuilder<'a, I, O> {
+    pub fn set_query_execution_mode(mut self, mode: QueryExecutionMode) -> Self {
         self.query_execution_mode = mode;
         self
     }
@@ -310,7 +314,7 @@ where
         })
     }
 
-    pub fn build(mut self) -> Result<RSPEngine<I, O>, String> {
+    pub fn build(mut self) -> Result<RSPEngine<I, O, S>, String> {
         let rsp_ql_query = self
             .rsp_ql_query
             .take()
