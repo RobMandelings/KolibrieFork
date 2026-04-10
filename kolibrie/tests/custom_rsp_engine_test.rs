@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -7,6 +8,7 @@ use kolibrie::csv_graph_iter::CsvGraphIter;
 use kolibrie::rsp::builder::Consumer;
 use kolibrie::rsp::builder::Consumer::Aggregate;
 use kolibrie::rsp_engine::{OperationMode, QueryExecutionMode, RSPBuilder, RSPEngine, SimpleR2R};
+use kolibrie::rsp_engine::helpers::{create_aggregate_consumer, SolMap};
 use prototypes::{ArcStrategy, ExpireStrategy, RcStrategy};
 use prototypes::prototype::slide_strategy::iter_expire_strategy::IterExpireStrategy;
 use shared::triple::Triple;
@@ -118,16 +120,31 @@ fn rsp_ql_city_bench() {
 
     let result_container = Arc::new(Mutex::new(Vec::<Vec<(String, String)>>::new()));
     let rc = Arc::clone(&result_container);
+    let agg_consumer = create_aggregate_consumer(
+        Arc::new(move |results: Vec<SolMap>, _ts| {
+            // println!("{:?} ({})", results, results.len());
 
-    let agg_consumer = Aggregate({ Arc::new(move |results: Vec<Vec<(String, String)>>, _ts| {
-            println!("{:?} ({})", results, results.len());
-            // println!("Result arrived:");
-            // for (var, val) in &r {
-            //     println!("  {} = {}", var, val);
-            // }
-            //
-            // rc.lock().unwrap().push(r);
-        })});
+            let mut obs: Vec<String> = results
+                .into_iter()
+                .filter_map(|m| m.get("a").cloned())
+                .filter_map(|iri| {
+                    // expects "http://parking.example/observation/2"
+                    iri.rsplit('/').next().map(|id| id.to_string())
+                })
+                .collect();
+
+            // sort by numeric part
+            obs.sort_by_key(|s| s.trim_start_matches('X').trim_start_matches('_').parse::<u64>().ok());
+
+            let out = if obs.is_empty() {
+                "Observations: (none)".to_string()
+            } else {
+                format!("Observations: {}", obs.join(", "))
+            };
+
+            println!("{out}");
+        })
+    );
 
     let r2r = Box::new(SimpleR2R::with_execution_mode(QueryExecutionMode::Volcano));
 

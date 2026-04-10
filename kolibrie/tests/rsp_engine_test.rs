@@ -51,22 +51,22 @@ fn rsp_ql_istream_semantics() {
 
     // ts=1: A → no fire (opens first window).
     for t in engine.parse_data("<http://test/subjectA> a <http://test/IType> .") {
-        engine.add(t, 1);
+        engine.legacy_add(t, 1);
     }
 
     // ts=2: B → fires [-1,1] with {A}; ISTREAM: old=∅ → emit A.
     for t in engine.parse_data("<http://test/subjectB> a <http://test/IType> .") {
-        engine.add(t, 2);
+        engine.legacy_add(t, 2);
     }
 
     // ts=3: C → fires [0,2] with {A,B}; ISTREAM: old={A} → emit B only.
     for t in engine.parse_data("<http://test/subjectC> a <http://test/IType> .") {
-        engine.add(t, 3);
+        engine.legacy_add(t, 3);
     }
 
     // ts=4: D → fires [1,3] with {A,B,C}; ISTREAM: old={A,B} → emit C only.
     for t in engine.parse_data("<http://test/subjectD> a <http://test/IType> .") {
-        engine.add(t, 4);
+        engine.legacy_add(t, 4);
     }
 
     let results = result_container.lock().unwrap();
@@ -145,32 +145,32 @@ fn rsp_ql_dstream_semantics() {
 
     // ts=1: A into windows; no fire.
     for t in engine.parse_data("<http://test/subjectA> a <http://test/DType> .") {
-        engine.add(t, 1);
+        engine.legacy_add(t, 1);
     }
 
     // ts=2: B → window (0,1) fires with {A}; DSTREAM: old=∅ → no emission.
     for t in engine.parse_data("<http://test/subjectB> a <http://test/DType> .") {
-        engine.add(t, 2);
+        engine.legacy_add(t, 2);
     }
 
     // ts=3: C → window (0,2) fires with {A,B}; DSTREAM: old={A} → no emission.
     for t in engine.parse_data("<http://test/subjectC> a <http://test/DType> .") {
-        engine.add(t, 3);
+        engine.legacy_add(t, 3);
     }
 
     // ts=4: D → window (0,3) fires with {A,B,C}; DSTREAM: old={A,B} → no emission.
     for t in engine.parse_data("<http://test/subjectD> a <http://test/DType> .") {
-        engine.add(t, 4);
+        engine.legacy_add(t, 4);
     }
 
     // ts=5: E → window (1,4) fires with {A,B,C,D}; DSTREAM: old={A,B,C} → no emission.
     for t in engine.parse_data("<http://test/subjectE> a <http://test/DType> .") {
-        engine.add(t, 5);
+        engine.legacy_add(t, 5);
     }
 
     // ts=6: F → window (2,5) fires with {B,C,D,E}; DSTREAM: old={A,B,C,D} → deleted={A} → emit A.
     for t in engine.parse_data("<http://test/subjectF> a <http://test/DType> .") {
-        engine.add(t, 6);
+        engine.legacy_add(t, 6);
     }
 
     let results = result_container.lock().unwrap();
@@ -274,7 +274,7 @@ fn rsp_ql_integration() {
         );
         let triples = engine.parse_data(&data);
         for triple in triples {
-            engine.add(triple, i);
+            engine.legacy_add(triple, i);
         }
     }
 
@@ -327,7 +327,7 @@ fn rsp_ql_integration_with_join() {
         );
         let triples = engine.parse_data(&data);
         for triple in triples {
-            engine.add(triple, i);
+            engine.legacy_add(triple, i);
         }
     }
 
@@ -907,7 +907,7 @@ fn test_static_data_not_visible_in_window_query() {
     let triples =
         engine.parse_data("<http://example.org/stream1> a <http://example.org/Type> .");
     for triple in triples {
-        engine.add(triple, 1);
+        engine.legacy_add(triple, 1);
     }
 
     engine.stop();
@@ -964,23 +964,23 @@ fn rsp_ql_istream_range3_step1() {
 
     // ts=1: A → no fire (first event opens the window but nothing closes yet).
     for t in engine.parse_data("<http://test/subjectA> a <http://test/RType> .") {
-        engine.add(t, 1);
+        engine.legacy_add(t, 1);
     }
 
     // ts=2: B → fires window [−1,1] → content {A} → ISTREAM: old=∅ → emit A.
     for t in engine.parse_data("<http://test/subjectB> a <http://test/RType> .") {
-        engine.add(t, 2);
+        engine.legacy_add(t, 2);
     }
 
     // ts=3: C → fires window [0,2] → content {A,B} → ISTREAM: old={A} → emit B only.
     for t in engine.parse_data("<http://test/subjectC> a <http://test/RType> .") {
-        engine.add(t, 3);
+        engine.legacy_add(t, 3);
     }
 
     // ts=4: A again (trigger) → fires window [1,3] → content {A,B,C}
     //       → ISTREAM: old={A,B} → emit C only.
     for t in engine.parse_data("<http://test/subjectA> a <http://test/RType> .") {
-        engine.add(t, 4);
+        engine.legacy_add(t, 4);
     }
 
     let results = result_container.lock().unwrap();
@@ -1068,7 +1068,7 @@ fn test_window_evicts_old_data() {
         );
         let triples = engine.parse_data(&data);
         for triple in triples {
-            engine.add(triple, ts);
+            engine.legacy_add(triple, ts);
         }
     }
 
@@ -1132,22 +1132,22 @@ fn rsp_ql_istream_same_sp_diff_object() {
 
     // ts=1: temp=1 — no fire.
     for t in engine.parse_data("<http://test/reading1> <http://test/hasTemp> \"1\" .") {
-        engine.add(t, 1);
+        engine.legacy_add(t, 1);
     }
 
     // ts=2: temp=2 — fires window with {temp=1}; ISTREAM: old=∅ → emit temp=1.
     for t in engine.parse_data("<http://test/reading1> <http://test/hasTemp> \"2\" .") {
-        engine.add(t, 2);
+        engine.legacy_add(t, 2);
     }
 
     // ts=3: temp=3 — fires window with {temp=1,temp=2}; ISTREAM: old={temp=1} → emit temp=2.
     for t in engine.parse_data("<http://test/reading1> <http://test/hasTemp> \"3\" .") {
-        engine.add(t, 3);
+        engine.legacy_add(t, 3);
     }
 
     // ts=4: temp=4 — fires window with {temp=1,temp=2,temp=3}; ISTREAM: old={temp=1,temp=2} → emit temp=3.
     for t in engine.parse_data("<http://test/reading1> <http://test/hasTemp> \"4\" .") {
-        engine.add(t, 4);
+        engine.legacy_add(t, 4);
     }
 
     let results = result_container.lock().unwrap();
@@ -1239,11 +1239,11 @@ fn rsp_ql_reasoning_derives_types() {
 
     // Feed stream triple: sensor1 hasValue "42" (no explicit type triple)
     for t in engine.parse_data("<http://test/sensor1> <http://test/hasValue> \"42\" .") {
-        engine.add(t, 1);
+        engine.legacy_add(t, 1);
     }
     // Trigger a second event to fire the window
     for t in engine.parse_data("<http://test/sensor2> <http://test/hasValue> \"99\" .") {
-        engine.add(t, 2);
+        engine.legacy_add(t, 2);
     }
 
     engine.stop();

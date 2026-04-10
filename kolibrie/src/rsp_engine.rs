@@ -7,6 +7,8 @@
 * you can obtain one at [https://mozilla.org/MPL/2.0/](https://mozilla.org/MPL/2.0/).
 */
 mod content_processor;
+pub mod helpers;
+mod city_bench_observations_test;
 
 use crate::rsp::r2r::R2ROperator;
 use crate::rsp::r2s::Relation2StreamOperator;
@@ -1014,7 +1016,7 @@ where
     /// Item arrives on all streams. Matches on legacy window to decide which type of window to add the event to (CSPARQLWindow or S2ROperator)
     pub fn custom_add(&mut self, event_item: I, ts: usize) {
         if self.legacy_window {
-            self.add(event_item, ts);
+            self.legacy_add(event_item, ts);
         } else {
             for s2r in self.custom_windows.values_mut() {
                 s2r.event_arrives_with_ts(event_item.clone(), ts as Time);
@@ -1124,7 +1126,7 @@ where
     }
 
     /// Legacy method for backward compatibility
-    pub fn add(&mut self, event_item: I, ts: usize) {
+    pub fn legacy_add(&mut self, event_item: I, ts: usize) {
         // Add to all windows (for backward compatibility)
         for window in &mut self.windows {
             window.add_to_window(event_item.clone(), ts);
