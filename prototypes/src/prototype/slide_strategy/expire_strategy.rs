@@ -1,0 +1,124 @@
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
+use crate::Event;
+use crate::prototype::event::Time;
+use crate::prototype::slide_strategy::{CutoffOrOpen, ItemsReport, WindowSnapshotStrategy};
+use crate::prototype::window_bounds::after_open;
+
+/// Concrete slide_strategy: expire old events, report them as owned Events.
+pub struct ExpireStrategy<I: Clone> {
+    // Outer Vec: one entry per window
+    // Inner Vec: consumers for that window
+    consume_fns: HashMap<String, Vec<RefCell<Box<dyn FnMut(SliceContainer<I>)>>>>,
+    pub content: Vec<Event<I>>,
+}
+
+impl<I: Clone> ExpireStrategy<I> {
+
+    /// Take a slice of the event vector by finding the first position with a certain time stamp and last position
+    pub fn slice_by_ts(&self, open: Time) -> &[Event<I>] {
+        let lo = self.content.partition_point(|e| !after_open(&open, &e.ts));
+        &self.content[lo..]
+    }
+}
+
+pub struct SliceContainer<'a, I>(pub &'a [Event<I>]);
+
+impl<I> Clone for SliceContainer<'_, I> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl<I: 'static> ItemsReport<I> for SliceContainer<'_, I> {
+    fn iter_items(&self) -> impl Iterator<Item=&I> {
+        self.0
+            .iter()
+            .map(|rc| &rc.payload)
+    }
+}
+
+impl<I: Clone + 'static> WindowSnapshotStrategy<I> for ExpireStrategy<I> {
+    type ReportType<'a> = SliceContainer<'a, I>;
+
+    fn new() -> Self {
+        Self {
+            consume_fns: HashMap::new(),
+            content: Vec::new(),
+        }
+    }
+
+    fn window_closed<'a>(&mut self, window_iri: &str, cutoff_or_open: &CutoffOrOpen, report: bool) {
+
+        match cutoff_or_open {
+            CutoffOrOpen::Cutoff(cutoff) => {
+                if report {
+                    self.consume_window(window_iri, SliceContainer(&self.content));
+                }
+                // Remove all content before cutoff
+                self.content.retain(|e| after_open(cutoff, &e.ts));
+            }
+            CutoffOrOpen::Open(open) => {
+
+                let slice = self.slice_by_ts(*open);
+                if report {
+                    self.consume_window(window_iri, SliceContainer(slice));
+                }
+            }
+        };
+    }
+
+    fn add_event(&mut self, event: Event<I>) {
+        self.content.push(event);
+    }
+
+    fn consume_fns(&self) -> &HashMap<String, Vec<RefCell<Box<dyn for<'a> FnMut(Self::ReportType<'a>)>>>> {
+        &self.consume_fns
+    }
+
+    fn consume_fns_mut(&mut self) -> &mut HashMap<String, Vec<RefCell<Box<dyn for<'a> FnMut(Self::ReportType<'a>)>>>> {
+        &mut self.consume_fns
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::prototype::helpers::event;
+
+    fn consume_fn() -> Box<dyn for<'a> Fn(SliceContainer<String>)> {
+        Box::new(|_| {})
+    }
+
+    #[test]
+    fn expire_events_none_expired() {
+        let mut wc: ExpireStrategy<String> = ExpireStrategy::new();
+
+        wc.content = vec![event(10), event(20), event(30)];
+        wc.add_consumer("0", consume_fn());
+        let slice = wc.slice_by_ts(5); // cutoff before all
+
+        assert_eq!(slice.len(), 3);
+    }
+
+    #[test]
+    fn expire_events_some_expired() {
+        let mut wc = ExpireStrategy::new();
+        wc.content = vec![event(10), event(20), event(30)];
+        wc.add_consumer("0", consume_fn());
+        let slice = wc.slice_by_ts(25); // expire ts < 25 -> 10 and 20
+
+        assert_eq!(slice.len(), 1);
+        assert_eq!(slice[0].ts, 30);
+    }
+
+    #[test]
+    fn expire_events_all_expired() {
+        let mut wc = ExpireStrategy::new();
+        wc.content = vec![event(10), event(20), event(30)];
+        wc.add_consumer("0", consume_fn());
+        let slice = wc.slice_by_ts(100);
+        assert_eq!(slice.len(), 0);
+    }
+}
