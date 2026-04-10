@@ -13,16 +13,7 @@ use prototypes::{ArcStrategy, ExpireStrategy, RcStrategy};
 use prototypes::prototype::slide_strategy::iter_expire_strategy::IterExpireStrategy;
 use shared::triple::Triple;
 //
-fn init_logger() {
-    use env_logger::Builder;
-    use log::LevelFilter;
 
-    let mut builder = Builder::from_default_env();
-    builder
-        .is_test(true)
-        .filter_level(LevelFilter::Debug) // or Info/Warn/Error
-        .init();
-}
 
 // #[test]
 // fn rsp_ql_istream_semantics() {

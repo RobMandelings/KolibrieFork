@@ -1,11 +1,11 @@
 use std::env;
 use std::sync::{Arc, Mutex};
-use log::debug;
+use log::{debug, LevelFilter};
 use prototypes::ExpireStrategy;
 use shared::triple::Triple;
 use crate::csv_graph_iter::CsvGraphIter;
 use crate::rsp::builder::Consumer;
-use crate::rsp_engine::helpers::{create_aggregate_consumer, SolMap};
+use crate::rsp_engine::helpers::{create_aggregate_consumer, init_logger, SolMap};
 use crate::rsp_engine::{OperationMode, QueryExecutionMode, RSPBuilder, RSPEngine, SimpleR2R};
 
 fn print_observations_consumer() -> Consumer<Vec<(String, String)>> {
@@ -38,6 +38,8 @@ fn print_observations_consumer() -> Consumer<Vec<(String, String)>> {
 
 #[test]
 fn rsp_ql_city_bench() {
+
+    // init_logger(LevelFilter::Info);
     let agg_consumer = print_observations_consumer();
     let r2r = Box::new(SimpleR2R::with_execution_mode(QueryExecutionMode::Volcano));
 
@@ -45,7 +47,7 @@ fn rsp_ql_city_bench() {
         REGISTER ISTREAM <http://out/stream> AS
         SELECT *
         FROM NAMED WINDOW :w ON ?stream [RANGE 2 STEP 1]
-        WHERE { WINDOW :w { ?observation <http://example.org/ontology/vehicleCount> ?b . } }
+        WHERE { WINDOW :w { ?a <http://example.org/ontology/vehicleCount> ?b . } }
     "#;
 
     let mut engine: RSPEngine<Triple, Vec<(String, String)>, ExpireStrategy<Triple>> = RSPBuilder::new()
