@@ -11,7 +11,7 @@ use crate::parser::parse_combined_query;
 use crate::rsp::r2r::R2ROperator;
 use crate::rsp::r2s::StreamOperator;
 use crate::rsp::s2r::{ReportStrategy, Tick};
-use crate::rsp_engine::{AggregateConsumer, OperationMode, QueryExecutionMode, RSPEngine, RSPQueryPlan, RSPWindow, ResultConsumer};
+use crate::rsp_engine::{OperationMode, QueryExecutionMode, RSPEngine, RSPQueryPlan, RSPWindow};
 use crate::sparql_database::SparqlDatabase;
 use crate::streamertail_optimizer::{
     build_logical_plan, LogicalOperator, PhysicalOperator, Streamertail,
@@ -23,6 +23,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
 use prototypes::WindowSnapshotStrategy;
+use crate::rsp::builder::Consumer::Aggregate;
 
 /// RSP Query configuration extracted from parsed RSP-QL
 #[derive(Debug)]
@@ -37,13 +38,21 @@ pub struct RSPQueryConfig<'a> {
     pub sync_policy: SyncPolicy,
 }
 
+pub type SingleConsumer<I> = Arc<dyn Fn(I) -> () + Send + Sync>;
+pub type AggregateConsumer<I> = Arc<dyn Fn(Vec<I>, usize) -> () + Send + Sync>;
+
+#[derive(Clone)]
+pub enum Consumer<I> {
+    Single(SingleConsumer<I>),
+    Aggregate(AggregateConsumer<I>)
+}
+
 pub struct RSPBuilder<'a, I, O, S> {
     _phantom: std::marker::PhantomData<S>,
     rsp_ql_query: Option<&'a str>,
     triples: Option<&'a str>, /// Initial triples to load into R2R store. Still need to be parsed.
     rules: Option<&'a str>,
-    result_consumer: Option<ResultConsumer<O>>,
-    aggregate_result_consumer: Option<AggregateConsumer<O>>,
+    consumer: Option<Consumer<O>>,
     r2r: Option<Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>>,
     operation_mode: OperationMode,
     query_execution_mode: QueryExecutionMode,
@@ -52,6 +61,7 @@ pub struct RSPBuilder<'a, I, O, S> {
     sync_policy: SyncPolicy,
     reasoning_rules: Vec<Rule>,
     sparql_rules: Vec<String>,
+    legacy_window: Option<bool>
 }
 
 impl<'a, I, O, S> RSPBuilder<'a, I, O, S>
@@ -66,8 +76,7 @@ where
             rsp_ql_query: None,
             triples: None,
             rules: None,
-            result_consumer: None,
-            aggregate_result_consumer: None,
+            consumer: None,
             r2r: None,
             operation_mode: OperationMode::MultiThread,
             query_execution_mode: QueryExecutionMode::Volcano,
@@ -75,7 +84,13 @@ where
             sync_policy: SyncPolicy::default(),
             reasoning_rules: Vec::new(),
             sparql_rules: Vec::new(),
+            legacy_window: None
         }
+    }
+
+    pub fn set_legacy_window(mut self, legacy_window: bool) -> Self {
+        self.legacy_window = Some(legacy_window);
+        self
     }
 
     /// Override the engine-level default synchronization policy.
@@ -116,14 +131,9 @@ where
         self
     }
 
-    /// Add a consumer that will consume the results of reported window content
-    pub fn add_consumer(mut self, consumer: ResultConsumer<O>) -> Self {
-        self.result_consumer = Some(consumer);
-        self
-    }
-
-    pub fn add_aggregate_consumer(mut self, consumer: AggregateConsumer<O>) -> Self {
-        self.aggregate_result_consumer = Some(consumer);
+    /// Configure the consumer that will consume the results of reported window content
+    pub fn set_consumer(mut self, consumer: Consumer<O>) -> Self {
+        self.consumer = Some(consumer);
         self
     }
 
@@ -323,12 +333,12 @@ where
         let triples = self.triples.take().unwrap_or("");
         let syntax = self.syntax.clone();
         let rules = self.rules.take().unwrap_or("");
-        let result_consumer = self.result_consumer.take().unwrap_or(ResultConsumer {
-            function: Arc::new(Box::new(|r| println!("Bindings: {:?}", r))),
-        });
-        let aggregate_result_consumer = self.aggregate_result_consumer.take().unwrap_or(AggregateConsumer {
-            function: Arc::new(Box::new(|r, ts| println!("Bindings: {:?}", r))),
-        });
+
+        // let result_consumer = self.result_consumer.take().unwrap_or(ResultConsumer {
+        //     function: Arc::new(Box::new(|r| println!("Bindings: {:?}", r))),
+        // });
+
+        let consumer = self.consumer.take().unwrap_or(Aggregate(Arc::new(Box::new(|r, ts| println!("Bindings: {:?}", r)))));
         let operation_mode = self.operation_mode;
 
         // Parse RSP-QL query and return RSPQueryConfig object instead
@@ -339,13 +349,19 @@ where
         // Create RSP-QL query plan using Volcano optimizer
         let rsp_query_plan = Self::create_rsp_query_plan(&query_config)?;
 
+        // Whether to use CSPARQLWindow or the newer prototypes
+        let legacy = match self.legacy_window {
+            None => {panic!("Legacy window configuration not set! You must specify explicitly. ")}
+            Some(v) => { v }
+        };
+
         Ok(RSPEngine::new(
+            legacy,
             query_config,
             triples,
             syntax,
             rules,
-            result_consumer,
-            aggregate_result_consumer,
+            consumer,
             r2r,
             operation_mode,
             self.query_execution_mode,

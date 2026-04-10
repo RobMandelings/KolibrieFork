@@ -21,10 +21,14 @@ use datalog::reasoning::Reasoner;
 use log::{debug, error}; // Use log crate when building application
 use prototypes::prototype::event::Time;
 // use prototypes::prototype::slide_strategy::slice_expire_strategy::{SliceExpireStrategy, ContReport};
-use prototypes::prototype::slide_strategy::iter_expire_strategy::{IterConsumer, IterExpireContainer, IterExpireStrategy, IterReport};
+use prototypes::prototype::slide_strategy::iter_expire_strategy::{
+    IterConsumer, IterExpireContainer, IterExpireStrategy, IterReport,
+};
 use prototypes::prototype::slide_strategy::ItemsReport;
 use prototypes::prototype::window_params::S2RWindowConfig;
-use prototypes::{ExpireStrategy, SlidingWindowOperator, WindowParams, WindowSnapshotStrategy, IRI};
+use prototypes::{
+    ExpireStrategy, SlidingWindowOperator, WindowParams, WindowSnapshotStrategy, IRI,
+};
 use shared::query::{Fallback, SyncPolicy};
 use shared::rule::Rule;
 use std::collections::HashMap;
@@ -38,9 +42,12 @@ use std::time::Instant;
 #[cfg(test)]
 use std::{println as debug, println as error};
 // Re-exports to preserve the public API used by kolibrie-http-server and examples.
+use crate::rsp::builder::{AggregateConsumer, Consumer, SingleConsumer};
 pub use crate::rsp::builder::{RSPBuilder, RSPQueryConfig};
 pub use crate::rsp::simple_r2r::SimpleR2R;
-use crate::rsp_engine::content_processor::{create_iter_expire_window_processor, process_window_report};
+use crate::rsp_engine::content_processor::{
+    create_iter_expire_window_processor, process_window_report,
+};
 use crate::sliding_window::SlidingWindow;
 
 /// For compatibility with the existing architecture: map (stream_iri, window_iri) to the original index of that specific window
@@ -87,14 +94,14 @@ pub struct WindowResult {
 }
 
 /// Result consumer that consumes input of some generic type I
-pub struct ResultConsumer<I> {
-    pub function: Arc<dyn Fn(I) -> () + Send + Sync>,
-}
-
-/// Result consumer that consumes input of some generic type I
-pub struct AggregateConsumer<I> {
-    pub function: Arc<dyn Fn(Vec<I>, usize) -> () + Send + Sync>,
-}
+// pub struct ResultConsumer<I> {
+//     pub function: Arc<dyn Fn(I) -> () + Send + Sync>,
+// }
+//
+// /// Result consumer that consumes input of some generic type I
+// pub struct AggregateConsumer<I> {
+//     pub function: Arc<dyn Fn(Vec<I>, usize) -> () + Send + Sync>,
+// }
 
 /// Creates a closure that receives the content of a window and processes the content through the pipeline
 /// After processing, the solutions are sent to the last stage of the pipeline: R2S
@@ -409,12 +416,12 @@ where
     O: Hash,
     S: WindowSnapshotStrategy<I>,
 {
+    legacy_window: bool, // Whether or not to use the legacy CSPARQL window implementation or not
     window_mapping: WindowMapping, // Helper mapping that maps the window_idx (from the previous implementation) to (stream_iri, window_iri) pair
     custom_windows: HashMap<IRI, SlidingWindowOperator<I, S>>,
     windows: Vec<CSPARQLWindow<I>>,
     r2r: Arc<Mutex<Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>>>,
-    r2s_aggregate_consumer: AggregateConsumer<O>,
-    r2s_consumer: ResultConsumer<O>,
+    r2s_consumer: Consumer<O>,
     window_configs: Vec<RSPWindow>,
     query_execution_mode: QueryExecutionMode,
     operation_mode: OperationMode,
@@ -440,12 +447,12 @@ where
     S: WindowSnapshotStrategy<I>,
 {
     pub fn new(
+        legacy_window: bool,
         query_config: RSPQueryConfig,
         triples: &str,
         syntax: String,
         rules: &str,
-        result_consumer: ResultConsumer<O>,
-        aggregate_consumer: AggregateConsumer<O>,
+        r2s_consumer: Consumer<O>,
         r2r: Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>,
         operation_mode: OperationMode,
         query_execution_mode: QueryExecutionMode,
@@ -554,12 +561,12 @@ where
         let r2s_operator = Arc::new(Mutex::new(Relation2StreamOperator::new(stream_type, 0)));
 
         let mut engine = RSPEngine {
+            legacy_window,
             window_mapping,
             custom_windows,
             windows,
             r2r: Arc::new(Mutex::new(store)),
-            r2s_consumer: result_consumer,
-            r2s_aggregate_consumer: aggregate_consumer,
+            r2s_consumer,
             window_configs: query_config.windows.clone(),
             query_execution_mode,
             operation_mode,
@@ -655,15 +662,15 @@ where
     /// Creates a closure that receives the content of a window and processes the content through the pipeline
     /// After processing, the solutions are sent to the last stage of the pipeline: R2S
     /// R stands for 'report'
-    pub fn create_iter_expire_window_processor(&self,
+    pub fn create_iter_expire_window_processor(
+        &self,
         window_iri: String,
         query: PhysicalOperator,
         query_execution_mode: QueryExecutionMode,
         r2r_store: Arc<Mutex<Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>>>,
         window_result_sender: Sender<WindowResult>,
-        r2s_consumer_func: Arc<dyn Fn(Vec<O>, usize) + Send + Sync>, // Consumes the solution mappings to put it onto the output stream
-    ) -> impl FnMut(S::ReportType<'_>) + Send + 'static
-    {
+        r2s_consumer_func: AggregateConsumer<O>, // Consumes the solution mappings to put it onto the output stream
+    ) -> impl FnMut(S::ReportType<'_>) + Send + 'static {
         // You use these to decide which triples to evict from the store
         // The R2R store maintains the current state of triples, so you need to know which ones to remove
         let mut prev_window_triples: Vec<I> = Vec::new();
@@ -683,13 +690,43 @@ where
         }
     }
 
+    // let (stream_iri, window_iri) = &self.window_mapping[window_idx];
+    // This function is called to actually output the emitted results back into the
+    // Consumer function that was provided as parameter to the RSPEngine
+    /// A single consumer was provided but the window always reports aggregates (all window content at once)
+    fn create_aggregate_consumer_from_single_consumer(
+        &self,
+        consumer: &SingleConsumer<O>,
+    ) -> AggregateConsumer<O> {
+        let r2s_aggregate_consumer: Arc<dyn Fn(Vec<O>, usize) + Send + Sync> = if self.has_joins() {
+            // Arc::new(|_, _| {})
+            panic!("Don't know what to do here! Not implemented yet!");
+        } else {
+            let r2s_op = Arc::clone(&self.r2s_operator);
+            let consumer_fn = consumer.clone();
+
+            // Takes ALL solution mappings along with their timestamp
+            // Then runs consumer_fn for each of the solution mappings
+            Arc::new(move |results: Vec<O>, ts: usize| {
+                let filtered = r2s_op.lock().unwrap().eval(results, ts);
+                for r in filtered {
+                    // For each solution mapping in the set of solution mappings, call the consumer function
+                    consumer_fn(r);
+                }
+            })
+        };
+        r2s_aggregate_consumer
+    }
+
     /// Register windows using macros to eliminate code duplication
     fn register_custom_windows(&mut self) {
         // First: collect all processors per (stream_iri, window_iri)
-        let mut to_register: Vec<(IRI, Vec<(IRI, Box<dyn for<'a> FnMut(S::ReportType<'a>)>)>)> = Vec::new();
+        let mut to_register: Vec<(IRI, Vec<(IRI, Box<dyn for<'a> FnMut(S::ReportType<'a>)>)>)> =
+            Vec::new();
 
         for (stream_iri, s2r_operator) in &self.custom_windows {
-            let mut consumers_by_window_iri: Vec<(IRI, Box<dyn for<'a> FnMut(S::ReportType<'a>)>)> = Vec::new();
+            let mut consumers_by_window_iri: Vec<(IRI, Box<dyn for<'a> FnMut(S::ReportType<'a>)>)> =
+                Vec::new();
 
             for window_iri in s2r_operator.sliding_windows.keys() {
                 let idx = *self
@@ -709,14 +746,18 @@ where
                 //     })
                 // };
 
-                let r2s_aggregate_consumer = self.r2s_aggregate_consumer.function.clone();
+                let consumer = match &self.r2s_consumer {
+                    Consumer::Single(v) => self.create_aggregate_consumer_from_single_consumer(v),
+                    Consumer::Aggregate(v) => { v.clone() },
+                };
+
                 let content_processor = Box::new(self.create_iter_expire_window_processor(
                     window_iri.clone(),
                     self.rsp_query_plan.window_plans[idx].clone(),
                     self.query_execution_mode,
                     self.r2r.clone(),
                     self.window_result_sender.clone(),
-                    r2s_aggregate_consumer,
+                    consumer.clone(),
                 ));
 
                 consumers_by_window_iri.push((window_iri.clone(), content_processor));
@@ -741,29 +782,31 @@ where
     /// Register windows using macros to eliminate code duplication
     fn register_windows(&mut self, operation_mode: OperationMode) {
         let has_joins = self.has_joins();
+
+        let consumer = match &self.r2s_consumer {
+            Consumer::Single(v) => {self.create_aggregate_consumer_from_single_consumer(v)},
+            Consumer::Aggregate(v) => { v.clone() }
+        };
+
         for (window_idx, window) in self.windows.iter_mut().enumerate() {
             let query = self.rsp_query_plan.window_plans[window_idx].clone();
             let window_iri = self.window_configs[window_idx].window_iri.clone();
-
-            // let (stream_iri, window_iri) = &self.window_mapping[window_idx];
-            // This function is called to actually output the emitted results back into the
-            // Consumer function that was provided as parameter to the RSPEngine
-            let r2s_aggregate_consumer: Arc<dyn Fn(Vec<O>, usize) + Send + Sync> = if has_joins {
-                Arc::new(|_, _| {})
-            } else {
-                let r2s_op = Arc::clone(&self.r2s_operator);
-                let consumer_fn = self.r2s_consumer.function.clone();
-
-                // Takes ALL solution mappings along with their timestamp
-                // Then runs consumer_fn for each of the solution mappings
-                Arc::new(move |results: Vec<O>, ts: usize| {
-                    let filtered = r2s_op.lock().unwrap().eval(results, ts);
-                    for r in filtered {
-                        // For each solution mapping in the set of solution mappings, call the consumer function
-                        consumer_fn(r);
-                    }
-                })
-            };
+            // let r2s_aggregate_consumer: Arc<dyn Fn(Vec<O>, usize) + Send + Sync> = if has_joins {
+            //     Arc::new(|_, _| {})
+            // } else {
+            //     let r2s_op = Arc::clone(&self.r2s_operator);
+            //     let consumer_fn = self.r2s_consumer.function.clone();
+            //
+            //     // Takes ALL solution mappings along with their timestamp
+            //     // Then runs consumer_fn for each of the solution mappings
+            //     Arc::new(move |results: Vec<O>, ts: usize| {
+            //         let filtered = r2s_op.lock().unwrap().eval(results, ts);
+            //         for r in filtered {
+            //             // For each solution mapping in the set of solution mappings, call the consumer function
+            //             consumer_fn(r);
+            //         }
+            //     })
+            // };
 
             /// In my API this is called the consumer
             let content_processor = create_window_content_processor(
@@ -773,7 +816,7 @@ where
                 self.r2r.clone(),
                 has_joins,
                 self.window_result_sender.clone(),
-                r2s_aggregate_consumer,
+                consumer.clone(),
             );
 
             // let processor = create_window_content_processor2(
@@ -812,7 +855,7 @@ where
         O: From<Vec<(String, String)>>,
     {
         let receiver = self.window_result_receiver.clone();
-        let consumer = self.r2s_consumer.function.clone();
+        let consumer = self.r2s_consumer.clone();
         let num_windows = self.windows.len();
         let static_data_plan = self.rsp_query_plan.static_data_plan.clone();
         let static_db = self.static_db.clone();
@@ -968,18 +1011,27 @@ where
         s.to_string()
     }
 
-    /// The item arrives on all the streams
-    pub fn add_2(&mut self, event_item: I, ts: usize) {
-        for s2r in self.custom_windows.values_mut() {
-            s2r.event_arrives_with_ts(event_item.clone(), ts as Time);
+    /// Item arrives on all streams. Matches on legacy window to decide which type of window to add the event to (CSPARQLWindow or S2ROperator)
+    pub fn custom_add(&mut self, event_item: I, ts: usize) {
+        if self.legacy_window {
+            self.add(event_item, ts);
+        } else {
+            for s2r in self.custom_windows.values_mut() {
+                s2r.event_arrives_with_ts(event_item.clone(), ts as Time);
+            }
         }
     }
 
-    pub fn add_to_stream2(&mut self, stream_iri: &str, event_item: I, ts: usize) {
-        self.custom_windows
-            .get_mut(stream_iri)
-            .unwrap()
-            .event_arrives_with_ts(event_item, ts as Time);
+    /// Item arrives on specific stream. Matches on legacy window to decide which type of window to add the event to
+    pub fn custom_add_to_stream(&mut self, stream_iri: &str, event_item: I, ts: usize) {
+        if self.legacy_window {
+            self.add_to_stream(stream_iri, event_item, ts);
+        } else {
+            self.custom_windows
+                .get_mut(stream_iri)
+                .unwrap()
+                .event_arrives_with_ts(event_item, ts as Time);
+        }
     }
 
     /// Add data to appropriate window based on stream IRI
@@ -1016,7 +1068,7 @@ where
         O: From<Vec<(String, String)>>,
     {
         // The consumer function that will be called. We clone to get ownership, but it points to the same function
-        let consumer = self.r2s_consumer.function.clone();
+        let consumer = self.r2s_consumer.clone();
         let num_windows = self.windows.len();
         let sync_policy = self.sync_policy.clone();
 
@@ -1133,7 +1185,7 @@ fn emit_results<O>(
     static_db: &Arc<Mutex<SparqlDatabase>>,
     r2s: &Arc<Mutex<Relation2StreamOperator<O>>>,
     ts: usize,
-    consumer: &Arc<dyn Fn(O) -> () + Send + Sync>,
+    consumer: &Consumer<O>,
 ) where
     O: 'static + Clone + Hash + Eq + From<Vec<(String, String)>>,
 {
@@ -1160,8 +1212,15 @@ fn emit_results<O>(
         })
         .collect();
     let filtered = r2s.lock().unwrap().eval(outputs, ts);
-    for result in filtered {
-        (consumer)(result);
+
+    match consumer {
+        Consumer::Single(s) => {
+            for result in filtered {
+                s(result);
+            }
+        } Consumer::Aggregate(a) => {
+            a(filtered, ts)
+        }
     }
 }
 

@@ -4,7 +4,9 @@ use std::io::{BufWriter, Write};
 use std::sync::{Arc, Mutex};
 use log::debug;
 use kolibrie::csv_graph_iter::CsvGraphIter;
-use kolibrie::rsp_engine::{AggregateConsumer, OperationMode, QueryExecutionMode, RSPBuilder, RSPEngine, ResultConsumer, SimpleR2R};
+use kolibrie::rsp::builder::Consumer;
+use kolibrie::rsp::builder::Consumer::Aggregate;
+use kolibrie::rsp_engine::{OperationMode, QueryExecutionMode, RSPBuilder, RSPEngine, SimpleR2R};
 use prototypes::{ArcStrategy, ExpireStrategy, RcStrategy};
 use prototypes::prototype::slide_strategy::iter_expire_strategy::IterExpireStrategy;
 use shared::triple::Triple;
@@ -117,20 +119,7 @@ fn rsp_ql_city_bench() {
     let result_container = Arc::new(Mutex::new(Vec::<Vec<(String, String)>>::new()));
     let rc = Arc::clone(&result_container);
 
-    // What is eventually called after the processing
-    let result_consumer = ResultConsumer {
-        function: Arc::new(move |r: Vec<(String, String)>| {
-            println!("Result arrived:");
-            for (var, val) in &r {
-                println!("  {} = {}", var, val);
-            }
-
-            rc.lock().unwrap().push(r);
-        }),
-    };
-
-    let agg_consumer = AggregateConsumer {
-        function: Arc::new(move |results: Vec<Vec<(String, String)>>, ts| {
+    let agg_consumer = Aggregate({ Arc::new(move |results: Vec<Vec<(String, String)>>, _ts| {
             println!("{:?} ({})", results, results.len());
             // println!("Result arrived:");
             // for (var, val) in &r {
@@ -138,22 +127,21 @@ fn rsp_ql_city_bench() {
             // }
             //
             // rc.lock().unwrap().push(r);
-        }),
-    };
+        })});
 
     let r2r = Box::new(SimpleR2R::with_execution_mode(QueryExecutionMode::Volcano));
 
     let query = r#"
         REGISTER ISTREAM <http://out/stream> AS
         SELECT *
-        FROM NAMED WINDOW :w ON ?stream [RANGE 4 STEP 1]
+        FROM NAMED WINDOW :w ON ?stream [RANGE 2 STEP 1]
         WHERE { WINDOW :w { ?a <http://example.org/ontology/vehicleCount> ?b . } }
     "#;
 
     let mut engine: RSPEngine<Triple, Vec<(String, String)>, ExpireStrategy<Triple>> = RSPBuilder::new()
+        .set_legacy_window(false)
         .add_rsp_ql_query(query)
-        .add_consumer(result_consumer)
-        .add_aggregate_consumer(agg_consumer)
+        .set_consumer(agg_consumer)
         .add_r2r(r2r)
         .set_operation_mode(OperationMode::SingleThread)
         .build()
@@ -174,7 +162,7 @@ fn rsp_ql_city_bench() {
 
         for triple in engine.parse_data(&graph) {
             // choose a timestamp here, e.g. parsed from streamtime/updatetime
-            engine.add_2(triple, i);
+            engine.custom_add(triple, i);
         }
         i += 1;
     }
