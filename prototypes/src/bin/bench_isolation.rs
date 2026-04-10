@@ -1,5 +1,4 @@
-use crate::mem_evaluation::move_profile_file;
-use criterion::{black_box, Criterion};
+use criterion::{black_box, BenchmarkGroup, BenchmarkId, Criterion, Throughput};
 use pprof::criterion::{Output, PProfProfiler};
 use pprof::flamegraph::Options;
 use pprof::ProfilerGuardBuilder;
@@ -10,10 +9,8 @@ use prototypes::{
 use std::fs::File;
 use std::path::Path;
 use std::{env, fs, io};
+use criterion::measurement::WallTime;
 use prototypes::bench_helpers::run_strategy_clone;
-
-mod bench_sliding_window;
-mod mem_evaluation;
 
 const PROFILING_FREQUENCY_HZ: i32 = 100;
 const PROFILE_ITERS: usize = 200;
@@ -23,6 +20,37 @@ const DST_ROOT: &str = "analysis/evaluation";
 
 fn ensure_dir(path: &Path) -> io::Result<()> {
     fs::create_dir_all(path)
+}
+
+pub fn move_profile_file(strat: &str, group_path: &Path) {
+    let dir = group_path.join("memory");
+    // create mem_profiles/workload_name if needed
+    fs::create_dir_all(&dir).expect("failed to create mem_profiles dir");
+
+    let dest = dir.join(format!("{strat}.json"));
+
+    fs::rename("dhat-heap.json", &dest).expect("failed to move dhat-heap.json");
+}
+
+pub fn bench_strategy<F>(
+    group: &mut BenchmarkGroup<WallTime>,
+    strategy_str: &str,
+    workload: &Workload,
+    mut run_strategy: F,
+) where
+    F: FnMut(&Workload),
+{
+    group.throughput(Throughput::Elements(workload.nr_events as u64));
+
+    group.bench_with_input(
+        BenchmarkId::from_parameter(strategy_str),
+        &workload,
+        |b, &workload| {
+            b.iter(|| {
+                run_strategy(&workload);
+            })
+        },
+    );
 }
 
 fn write_flamegraph_for_strategy<F>(
@@ -74,7 +102,7 @@ fn run_bench_and_profile<F>(
 where
     F: Fn(&Workload) + Copy,
 {
-    bench_sliding_window::bench_strategy(group, label, workload, |w| {
+    bench_strategy(group, label, workload, |w| {
         run_strategy(w)
     });
 
@@ -159,7 +187,7 @@ fn main() {
         let mut group = c.benchmark_group(&workload.name);
         let group_path = root_path.join(&workload.name);
         let criterion_dst_path = group_path.join("throughput");
-        let criterion_src_path = Path::new("target/criterion").join(&workload.name); // Where to take the data from
+        let criterion_src_path = Path::new("../../../target/criterion").join(&workload.name); // Where to take the data from
 
         // TODO extract run_bench_profile for better reusability
         run_bench_and_profile(
