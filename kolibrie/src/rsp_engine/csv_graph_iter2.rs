@@ -1,42 +1,40 @@
 use std::fs::File;
 use std::io::{BufWriter, Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use csv::{Reader, StringRecord, StringRecordsIntoIter};
 
 /// A function that takes a CSV record and returns an N3 graph serialization.
 pub type RecordMapper =
-dyn Fn(&StringRecord) -> Result<String, csv::Error> + Send + Sync;
+Box<dyn Fn(&StringRecord) -> Result<String, csv::Error> + Send + Sync>;
 
 pub struct CsvGraphIter<R: Read> {
     records: StringRecordsIntoIter<R>,
-    mapper: Box<RecordMapper>,
+    mapper: RecordMapper,
 }
 
 impl CsvGraphIter<File> {
-    pub fn from_path<P, F>(path: P, mapper: F) -> Result<Self, csv::Error>
+    pub fn from_path<P>(path: P, mapper: RecordMapper) -> Result<Self, csv::Error>
     where
         P: AsRef<Path>,
-        F: Fn(&StringRecord) -> Result<String, csv::Error> + Send + Sync + 'static,
     {
         let file = File::open(path).map_err(csv::Error::from)?;
         let rdr = Reader::from_reader(file);
         Ok(Self {
             records: rdr.into_records(),
-            mapper: Box::new(mapper),
+            mapper,
         })
     }
 
-    pub fn export_n3<PIn, POut, F>(
+    pub fn export_n3<PIn, POut>(
         input_path: PIn,
         output_path: POut,
         num_rows: usize,
-        mapper: F,
+        mapper: RecordMapper,
     ) -> Result<(), Box<dyn std::error::Error>>
     where
         PIn: AsRef<Path>,
         POut: AsRef<Path>,
-        F: Fn(&StringRecord) -> Result<String, csv::Error> + Send + Sync + 'static,
     {
         let iter = Self::from_path(input_path, mapper)?;
         let file = File::create(output_path)?;
@@ -54,9 +52,7 @@ impl CsvGraphIter<File> {
 }
 
 impl<R: Read> CsvGraphIter<R> {
-    pub fn from_reader<F>(reader: R, mapper: F) -> Self
-    where
-        F: Fn(&StringRecord) -> Result<String, csv::Error> + Send + Sync + 'static,
+    pub fn from_reader<F>(reader: R, mapper: RecordMapper) -> Self
     {
         let rdr = Reader::from_reader(reader);
         Self {
@@ -80,4 +76,22 @@ impl<R: Read> Iterator for CsvGraphIter<R> {
 
 pub fn escape_literal(s: &str) -> String {
     s.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
+type MapperFactory = fn(&str) -> RecordMapper;
+
+pub struct BuiltStreamIter {
+    pub stream_iri: String,
+    pub iter: CsvGraphIter<File>,
+}
+
+pub fn build_stream_iter(
+    stream_name: &str,
+    mapper_factory: MapperFactory,
+) -> Result<BuiltStreamIter, csv::Error> {
+    let stream_iri = format!(":{}", stream_name.to_string());
+    let path = format!("streams/{name}.stream", name = stream_name);
+    let mapper: RecordMapper = mapper_factory(&stream_name);
+    let iter = CsvGraphIter::from_path(path, mapper)?;
+    Ok(BuiltStreamIter { stream_iri, iter })
 }

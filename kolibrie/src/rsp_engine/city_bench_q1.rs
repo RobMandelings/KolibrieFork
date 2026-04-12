@@ -4,7 +4,8 @@ use prototypes::bench_helpers::Time;
 use prototypes::ExpireStrategy;
 use shared::triple::Triple;
 use crate::rsp_engine::{OperationMode, QueryExecutionMode, RSPBuilder, RSPEngine, SimpleR2R};
-use crate::rsp_engine::csv_graph_iter2::CsvGraphIter;
+use crate::rsp_engine::csv_graph_iter2;
+use crate::rsp_engine::csv_graph_iter2::{build_stream_iter, CsvGraphIter};
 use crate::rsp_engine::parking_mapper::traffic_mapper;
 
 #[test]
@@ -154,18 +155,34 @@ fn city_bench_q1_two_window() {
     let path = env::current_dir().expect("Expected path");
     println!("cwd: {}", path.display());
 
+    let mut streams = vec![
+        build_stream_iter("AarhusTrafficData158505", traffic_mapper).unwrap(),
+        build_stream_iter("AarhusTrafficData182955", traffic_mapper).unwrap(),
+    ];
+
+    let mut ts = 0;
+    while ts < 50 {
+        for stream in &mut streams {
+            for graph_str in stream.iter.next().expect("Expected non-exhausted") {
+                engine.add_graph_to_stream(&stream.stream_iri, &graph_str, ts);
+            }
+        }
+        ts += 1;
+    }
+
     let iter = CsvGraphIter::from_path("streams/AarhusTrafficData158505.stream", traffic_mapper("AarhusTrafficData158505")).unwrap();
     let iter2 = CsvGraphIter::from_path("streams/AarhusTrafficData182955.stream", traffic_mapper("AarhusTrafficData182955")).unwrap();
 
     // TODO bottleneck file reading, make sure to not measure this by accident
     for ((left_res, right_res), ts) in iter.take(50).zip(iter2.take(50)).zip(1usize..) {
         let left_graph = left_res.unwrap();
-        let right_graph = right_res.unwrap();
-        for triple in engine.parse_data(&left_graph) {
-            engine.custom_add(triple, ts);
-        }
-        for triple in engine.parse_data(&right_graph) {
-            engine.custom_add(triple, ts);
-        }
+        // let right_graph = right_res.unwrap();
+        // engine.add_graph_to_stream(":AarhusTrafficData158505", &left_graph, ts as Time);
+        // for triple in engine.parse_data(&left_graph) {
+            // engine.custom_add(triple, ts);
+        // }
+        // for triple in engine.parse_data(&right_graph) {
+        //     engine.custom_add(triple, ts);
+        // }
     }
 }

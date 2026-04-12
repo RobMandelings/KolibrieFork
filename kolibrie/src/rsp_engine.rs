@@ -528,18 +528,27 @@ where
     }
 
     /// Item arrives on specific stream. Matches on legacy window to decide which type of window to add the event to
-    pub fn custom_add_to_stream(&mut self, stream_iri: &str, event_item: I, ts: usize) {
+    pub fn custom_add_to_stream(&mut self, stream_iri: &str, event_item: I, ts: Time) {
         if self.legacy_window {
-            self.add_to_stream(stream_iri, event_item, ts);
+            self.add_to_stream(stream_iri, event_item, ts as usize);
         } else {
             self.custom_windows
                 .get_mut(stream_iri)
-                .unwrap()
-                .event_arrives_with_ts(event_item, ts as Time);
+                .expect(&format!("Could not find window for stream IRI: {stream_iri}"))
+                .event_arrives_with_ts(event_item, ts);
         }
     }
 
-
+    pub fn add_graph_to_stream(&mut self,
+                           stream_iri: &str,
+                           graph_str: &str,
+                           ts: Time,
+    )
+    {
+        for triple in self.parse_data(graph_str) {
+            self.custom_add_to_stream(stream_iri, triple, ts);
+        }
+    }
 
     /// Parses the data and returns a Vec of input elements (whatever you said would be the input)
     pub fn parse_data(&self, data: &str) -> Vec<I> {

@@ -1,5 +1,5 @@
 use csv::StringRecord;
-use crate::rsp_engine::csv_graph_iter2::escape_literal;
+use crate::rsp_engine::csv_graph_iter2::{escape_literal, RecordMapper};
 
 pub fn parking_mapper(record: &StringRecord) -> Result<String, csv::Error> {
     let vehiclecount = record.get(0).unwrap_or("").trim();
@@ -32,10 +32,10 @@ pub fn parking_mapper(record: &StringRecord) -> Result<String, csv::Error> {
 
 pub fn traffic_mapper(
     sensor_iri: &str,
-) -> impl Fn(&StringRecord) -> Result<String, csv::Error> + Send + Sync + 'static {
+) -> RecordMapper {
     let sensor_iri = sensor_iri.to_owned();
 
-    move |record: &StringRecord| {
+    let closure = move |record: &StringRecord| {
         let status            = record.get(0).unwrap_or("").trim();
         let avg_measured_time = record.get(1).unwrap_or("").trim();
         let avg_speed         = record.get(2).unwrap_or("").trim();
@@ -84,5 +84,7 @@ pub fn traffic_mapper(
         );
 
         Ok(graph)
-    }
+    };
+
+    Box::new(closure)
 }
