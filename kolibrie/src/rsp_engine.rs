@@ -99,89 +99,7 @@ pub struct WindowResult {
     pub timestamp: usize,
 }
 
-/// Creates a closure that receives the content of a window and processes the content through the pipeline
-/// After processing, the solutions are sent to the last stage of the pipeline: R2S
-fn create_window_content_processor<I, O>(
-    window_iri: String,
-    query: PhysicalOperator,
-    query_execution_mode: QueryExecutionMode,
-    r2r_store: Arc<Mutex<Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>>>,
-    has_joins: bool,
-    window_result_sender: Sender<WindowResult>,
-    r2s_consumer_func: Arc<dyn Fn(Vec<O>, usize) + Send + Sync>, // Consumes the solution mappings to put it onto the output stream
-) -> impl FnMut(ContentContainer<I>) + Send + 'static
-where
-    I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
-    O: Send + 'static,
-{
-    // You use these to decide which triples to evict from the store
-    // The R2R store maintains the current state of triples, so you need to know which ones to remove
-    let mut prev_window_triples: Vec<I> = Vec::new();
 
-    // The processor receives the window content from the sliding window
-    move |content: ContentContainer<I>| {
-        debug!(
-            "Processing window {} with query: {:?} using {:?} execution",
-            window_iri, query, query_execution_mode
-        );
-
-        // First step is to update the store to reflect the last correct changes
-        let ts = content.get_last_timestamp_changed();
-
-        // Store is a boxed trait object implementing R2R Operator (Box<dyn R2ROperator>)
-        let mut store = r2r_store.lock().unwrap();
-
-        // Evict triples from the previous firing of this window
-        for t in &prev_window_triples {
-            store.remove(t);
-        }
-        prev_window_triples.clear();
-
-        // Add current window triples and track them for next eviction
-        for t in content.into_iter() {
-            prev_window_triples.push(t.clone());
-            store.add(t);
-        }
-
-        // Run forward-chaining inference to materialise derived facts
-        store.materialize();
-
-        // Run the query on the R2R and get solution mappings
-        let results = store.execute_query(&query);
-        debug!("Got # results {} for window {}", results.len(), window_iri);
-
-        // Release lock early to reduce contention
-        drop(store);
-
-        if has_joins {
-            // Convert the Vec<Vec<(String, String)> to Vec<HashMap<String,String>> to put in WindowResult
-            let mut mapped_results: Vec<HashMap<String, String>> = Vec::new();
-            mapped_results.reserve(results.len());
-
-            for res in &results {
-                if let Some(bindings) =
-                    (res as &dyn std::any::Any).downcast_ref::<Vec<(String, String)>>()
-                {
-                    let map: HashMap<String, String> = bindings.iter().cloned().collect();
-                    mapped_results.push(map);
-                }
-            }
-
-            // The WindowResult accepts Vec<HashMap<String, String>>, not Vec<Vec<(String,String)>>
-            let window_res = WindowResult {
-                window_iri: window_iri.clone(),
-                results: mapped_results,
-                timestamp: ts,
-            };
-
-            if let Err(e) = window_result_sender.send(window_res) {
-                error!("Failed to send window result to buffer: {:?}", e);
-            }
-        } else {
-            r2s_consumer_func(results, ts);
-        }
-    }
-}
 
 /// This registers the processor of the window content so that the window knows how to send consumer.
 fn register_processor_for_window2<I, P>(
@@ -414,23 +332,6 @@ where
         engine
     }
 
-    fn create_legacy_windows(configs: &Vec<RSPWindow>) -> Vec<CSPARQLWindow<I>> {
-        let mut windows = Vec::new();
-        for window_config in configs {
-            let mut report = Report::new();
-            report.add(window_config.report_strategy.clone());
-            let window = CSPARQLWindow::new(
-                window_config.width,
-                window_config.slide,
-                report,
-                window_config.tick.clone(),
-                window_config.window_iri.clone(),
-            );
-            windows.push(window);
-        }
-        windows
-    }
-
     fn group_by_stream_iri(windows: &Vec<RSPWindow>) -> HashMap<String, Vec<&RSPWindow>> {
         let mut groups: HashMap<String, Vec<&RSPWindow>> = HashMap::new();
 
@@ -598,40 +499,6 @@ where
                 // optional: debug_assert! or panic if you expect it to always exist
                 // panic!("s2r_operator for stream {stream_iri} disappeared");
             }
-        }
-    }
-
-    /// Register windows using macros to eliminate code duplication
-    fn register_windows(&mut self, operation_mode: OperationMode) {
-        let has_joins = self.has_joins();
-
-        let consumer = match &self.r2s_consumer {
-            Consumer::Single(v) => {self.create_aggregate_consumer_from_single_consumer(v)},
-            Consumer::Aggregate(v) => { v.clone() }
-        };
-
-        for (window_idx, window) in self.windows.iter_mut().enumerate() {
-            let query = self.rsp_query_plan.window_plans[window_idx].clone();
-            let window_iri = self.window_configs[window_idx].window_iri.clone();
-
-            /// In my API this is called the consumer
-            let content_processor = create_window_content_processor(
-                window_iri.clone(),
-                query,
-                self.query_execution_mode,
-                self.r2r.clone(),
-                has_joins,
-                self.window_result_sender.clone(),
-                consumer.clone(),
-            );
-
-            // Window IRI is moved inside closure of thread, therefore you clone it
-            register_processor_for_window(
-                operation_mode,
-                window,
-                content_processor,
-                window_iri.clone(),
-            );
         }
     }
 

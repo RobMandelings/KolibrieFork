@@ -80,7 +80,6 @@ fn city_bench_q1_single_window() {
     SELECT ?obId1 ?v1
     FROM NAMED WINDOW :w1 ON :AarhusTrafficData158505 [RANGE 3 STEP 1]
     WHERE {
-      ?p1 a ct:CongestionLevel .
       WINDOW :w1 {
         ?obId1 ssn:observedProperty ?p1 ;
                sao:hasValue ?v1 ;
