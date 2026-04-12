@@ -1,0 +1,50 @@
+<http://traffic.example/observation/20746168> a <http://example.org/ontology/TrafficObservation> .
+<http://traffic.example/observation/20746168> <http://example.org/ontology/status> "OK" .
+<http://traffic.example/observation/20746168> <http://example.org/ontology/avgMeasuredTime> "141" .
+<http://traffic.example/observation/20746168> <http://example.org/ontology/avgSpeed> "52" .
+<http://traffic.example/observation/20746168> <http://example.org/ontology/extID> "616" .
+<http://traffic.example/observation/20746168> <http://example.org/ontology/medianMeasuredTime> "141" .
+<http://traffic.example/observation/20746168> <http://example.org/ontology/timestamp> "2014-08-01T07:50:00" .
+<http://traffic.example/observation/20746168> <http://example.org/ontology/vehicleCount> "1" .
+<http://traffic.example/observation/20746168> <http://example.org/ontology/reportID> "158505" .
+
+<http://traffic.example/observation/20746340> a <http://example.org/ontology/TrafficObservation> .
+<http://traffic.example/observation/20746340> <http://example.org/ontology/status> "OK" .
+<http://traffic.example/observation/20746340> <http://example.org/ontology/avgMeasuredTime> "141" .
+<http://traffic.example/observation/20746340> <http://example.org/ontology/avgSpeed> "52" .
+<http://traffic.example/observation/20746340> <http://example.org/ontology/extID> "616" .
+<http://traffic.example/observation/20746340> <http://example.org/ontology/medianMeasuredTime> "141" .
+<http://traffic.example/observation/20746340> <http://example.org/ontology/timestamp> "2014-08-01T07:55:00" .
+<http://traffic.example/observation/20746340> <http://example.org/ontology/vehicleCount> "0" .
+<http://traffic.example/observation/20746340> <http://example.org/ontology/reportID> "158505" .
+
+<http://traffic.example/observation/20746671> a <http://example.org/ontology/TrafficObservation> .
+<http://traffic.example/observation/20746671> <http://example.org/ontology/status> "OK" .
+<http://traffic.example/observation/20746671> <http://example.org/ontology/avgMeasuredTime> "119" .
+<http://traffic.example/observation/20746671> <http://example.org/ontology/avgSpeed> "62" .
+<http://traffic.example/observation/20746671> <http://example.org/ontology/extID> "616" .
+<http://traffic.example/observation/20746671> <http://example.org/ontology/medianMeasuredTime> "119" .
+<http://traffic.example/observation/20746671> <http://example.org/ontology/timestamp> "2014-08-01T08:00:00" .
+<http://traffic.example/observation/20746671> <http://example.org/ontology/vehicleCount> "1" .
+<http://traffic.example/observation/20746671> <http://example.org/ontology/reportID> "158505" .
+
+<http://traffic.example/observation/20747120> a <http://example.org/ontology/TrafficObservation> .
+<http://traffic.example/observation/20747120> <http://example.org/ontology/status> "OK" .
+<http://traffic.example/observation/20747120> <http://example.org/ontology/avgMeasuredTime> "119" .
+<http://traffic.example/observation/20747120> <http://example.org/ontology/avgSpeed> "62" .
+<http://traffic.example/observation/20747120> <http://example.org/ontology/extID> "616" .
+<http://traffic.example/observation/20747120> <http://example.org/ontology/medianMeasuredTime> "119" .
+<http://traffic.example/observation/20747120> <http://example.org/ontology/timestamp> "2014-08-01T08:05:00" .
+<http://traffic.example/observation/20747120> <http://example.org/ontology/vehicleCount> "1" .
+<http://traffic.example/observation/20747120> <http://example.org/ontology/reportID> "158505" .
+
+<http://traffic.example/observation/20747493> a <http://example.org/ontology/TrafficObservation> .
+<http://traffic.example/observation/20747493> <http://example.org/ontology/status> "OK" .
+<http://traffic.example/observation/20747493> <http://example.org/ontology/avgMeasuredTime> "119" .
+<http://traffic.example/observation/20747493> <http://example.org/ontology/avgSpeed> "62" .
+<http://traffic.example/observation/20747493> <http://example.org/ontology/extID> "616" .
+<http://traffic.example/observation/20747493> <http://example.org/ontology/medianMeasuredTime> "119" .
+<http://traffic.example/observation/20747493> <http://example.org/ontology/timestamp> "2014-08-01T08:10:00" .
+<http://traffic.example/observation/20747493> <http://example.org/ontology/vehicleCount> "1" .
+<http://traffic.example/observation/20747493> <http://example.org/ontology/reportID> "158505" .
+

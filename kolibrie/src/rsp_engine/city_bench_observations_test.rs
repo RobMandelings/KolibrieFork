@@ -3,10 +3,11 @@ use std::sync::{Arc, Mutex};
 use log::{debug, LevelFilter};
 use prototypes::ExpireStrategy;
 use shared::triple::Triple;
-use crate::csv_graph_iter::CsvGraphIter;
 use crate::rsp::builder::Consumer;
 use crate::rsp_engine::helpers::{create_aggregate_consumer, init_logger, SolMap};
 use crate::rsp_engine::{OperationMode, QueryExecutionMode, RSPBuilder, RSPEngine, SimpleR2R};
+use crate::rsp_engine::csv_graph_iter2::CsvGraphIter;
+use crate::rsp_engine::parking_mapper::parking_mapper;
 
 fn print_observations_consumer() -> Consumer<Vec<(String, String)>> {
     create_aggregate_consumer(
@@ -38,8 +39,6 @@ fn print_observations_consumer() -> Consumer<Vec<(String, String)>> {
 
 #[test]
 fn rsp_ql_city_bench() {
-
-    // init_logger(LevelFilter::Info);
     let agg_consumer = print_observations_consumer();
     let r2r = Box::new(SimpleR2R::with_execution_mode(QueryExecutionMode::Volcano));
 
@@ -62,8 +61,8 @@ fn rsp_ql_city_bench() {
     let path = env::current_dir().expect("Expected path");
     println!("cwd: {}", path.display());
 
-    let iter = CsvGraphIter::from_path("streams/AarhusParkingData.stream").unwrap();
-    CsvGraphIter::export_n3("streams/AarhusParkingData.stream", "output_file.n3", 5).expect("TODO: panic message");
+    let iter = CsvGraphIter::from_path("streams/AarhusParkingData.stream", parking_mapper).unwrap();
+    CsvGraphIter::export_n3("streams/AarhusParkingData.stream", "output_file.n3", 5, parking_mapper).expect("TODO: panic message");
 
     // TODO bottleneck file reading, make sure to not measure this by accident
     let mut i = 1;

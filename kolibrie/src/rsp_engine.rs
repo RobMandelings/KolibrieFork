@@ -9,6 +9,9 @@
 mod content_processor;
 pub mod helpers;
 mod city_bench_observations_test;
+mod city_bench_q1;
+mod csv_graph_iter2;
+mod parking_mapper;
 
 use crate::rsp::r2r::R2ROperator;
 use crate::rsp::r2s::Relation2StreamOperator;
