@@ -166,7 +166,7 @@ where
             let window_iri = self.window_configs[window_idx].window_iri.clone();
 
             /// In my API this is called the consumer
-            let content_processor = legacy_engine::create_window_content_processor(
+            let content_processor = create_window_content_processor(
                 window_iri.clone(),
                 query,
                 self.query_execution_mode,
