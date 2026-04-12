@@ -1,0 +1,23 @@
+PREFIX ses: <http://www.insight-centre.org/dataset/SampleEventService#>
+    PREFIX ssn: <http://purl.oclc.org/NET/ssnx/ssn#>
+    PREFIX sao: <http://purl.oclc.org/NET/sao/>
+    PREFIX ct:  <http://www.insight-centre.org/citytraffic#>
+    REGISTER RSTREAM <http://out/stream> AS
+    SELECT ?obId1 ?obId2 ?v1 ?v2
+    FROM NAMED WINDOW :w1 ON :AarhusTrafficData182955 [RANGE PT3S STEP PT1S]
+    FROM NAMED WINDOW :w2 ON :AarhusTrafficData158505 [RANGE PT3S STEP PT1S]
+    WHERE {
+      ?p1 a ct:CongestionLevel .
+      ?p2 a ct:CongestionLevel .
+      WINDOW :w1 {
+        ?obId1 ssn:observedProperty ?p1 ;
+               sao:hasValue ?v1 ;
+               ssn:observedBy AarhusTrafficData182955 .
+      }
+
+      WINDOW :w2 {
+        ?obId2 ssn:observedProperty ?p2 ;
+               sao:hasValue ?v2 ;
+               ssn:observedBy AarhusTrafficData158505 .
+      }
+}

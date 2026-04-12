@@ -30,40 +30,59 @@ pub fn parking_mapper(record: &StringRecord) -> Result<String, csv::Error> {
     Ok(graph)
 }
 
-pub fn traffic_mapper(record: &StringRecord) -> Result<String, csv::Error> {
-    let status             = record.get(0).unwrap_or("").trim();
-    let avg_measured_time  = record.get(1).unwrap_or("").trim();
-    let avg_speed          = record.get(2).unwrap_or("").trim();
-    let ext_id             = record.get(3).unwrap_or("").trim();
-    let median_meas_time   = record.get(4).unwrap_or("").trim();
-    let timestamp          = record.get(5).unwrap_or("").trim();
-    let vehicle_count      = record.get(6).unwrap_or("").trim();
-    let id                 = record.get(7).unwrap_or("").trim();
-    let report_id          = record.get(8).unwrap_or("").trim();
+pub fn traffic_mapper(
+    sensor_iri: &str,
+) -> impl Fn(&StringRecord) -> Result<String, csv::Error> + Send + Sync + 'static {
+    let sensor_iri = sensor_iri.to_owned();
 
-    let subject = format!("<http://traffic.example/observation/{}>", id);
-    let graph = format!(
-        concat!(
-        "{s} a <http://example.org/ontology/TrafficObservation> .\n",
-        "{s} <http://example.org/ontology/status> \"{status}\" .\n",
-        "{s} <http://example.org/ontology/avgMeasuredTime> \"{avg_measured_time}\" .\n",
-        "{s} <http://example.org/ontology/avgSpeed> \"{avg_speed}\" .\n",
-        "{s} <http://example.org/ontology/extID> \"{ext_id}\" .\n",
-        "{s} <http://example.org/ontology/medianMeasuredTime> \"{median_meas_time}\" .\n",
-        "{s} <http://example.org/ontology/timestamp> \"{timestamp}\" .\n",
-        "{s} <http://example.org/ontology/vehicleCount> \"{vehicle_count}\" .\n",
-        "{s} <http://example.org/ontology/reportID> \"{report_id}\" ."
-        ),
-        s                 = subject,
-        status            = escape_literal(status),
-        avg_measured_time = escape_literal(avg_measured_time),
-        avg_speed         = escape_literal(avg_speed),
-        ext_id            = escape_literal(ext_id),
-        median_meas_time  = escape_literal(median_meas_time),
-        timestamp         = escape_literal(timestamp),
-        vehicle_count     = escape_literal(vehicle_count),
-        report_id         = escape_literal(report_id),
-    );
+    move |record: &StringRecord| {
+        let status            = record.get(0).unwrap_or("").trim();
+        let avg_measured_time = record.get(1).unwrap_or("").trim();
+        let avg_speed         = record.get(2).unwrap_or("").trim();
+        let ext_id            = record.get(3).unwrap_or("").trim();
+        let median_meas_time  = record.get(4).unwrap_or("").trim();
+        let timestamp         = record.get(5).unwrap_or("").trim();
+        let vehicle_count     = record.get(6).unwrap_or("").trim();
+        let id                = record.get(7).unwrap_or("").trim();
+        let report_id         = record.get(8).unwrap_or("").trim();
 
-    Ok(graph)
+        let ob_iri = format!(
+            "<http://www.insight-centre.org/dataset/SampleEventService#obs-{id}>",
+            id = escape_literal(id),
+        );
+
+        // Constant property IRI used in your query as ?p1 / ?p2
+        let congestion_property =
+            "<http://www.insight-centre.org/citytraffic#congestionLevel>".to_string();
+
+        let graph = format!(
+            concat!(
+            "{s} a <http://purl.oclc.org/NET/ssnx/ssn#Observation> .\n",
+            "{s} <http://purl.oclc.org/NET/ssnx/ssn#observedBy> <{sensor}> .\n",
+            "{s} <http://purl.oclc.org/NET/ssnx/ssn#observedProperty> {prop} .\n",
+            "{s} <http://purl.oclc.org/NET/sao/hasValue> \"{vehicle_count}\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n",
+            "{prop} a <http://www.insight-centre.org/citytraffic#CongestionLevel> .\n",
+            "{s} <http://www.insight-centre.org/citytraffic#status> \"{status}\" .\n",
+            "{s} <http://www.insight-centre.org/citytraffic#avgMeasuredTime> \"{avg_measured_time}\" .\n",
+            "{s} <http://www.insight-centre.org/citytraffic#avgSpeed> \"{avg_speed}\" .\n",
+            "{s} <http://www.insight-centre.org/citytraffic#extID> \"{ext_id}\" .\n",
+            "{s} <http://www.insight-centre.org/citytraffic#medianMeasuredTime> \"{median_meas_time}\" .\n",
+            "{s} <http://www.insight-centre.org/citytraffic#timestamp> \"{timestamp}\" .\n",
+            "{s} <http://www.insight-centre.org/citytraffic#reportID> \"{report_id}\" ."
+            ),
+            s = ob_iri,
+            sensor = sensor_iri,
+            prop = congestion_property,
+            vehicle_count = escape_literal(vehicle_count),
+            status = escape_literal(status),
+            avg_measured_time = escape_literal(avg_measured_time),
+            avg_speed = escape_literal(avg_speed),
+            ext_id = escape_literal(ext_id),
+            median_meas_time = escape_literal(median_meas_time),
+            timestamp = escape_literal(timestamp),
+            report_id = escape_literal(report_id),
+        );
+
+        Ok(graph)
+    }
 }
