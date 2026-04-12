@@ -22,6 +22,7 @@ use shared::terms::Term;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
+use log::debug;
 use prototypes::WindowSnapshotStrategy;
 use crate::rsp::builder::Consumer::Aggregate;
 
@@ -228,7 +229,7 @@ where
             .map(|block| {
                 // Convert window block patterns to query plan
                 for (j, (s, p, o)) in block.patterns.iter().enumerate() {
-                    println!(" Registering     {}: {} {} {}", j + 1, s, p, o);
+                    debug!(" Registering     {}: {} {} {}", j + 1, s, p, o);
                 }
                 let op = build_logical_plan(
                     Vec::new(),
@@ -239,7 +240,7 @@ where
                     &[],
                     None,
                 );
-                println!("\tResults in {:?}", op);
+                debug!("\tResults in {:?}", op);
                 op
             })
             .unwrap_or_else(|| spo_query);

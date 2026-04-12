@@ -1,18 +1,21 @@
 use std::collections::HashMap;
-use std::sync::Arc;
-use log::LevelFilter;
+use std::sync::{Arc, Once};
+use env_logger::Builder;
+use log::{debug, LevelFilter};
 use crate::rsp::builder::{AggregateConsumer, Consumer};
 use crate::rsp::builder::Consumer::Aggregate;
 
-pub fn init_logger(level_filter: LevelFilter) {
-    use env_logger::Builder;
-    use log::LevelFilter;
+static INIT: Once = Once::new();
 
-    let mut builder = Builder::from_default_env();
-    builder
-        .is_test(true)
-        .filter_level(level_filter) // or Info/Warn/Error
-        .init();
+pub fn init_logger(level_filter: log::LevelFilter) {
+    println!("Initialising logger!");
+    INIT.call_once(|| {
+        Builder::new()
+            .is_test(true)
+            .filter_level(level_filter)
+            .init();
+    });
+    debug!("What the hell?");
 }
 
 /// Solution mapping: hashmap from key to value (= bindings)

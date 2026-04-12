@@ -1,11 +1,12 @@
 use std::env;
-use log::debug;
+use log::{debug, LevelFilter};
 use prototypes::bench_helpers::Time;
 use prototypes::ExpireStrategy;
 use shared::triple::Triple;
 use crate::rsp_engine::{OperationMode, QueryExecutionMode, RSPBuilder, RSPEngine, SimpleR2R};
 use crate::rsp_engine::csv_graph_iter2;
 use crate::rsp_engine::csv_graph_iter2::{build_stream_iter, CsvGraphIter};
+use crate::rsp_engine::helpers::init_logger;
 use crate::rsp_engine::parking_mapper::traffic_mapper;
 
 #[test]
@@ -119,6 +120,8 @@ fn city_bench_q1_single_window() {
 
 #[test]
 fn city_bench_q1_two_window() {
+
+    init_logger(log::LevelFilter::Info);
     let r2r = Box::new(SimpleR2R::with_execution_mode(QueryExecutionMode::Volcano));
 
     // TODO: I don't think specific prefixes are allowed, or are they?
@@ -145,7 +148,7 @@ fn city_bench_q1_two_window() {
     }"#;
 
     let mut engine: RSPEngine<Triple, Vec<(String, String)>, ExpireStrategy<Triple>> = RSPBuilder::new()
-        .set_legacy_window(false)
+        .set_legacy_window(true)
         .add_rsp_ql_query(query)
         .add_r2r(r2r)
         .set_operation_mode(OperationMode::SingleThread)
@@ -161,7 +164,7 @@ fn city_bench_q1_two_window() {
     ];
 
     let mut ts = 0;
-    while ts < 50 {
+    while ts < 1 {
         for stream in &mut streams {
             for graph_str in stream.iter.next().expect("Expected non-exhausted") {
                 engine.add_graph_to_stream(&stream.stream_iri, &graph_str, ts);

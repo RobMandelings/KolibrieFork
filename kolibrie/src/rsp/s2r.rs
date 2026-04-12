@@ -8,8 +8,8 @@
  * you can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#[cfg(not(test))]
-use log::{debug, warn}; // Use log crate when building application
+
+use log::{debug, warn};
 use std::collections::hash_set::{IntoIter, Iter};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
@@ -19,8 +19,6 @@ use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::{f64, mem};
-#[cfg(test)]
-use std::{println as warn, println as debug};
 use prototypes::prototype::event::Time;
 use prototypes::prototype::slide_strategy::ItemsReport;
 
