@@ -389,6 +389,7 @@ where
         ops
     }
 
+    /// Whether results from windows should be combined or not (combining the solution mappings)
     fn has_joins(&self) -> bool {
         let has_joins = self.windows.len() > 1 || self.rsp_query_plan.static_data_plan.is_some();
         has_joins
@@ -411,6 +412,7 @@ where
         let mut prev_window_triples: Vec<I> = Vec::new();
 
         // The processor receives the window content from the sliding window
+        let has_joins = self.has_joins();
         move |report: S::ReportType<'_>| {
             process_window_report(
                 report,
@@ -421,6 +423,7 @@ where
                 &mut prev_window_triples,
                 &window_result_sender,
                 &r2s_consumer_func,
+                has_joins
             );
         }
     }
@@ -429,7 +432,7 @@ where
     // This function is called to actually output the emitted results back into the
     // Consumer function that was provided as parameter to the RSPEngine
     /// A single consumer was provided but the window always reports aggregates (all window content at once)
-    fn create_aggregate_consumer_from_single_consumer(
+    fn wrap_single_consumer_in_aggregate_consumer(
         &self,
         consumer: &SingleConsumer<O>,
     ) -> AggregateConsumer<O> {
@@ -470,10 +473,12 @@ where
                     .expect("Mapping should exist");
 
                 let consumer = match &self.r2s_consumer {
-                    Consumer::Single(v) => self.create_aggregate_consumer_from_single_consumer(v),
+                    Consumer::Single(v) => self.wrap_single_consumer_in_aggregate_consumer(v),
                     Consumer::Aggregate(v) => { v.clone() },
                 };
 
+                // Generalise to aggregate consumer because that is what the window reports
+                // (Aggregates are passed as arguments always)
                 let content_processor = Box::new(self.create_iter_expire_window_processor(
                     window_iri.clone(),
                     self.rsp_query_plan.window_plans[idx].clone(),
@@ -527,10 +532,41 @@ where
         }
     }
 
+    /// Add data to appropriate window based on stream IRI
+    pub fn legacy_add_to_stream(&mut self, stream_iri: &str, event_item: I, ts: usize) {
+
+        let input_norm = Self::normalize_stream_iri(stream_iri);
+
+        // Find windows that match this stream IRI and add the event to these windows
+        for (window_idx, window_config) in self.window_configs.iter().enumerate() {
+            // Variable stream (e.g. `?s`) matches any stream.
+            if window_config.stream_iri.starts_with('?') {
+                if let Some(window) = self.windows.get_mut(window_idx) {
+                    window.add_to_window(event_item.clone(), ts);
+                }
+                continue;
+            }
+
+            let cfg_norm = Self::normalize_stream_iri(&window_config.stream_iri);
+            if cfg_norm == input_norm {
+                if let Some(window) = self.windows.get_mut(window_idx) {
+                    window.add_to_window(event_item.clone(), ts);
+                }
+            }
+        }
+    }
+
+
     /// Item arrives on specific stream. Matches on legacy window to decide which type of window to add the event to
     pub fn custom_add_to_stream(&mut self, stream_iri: &str, event_item: I, ts: Time) {
+        if matches!(self.operation_mode, OperationMode::SingleThread)
+            && self.has_joins()
+        {
+            self.process_single_thread_window_results();
+        }
+
         if self.legacy_window {
-            self.add_to_stream(stream_iri, event_item, ts as usize);
+            self.legacy_add_to_stream(stream_iri, event_item, ts as usize);
         } else {
             self.custom_windows
                 .get_mut(stream_iri)

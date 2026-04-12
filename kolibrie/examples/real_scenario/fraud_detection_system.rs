@@ -754,7 +754,7 @@ fn run_simulation(
                 cp   = tx.card_present,
             );
             for triple in engine.parse_data(&triples_ttl) {
-                engine.add_to_stream("transactionStream", triple, (time_step * 60) as usize);
+                engine.legacy_add_to_stream("transactionStream", triple, (time_step * 60) as usize);
             }
 
             step_txs.push((tx, is_injected_fraud, tx_uri, acct_uri));

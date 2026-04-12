@@ -446,7 +446,7 @@ fn rsp_push(body: &str, sessions: &Sessions) -> String {
     );
 
     for triple in triples {
-        session.engine.add_to_stream(&req.stream, triple, req.timestamp);
+        session.engine.legacy_add_to_stream(&req.stream, triple, req.timestamp);
     }
 
     // Flush any pending channel results (multi-window / static-data join case).
@@ -815,7 +815,7 @@ fn execute_rsp_query(body: &str) -> String {
             event.timestamp
         );
         for triple in triples {
-            engine.add_to_stream(&event.stream, triple, event.timestamp);
+            engine.legacy_add_to_stream(&event.stream, triple, event.timestamp);
         }
     }
 

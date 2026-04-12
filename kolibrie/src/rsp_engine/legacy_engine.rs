@@ -106,35 +106,6 @@ where
     S: WindowSnapshotStrategy<I>,
 {
 
-    /// Add data to appropriate window based on stream IRI
-    pub fn add_to_stream(&mut self, stream_iri: &str, event_item: I, ts: usize) {
-        if matches!(self.operation_mode, OperationMode::SingleThread)
-            && (self.windows.len() > 1 || self.rsp_query_plan.static_data_plan.is_some())
-        {
-            self.process_single_thread_window_results();
-        }
-
-        let input_norm = Self::normalize_stream_iri(stream_iri);
-
-        // Find windows that match this stream IRI and add the event to these windows
-        for (window_idx, window_config) in self.window_configs.iter().enumerate() {
-            // Variable stream (e.g. `?s`) matches any stream.
-            if window_config.stream_iri.starts_with('?') {
-                if let Some(window) = self.windows.get_mut(window_idx) {
-                    window.add_to_window(event_item.clone(), ts);
-                }
-                continue;
-            }
-
-            let cfg_norm = Self::normalize_stream_iri(&window_config.stream_iri);
-            if cfg_norm == input_norm {
-                if let Some(window) = self.windows.get_mut(window_idx) {
-                    window.add_to_window(event_item.clone(), ts);
-                }
-            }
-        }
-    }
-
     pub fn create_legacy_windows(configs: &Vec<RSPWindow>) -> Vec<CSPARQLWindow<I>> {
         let mut windows = Vec::new();
         for window_config in configs {
@@ -157,7 +128,7 @@ where
         let has_joins = self.has_joins();
 
         let consumer = match &self.r2s_consumer {
-            Consumer::Single(v) => {self.create_aggregate_consumer_from_single_consumer(v)},
+            Consumer::Single(v) => {self.wrap_single_consumer_in_aggregate_consumer(v)},
             Consumer::Aggregate(v) => { v.clone() }
         };
 

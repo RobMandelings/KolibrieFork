@@ -382,7 +382,7 @@ fn rsp_ql_multi_window_integration() {
         );
         let triples = engine.parse_data(&data);
         for triple in triples {
-            engine.add_to_stream("stream1", triple, i);
+            engine.legacy_add_to_stream("stream1", triple, i);
         }
     }
 
@@ -391,7 +391,7 @@ fn rsp_ql_multi_window_integration() {
         let data = format!("<http://test.be/co2{}> a <http://www.w3.org/test/CO2> .", i);
         let triples = engine.parse_data(&data);
         for triple in triples {
-            engine.add_to_stream("stream2", triple, i + 10);
+            engine.legacy_add_to_stream("stream2", triple, i + 10);
         }
     }
 
@@ -446,7 +446,7 @@ fn rsp_ql_joining_multi_window_integration() {
         );
         let triples = engine.parse_data(&data);
         for triple in triples {
-            engine.add_to_stream("stream1", triple, i);
+            engine.legacy_add_to_stream("stream1", triple, i);
         }
     }
 
@@ -455,7 +455,7 @@ fn rsp_ql_joining_multi_window_integration() {
         let data = format!("<http://test.be/co2{}> a <http://www.w3.org/test/CO2> .", i);
         let triples = engine.parse_data(&data);
         for triple in triples {
-            engine.add_to_stream("stream2", triple, i + 10);
+            engine.legacy_add_to_stream("stream2", triple, i + 10);
         }
     }
 
@@ -515,7 +515,7 @@ fn rsp_ql_single_thread_multi_window_integration() {
         );
         let triples1 = engine.parse_data(&data1);
         for triple in triples1 {
-            engine.add_to_stream("stream1", triple, i);
+            engine.legacy_add_to_stream("stream1", triple, i);
         }
 
         // Add to stream2
@@ -525,7 +525,7 @@ fn rsp_ql_single_thread_multi_window_integration() {
         );
         let triples2 = engine.parse_data(&data2);
         for triple in triples2 {
-            engine.add_to_stream("stream2", triple, i + 10);
+            engine.legacy_add_to_stream("stream2", triple, i + 10);
         }
     }
 
@@ -617,7 +617,7 @@ fn rsp_ql_single_window_static_join() {
         );
         let triples = engine.parse_data(&data);
         for triple in triples {
-            engine.add_to_stream("stream1", triple, i);
+            engine.legacy_add_to_stream("stream1", triple, i);
         }
     }
 
@@ -653,7 +653,7 @@ fn test_steal_policy_emits_after_first_window() {
         let data = format!("<http://test/a{}> a <http://test/TypeA> .", i);
         let triples = engine.parse_data(&data);
         for t in triples {
-            engine.add_to_stream("streamA", t, i);
+            engine.legacy_add_to_stream("streamA", t, i);
         }
     }
     engine.stop();
@@ -673,7 +673,7 @@ fn test_steal_policy_emits_with_stale() {
         let data = format!("<http://test/b{}> a <http://test/TypeB> .", i);
         let triples = engine.parse_data(&data);
         for t in triples {
-            engine.add_to_stream("streamB", t, i);
+            engine.legacy_add_to_stream("streamB", t, i);
         }
     }
     // Fire A repeatedly at much later timestamps so B's windows have already closed
@@ -681,7 +681,7 @@ fn test_steal_policy_emits_with_stale() {
         let data = format!("<http://test/a{}> a <http://test/TypeA> .", i);
         let triples = engine.parse_data(&data);
         for t in triples {
-            engine.add_to_stream("streamA", t, i + 20);
+            engine.legacy_add_to_stream("streamA", t, i + 20);
         }
     }
     engine.stop();
@@ -699,7 +699,7 @@ fn test_wait_policy_waits_for_both() {
         let data = format!("<http://test/a{}> a <http://test/TypeA> .", i);
         let triples = engine.parse_data(&data);
         for t in triples {
-            engine.add_to_stream("streamA", t, i);
+            engine.legacy_add_to_stream("streamA", t, i);
         }
     }
     engine.stop();
@@ -722,7 +722,7 @@ fn test_timeout_steal_policy() {
         let data = format!("<http://test/a{}> a <http://test/TypeA> .", i);
         let triples = engine.parse_data(&data);
         for t in triples {
-            engine.add_to_stream("streamA", t, i);
+            engine.legacy_add_to_stream("streamA", t, i);
         }
     }
     engine.stop();
@@ -746,7 +746,7 @@ fn test_timeout_drop_policy() {
         let data = format!("<http://test/a{}> a <http://test/TypeA> .", i);
         let triples = engine.parse_data(&data);
         for t in triples {
-            engine.add_to_stream("streamA", t, i);
+            engine.legacy_add_to_stream("streamA", t, i);
         }
     }
     engine.stop();
@@ -812,7 +812,7 @@ fn rsp_ql_multi_window_static_join() {
         );
         let triples = engine.parse_data(&data);
         for triple in triples {
-            engine.add_to_stream("stream1", triple, i);
+            engine.legacy_add_to_stream("stream1", triple, i);
         }
     }
 
@@ -824,7 +824,7 @@ fn rsp_ql_multi_window_static_join() {
         );
         let triples = engine.parse_data(&data);
         for triple in triples {
-            engine.add_to_stream("stream2", triple, i + 10);
+            engine.legacy_add_to_stream("stream2", triple, i + 10);
         }
     }
 

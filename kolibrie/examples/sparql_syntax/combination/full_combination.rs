@@ -187,7 +187,7 @@ fn run_combined_workflow(
             
             let triples = engine.parse_data(&triples_data);
             for triple in triples {
-                engine.add_to_stream("sensorStream", triple.clone(), time);
+                engine.legacy_add_to_stream("sensorStream", triple.clone(), time);
             }
             
             // Create a NEW reasoner with its own dictionary
