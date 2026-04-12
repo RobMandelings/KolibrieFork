@@ -133,7 +133,7 @@ impl R2ROperator<Triple, Vec<PhysicalOperator>, Vec<(String, String)>> for Simpl
 
     /// Returns a Vec of solution mappings
     fn execute_query(&mut self, op: &PhysicalOperator) -> Vec<Vec<(String, String)>> {
-        debug!("SimpleR2R executing query with PhysicalOperator");
+        // debug!("SimpleR2R executing query with PhysicalOperator");
 
         // Execute the physical operator using the Volcano execution engine.
         // The engine returns Vec<HashMap<String,String>> (bindings per row).

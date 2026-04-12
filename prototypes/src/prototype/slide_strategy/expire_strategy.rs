@@ -32,6 +32,10 @@ impl<I> Clone for SliceContainer<'_, I> {
 }
 
 impl<I: 'static> ItemsReport<I> for SliceContainer<'_, I> {
+    fn get_last_timestamp_changed(&self) -> Time {
+        self.0.last().unwrap().ts
+    }
+
     fn iter_items(&self) -> impl Iterator<Item=&I> {
         self.0
             .iter()

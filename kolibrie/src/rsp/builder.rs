@@ -334,11 +334,7 @@ where
         let syntax = self.syntax.clone();
         let rules = self.rules.take().unwrap_or("");
 
-        // let result_consumer = self.result_consumer.take().unwrap_or(ResultConsumer {
-        //     function: Arc::new(Box::new(|r| println!("Bindings: {:?}", r))),
-        // });
-
-        let consumer = self.consumer.take().unwrap_or(Aggregate(Arc::new(Box::new(|r, ts| println!("Bindings: {:?}", r)))));
+        let consumer = self.consumer.take().unwrap_or(Aggregate(Arc::new(Box::new(|r, ts| println!("Bindings at ts {ts}: {:?}", r)))));
         let operation_mode = self.operation_mode;
 
         // Parse RSP-QL query and return RSPQueryConfig object instead

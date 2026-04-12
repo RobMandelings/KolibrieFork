@@ -1,5 +1,6 @@
 use std::env;
 use log::debug;
+use prototypes::bench_helpers::Time;
 use prototypes::ExpireStrategy;
 use shared::triple::Triple;
 use crate::rsp_engine::{OperationMode, QueryExecutionMode, RSPBuilder, RSPEngine, SimpleR2R};
@@ -112,5 +113,59 @@ fn city_bench_q1_single_window() {
             engine.custom_add(triple, i);
         }
         i += 1;
+    }
+}
+
+#[test]
+fn city_bench_q1_two_window() {
+    let r2r = Box::new(SimpleR2R::with_execution_mode(QueryExecutionMode::Volcano));
+
+    // TODO: I don't think specific prefixes are allowed, or are they?
+    let query = r#"
+    PREFIX ses: <http://www.insight-centre.org/dataset/SampleEventService#>
+    PREFIX ssn: <http://purl.oclc.org/NET/ssnx/ssn#>
+    PREFIX sao: <http://purl.oclc.org/NET/sao/>
+    PREFIX ct:  <http://www.insight-centre.org/citytraffic#>
+    REGISTER RSTREAM <http://out/stream> AS
+    SELECT ?obId1 ?v1
+    FROM NAMED WINDOW :w1 ON :AarhusTrafficData158505 [RANGE 3 STEP 1]
+    FROM NAMED WINDOW :w2 ON :AarhusTrafficData182955 [RANGE 3 STEP 1]
+    WHERE {
+      WINDOW :w1 {
+        ?obId1 ssn:observedProperty ?p1 ;
+               sao:hasValue ?v1 ;
+               ssn:observedBy <AarhusTrafficData158505> .
+      }
+      WINDOW :w2 {
+        ?obId2 ssn:observedProperty ?p2 ;
+               sao:hasValue ?v2 ;
+               ssn:observedBy <AarhusTrafficData182955> .
+      }
+    }"#;
+
+    let mut engine: RSPEngine<Triple, Vec<(String, String)>, ExpireStrategy<Triple>> = RSPBuilder::new()
+        .set_legacy_window(false)
+        .add_rsp_ql_query(query)
+        .add_r2r(r2r)
+        .set_operation_mode(OperationMode::SingleThread)
+        .build()
+        .expect("Failed to build RSTREAM engine");
+
+    let path = env::current_dir().expect("Expected path");
+    println!("cwd: {}", path.display());
+
+    let iter = CsvGraphIter::from_path("streams/AarhusTrafficData158505.stream", traffic_mapper("AarhusTrafficData158505")).unwrap();
+    let iter2 = CsvGraphIter::from_path("streams/AarhusTrafficData182955.stream", traffic_mapper("AarhusTrafficData182955")).unwrap();
+
+    // TODO bottleneck file reading, make sure to not measure this by accident
+    for ((left_res, right_res), ts) in iter.take(50).zip(iter2.take(50)).zip(1usize..) {
+        let left_graph = left_res.unwrap();
+        let right_graph = right_res.unwrap();
+        for triple in engine.parse_data(&left_graph) {
+            engine.custom_add(triple, ts);
+        }
+        for triple in engine.parse_data(&right_graph) {
+            engine.custom_add(triple, ts);
+        }
     }
 }
