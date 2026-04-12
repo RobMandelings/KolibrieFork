@@ -125,10 +125,6 @@ where
 
     /// Register windows using macros to eliminate code duplication
     pub fn register_legacy_windows(&mut self, operation_mode: OperationMode) {
-        let consumer = match &self.r2s_consumer {
-            Consumer::Single(v) => {self.wrap_single_consumer_in_aggregate_consumer(v)},
-            Consumer::Aggregate(v) => { v.clone() }
-        };
 
         // First: collect all processors per window_idx
         let mut to_register = Vec::new();
@@ -144,7 +140,7 @@ where
                 self.query_execution_mode,
                 self.r2r.clone(),
                 self.window_result_sender.clone(),
-                consumer.clone(),
+                self.r2s_consumer.clone(),
             );
 
             to_register.push((window_idx, window_iri, content_processor));

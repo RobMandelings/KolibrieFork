@@ -50,6 +50,7 @@ use std::{println as debug, println as error};
 // Re-exports to preserve the public API used by kolibrie-http-server and examples.
 use crate::rsp::builder::{AggregateConsumer, Consumer, SingleConsumer};
 pub use crate::rsp::builder::{RSPBuilder, RSPQueryConfig};
+use crate::rsp::builder::Consumer::Aggregate;
 pub use crate::rsp::simple_r2r::SimpleR2R;
 use crate::rsp_engine::content_processor::{process_window_report};
 use crate::sliding_window::SlidingWindow;
@@ -97,6 +98,11 @@ pub struct WindowResult {
     pub timestamp: usize,
 }
 
+/// Whether results from windows should be combined or not (combining the solution mappings)
+fn has_joins(windows: &Vec<RSPWindow>, rsp_query_plan: &RSPQueryPlan) -> bool {
+    let has_joins = windows.len() > 1 || rsp_query_plan.static_data_plan.is_some();
+    has_joins
+}
 
 
 /// This registers the processor of the window content so that the window knows how to send consumer.
@@ -166,7 +172,7 @@ where
     custom_windows: HashMap<IRI, SlidingWindowOperator<I, S>>,
     windows: Vec<CSPARQLWindow<I>>,
     r2r: Arc<Mutex<Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>>>,
-    r2s_consumer: Consumer<O>,
+    r2s_consumer: AggregateConsumer<O>,
     window_configs: Vec<RSPWindow>,
     query_execution_mode: QueryExecutionMode,
     operation_mode: OperationMode,
@@ -197,7 +203,7 @@ where
         triples: &str,
         syntax: String,
         rules: &str,
-        r2s_consumer: Consumer<O>,
+        r2s_consumer_undecorated: Consumer<O>,
         r2r: Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>,
         operation_mode: OperationMode,
         query_execution_mode: QueryExecutionMode,
@@ -291,6 +297,9 @@ where
 
         let stream_type = query_config.stream_type.clone();
         let r2s_operator = Arc::new(Mutex::new(Relation2StreamOperator::new(stream_type, 0)));
+
+        let has_joins = has_joins(&query_config.windows, &rsp_query_plan);
+        let r2s_consumer = Self::decorate_consumer_with_r2s_operator(&r2s_consumer_undecorated, has_joins, &r2s_operator);
 
         let mut engine = RSPEngine {
             legacy_window,
@@ -459,27 +468,47 @@ where
     // This function is called to actually output the emitted results back into the
     // Consumer function that was provided as parameter to the RSPEngine
     /// A single consumer was provided but the window always reports aggregates (all window content at once)
-    fn wrap_single_consumer_in_aggregate_consumer(
-        &self,
-        consumer: &SingleConsumer<O>,
+    fn decorate_consumer_with_r2s_operator(
+        consumer: &Consumer<O>,
+        has_joins: bool,
+        r2s_operator: &Arc<Mutex<Relation2StreamOperator<O>>>
     ) -> AggregateConsumer<O> {
-        let r2s_aggregate_consumer: Arc<dyn Fn(Vec<O>, usize) + Send + Sync> = if self.has_joins() {
-            // Arc::new(|_, _| {})
-            panic!("Don't know what to do here! Not implemented yet!");
-        } else {
-            let r2s_op = Arc::clone(&self.r2s_operator);
-            let consumer_fn = consumer.clone();
 
-            // Takes ALL solution mappings along with their timestamp
-            // Then runs consumer_fn for each of the solution mappings
+        let consumer_fn = consumer.clone();
+
+        // Takes ALL solution mappings along with their timestamp
+        // Then runs consumer_fn for each of the solution mappings
+        let r2s_aggregate_consumer: Arc<dyn Fn(Vec<O>, usize) + Send + Sync> = if has_joins {
+            // emit_results is responsible for checking this at the moment. So you can simply bypass now.
+            // TODO do the check HERE! Makes much more sense.
+            Arc::new(move |results: Vec<O>, ts: usize| {
+                match &consumer_fn {
+                    Consumer::Single(f) => {
+                        for r in results {
+                            f(r)
+                        }
+                    } Aggregate(f) => {
+                        f(results, ts);
+                    }
+                }
+            })
+        } else {
+            let r2s_op = Arc::clone(&r2s_operator);
             Arc::new(move |results: Vec<O>, ts: usize| {
                 let filtered = r2s_op.lock().unwrap().eval(results, ts);
-                for r in filtered {
-                    // For each solution mapping in the set of solution mappings, call the consumer function
-                    consumer_fn(r);
+                match &consumer_fn {
+                    Consumer::Single(f) => {
+                        for r in filtered {
+                            // For each solution mapping in the set of solution mappings, call the consumer function
+                            f(r)
+                        }
+                    } Aggregate(f) => {
+                        f(filtered, ts)
+                    }
                 }
             })
         };
+
         r2s_aggregate_consumer
     }
 
@@ -499,11 +528,6 @@ where
                     .get(&(stream_iri.clone(), window_iri.clone()))
                     .expect("Mapping should exist");
 
-                let consumer = match &self.r2s_consumer {
-                    Consumer::Single(v) => self.wrap_single_consumer_in_aggregate_consumer(v),
-                    Consumer::Aggregate(v) => { v.clone() },
-                };
-
                 // Generalise to aggregate consumer because that is what the window reports
                 // (Aggregates are passed as arguments always)
                 let content_processor = Box::new(self.create_custom_window_processor(
@@ -512,7 +536,7 @@ where
                     self.query_execution_mode,
                     self.r2r.clone(),
                     self.window_result_sender.clone(),
-                    consumer.clone(),
+                    self.r2s_consumer.clone(),
                 ));
 
                 consumers_by_window_iri.push((window_iri.clone(), content_processor));
@@ -657,7 +681,7 @@ fn emit_results<O>(
     static_db: &Arc<Mutex<SparqlDatabase>>,
     r2s: &Arc<Mutex<Relation2StreamOperator<O>>>,
     ts: usize,
-    consumer: &Consumer<O>,
+    consumer: &AggregateConsumer<O>,
 ) where
     O: 'static + Clone + Hash + Eq + From<Vec<(String, String)>>,
 {
@@ -683,17 +707,11 @@ fn emit_results<O>(
             kv.into()
         })
         .collect();
-    let filtered = r2s.lock().unwrap().eval(outputs, ts);
 
-    match consumer {
-        Consumer::Single(s) => {
-            for result in filtered {
-                s(result);
-            }
-        } Consumer::Aggregate(a) => {
-            a(filtered, ts)
-        }
-    }
+    // This performs the r2s filter!
+    // TODO code is weird. Put this into the decorator instead.
+    let filtered = r2s.lock().unwrap().eval(outputs, ts);
+    consumer(filtered, ts);
 }
 
 /// Natural join of two binding sets: compatible bindings are merged, incompatible ones are dropped.
