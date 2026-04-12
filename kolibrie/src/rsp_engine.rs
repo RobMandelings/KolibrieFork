@@ -12,6 +12,7 @@ mod city_bench_observations_test;
 mod city_bench_q1;
 mod csv_graph_iter2;
 mod parking_mapper;
+mod legacy_engine;
 
 use crate::rsp::r2r::R2ROperator;
 use crate::rsp::r2s::Relation2StreamOperator;
@@ -98,74 +99,6 @@ pub struct WindowResult {
     pub timestamp: usize,
 }
 
-/// Result consumer that consumes input of some generic type I
-// pub struct ResultConsumer<I> {
-//     pub function: Arc<dyn Fn(I) -> () + Send + Sync>,
-// }
-//
-// /// Result consumer that consumes input of some generic type I
-// pub struct AggregateConsumer<I> {
-//     pub function: Arc<dyn Fn(Vec<I>, usize) -> () + Send + Sync>,
-// }
-
-/// Creates a closure that receives the content of a window and processes the content through the pipeline
-/// After processing, the solutions are sent to the last stage of the pipeline: R2S
-// fn create_window_content_processor2<I, O>(
-//     window_iri: String,
-//     query: PhysicalOperator,
-//     query_execution_mode: QueryExecutionMode,
-//     r2r_store: Arc<Mutex<Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>>>,
-//     window_result_sender: Sender<WindowResult>,
-//     r2s_consumer_func: Arc<dyn Fn(Vec<O>, usize) + Send + Sync>, // Consumes the solution mappings to put it onto the output stream
-// ) -> impl FnMut(ContReport<I>) + Send + 'static
-// where
-//     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
-//     O: Send + 'static,
-// {
-//     // You use these to decide which triples to evict from the store
-//     // The R2R store maintains the current state of triples, so you need to know which ones to remove
-//     let mut prev_window_triples: Vec<I> = Vec::new();
-//
-//     // The processor receives the window content from the sliding window
-//     move |report: ContReport<I>| {
-//         debug!(
-//             "Processing window {} with query: {:?} using {:?} execution",
-//             window_iri, query, query_execution_mode
-//         );
-//
-//         // First step is to update the store to reflect the last correct changes
-//         let ts = report.last_timestamp_changed as usize;
-//
-//         // Store is a boxed trait object implementing R2R Operator (Box<dyn R2ROperator>)
-//         let mut store = r2r_store.lock().unwrap();
-//
-//         // Evict triples from the previous firing of this window
-//         for t in &prev_window_triples {
-//             store.remove(t);
-//         }
-//         prev_window_triples.clear();
-//
-//         // Add current window triples and track them for next eviction
-//         for t in report.content {
-//             prev_window_triples.push(t.clone());
-//
-//             // TODO You HAVE to clone here. References don't matter here
-//             store.add(t.clone());
-//         }
-//
-//         // Run forward-chaining inference to materialise derived facts
-//         store.materialize();
-//
-//         // Run the query on the R2R and get solution mappings
-//         let results = store.execute_query(&query);
-//         debug!("Got # results {} for window {}", results.len(), window_iri);
-//
-//         // Release lock early to reduce contention
-//         drop(store);
-//         r2s_consumer_func(results, ts);
-//     }
-// }
-
 /// Creates a closure that receives the content of a window and processes the content through the pipeline
 /// After processing, the solutions are sent to the last stage of the pipeline: R2S
 fn create_window_content_processor<I, O>(
@@ -250,86 +183,6 @@ where
     }
 }
 
-/// Macro to generate the window processing logic
-/// If has_joins is true: use window_result_sender, if not, then use r2s_consumer_func
-/// Difference r2s_consumer function and window_processor: the r2s_consumer function already has the solution mappings, simply needs to push them
-/// The window processor receives the raw window content, updates the R2R store to reflect the current state, then performs the query to get solution mappings
-/// (I think) The R2R store also contains long-running static data.
-// macro_rules! create_window_processor {
-//     ($window_iri:expr, $query:expr, $query_execution_mode:expr,
-//      $r2r_store:expr, $has_joins:expr, $window_result_sender:expr, $r2s_consumer_func:expr) => {{
-//
-//         // You use these to decide which triples to evict from the store
-//         // The R2R store maintains the current state of triples, so you need to know which ones to remove
-//         let mut prev_window_triples: Vec<I> = Vec::new();
-//
-//         // The processor receives the window content from the sliding window
-//         move |content: ContentContainer<I>| {
-//             debug!(
-//                 "Processing window {} with query: {:?} using {:?} execution",
-//                 $window_iri, $query, $query_execution_mode
-//             );
-//
-//             // First step is to update the store to reflect the last correct changes
-//             let ts = content.get_last_timestamp_changed();
-//
-//             // Store is a boxed trait object implementing R2R Operator (Box<dyn R2ROperator>)
-//             let mut store = $r2r_store.lock().unwrap();
-//
-//             // Evict triples from the previous firing of this window
-//             for t in &prev_window_triples {
-//                 store.remove(t);
-//             }
-//             prev_window_triples.clear();
-//
-//             // Add current window triples and track them for next eviction
-//             for t in content.into_iter() {
-//                 prev_window_triples.push(t.clone());
-//                 store.add(t);
-//             }
-//
-//             // Run forward-chaining inference to materialise derived facts
-//             store.materialize();
-//
-//             // Run the query on the R2R and get solution mappings
-//             let results = store.execute_query(&$query);
-//             debug!("Got # results {} for window {}", results.len(), $window_iri);
-//
-//             // Release lock early to reduce contention
-//             drop(store);
-//
-//             if $has_joins {
-//
-//                 // Convert the Vec<Vec<(String, String)> to Vec<HashMap<String,String>> to put in WindowResult
-//                 let mut mapped_results: Vec<HashMap<String, String>> = Vec::new();
-//                 mapped_results.reserve(results.len());
-//
-//                 for res in &results {
-//                     if let Some(bindings) = (res as &dyn std::any::Any)
-//                         .downcast_ref::<Vec<(String, String)>>()
-//                     {
-//                         let map: HashMap<String, String> = bindings.iter().cloned().collect();
-//                         mapped_results.push(map);
-//                     }
-//                 }
-//
-//                 // The WindowResult accepts Vec<HashMap<String, String>>, not Vec<Vec<(String,String)>>
-//                 let window_res = WindowResult {
-//                     window_iri: $window_iri.clone(),
-//                     results: mapped_results,
-//                     timestamp: ts,
-//                 };
-//
-//                 if let Err(e) = $window_result_sender.send(window_res) {
-//                     error!("Failed to send window result to buffer: {:?}", e);
-//                 }
-//             } else {
-//                 ($r2s_consumer_func)(results, ts);
-//             }
-//         }
-//     }};
-// }
-
 /// This registers the processor of the window content so that the window knows how to send consumer.
 fn register_processor_for_window2<I, P>(
     operation_mode: OperationMode,
@@ -384,35 +237,6 @@ fn register_processor_for_window<I, P>(
         }
     }
 }
-
-/// Macro to register the consumers of window content (processor) based on operation mode
-/// In case of SingleThreaded operation, a single callback is registered
-/// In case of MultiThreaded, you register to get a receiver, then you spawn a thread to receive contents
-/// Processor: is the thing that processes the window content
-// macro_rules! register_window {
-//     (SingleThread, $window:expr, $processor:expr) => {
-//         $window.register_callback(Box::new($processor));
-//     };
-//     (MultiThread, $window:expr, $processor:expr, $window_iri:expr) => {{
-//         let receiver = $window.register();
-//
-//         // Window IRI is moved inside of the closure
-//         thread::spawn(move || {
-//             loop {
-//                 match receiver.recv() {
-//                     Ok(content) => {
-//                         $processor(content);
-//                     }
-//                     Err(_) => {
-//                         debug!("Shutting down window {}!", $window_iri);
-//                         break;
-//                     }
-//                 }
-//             }
-//             debug!("Shutdown complete for window {}!", $window_iri);
-//         });
-//     }};
-// }
 
 /// RSP input with generic input type I and output type O
 pub struct RSPEngine<I, O, S>
@@ -541,21 +365,9 @@ where
         }
 
         // TODO support for tick and different reporting strategies
-        let mut windows = Vec::new();
-        for window_config in &query_config.windows {
-            let mut report = Report::new();
-            report.add(window_config.report_strategy.clone());
-            let window = CSPARQLWindow::new(
-                window_config.width,
-                window_config.slide,
-                report,
-                window_config.tick.clone(),
-                window_config.window_iri.clone(),
-            );
-            windows.push(window);
-        }
+        let legacy_windows = Self::create_legacy_windows(&query_config.windows);
+        let custom_windows = Self::create_windows(&query_config.windows);
 
-        let mut custom_windows = Self::create_windows(&query_config.windows);
         let window_mapping = Self::build_window_mapping(&query_config.windows);
 
         // Create channel for cross-window result coordination
@@ -569,7 +381,7 @@ where
             legacy_window,
             window_mapping,
             custom_windows,
-            windows,
+            windows: legacy_windows,
             r2r: Arc::new(Mutex::new(store)),
             r2s_consumer,
             window_configs: query_config.windows.clone(),
@@ -600,6 +412,23 @@ where
         }
 
         engine
+    }
+
+    fn create_legacy_windows(configs: &Vec<RSPWindow>) -> Vec<CSPARQLWindow<I>> {
+        let mut windows = Vec::new();
+        for window_config in configs {
+            let mut report = Report::new();
+            report.add(window_config.report_strategy.clone());
+            let window = CSPARQLWindow::new(
+                window_config.width,
+                window_config.slide,
+                report,
+                window_config.tick.clone(),
+                window_config.window_iri.clone(),
+            );
+            windows.push(window);
+        }
+        windows
     }
 
     fn group_by_stream_iri(windows: &Vec<RSPWindow>) -> HashMap<String, Vec<&RSPWindow>> {
@@ -739,18 +568,6 @@ where
                     .get(&(stream_iri.clone(), window_iri.clone()))
                     .expect("Mapping should exist");
 
-                // let r2s_aggregate_consumer: Arc<dyn Fn(Vec<O>, usize) + Send + Sync> = {
-                //     let r2s_op = Arc::clone(&self.r2s_operator);
-                //     let consumer_fn = self.r2s_consumer.function.clone();
-                //
-                //     Arc::new(move |results: Vec<O>, ts: usize| {
-                //         let filtered = r2s_op.lock().unwrap().eval(results, ts);
-                //         for r in filtered {
-                //             consumer_fn(r);
-                //         }
-                //     })
-                // };
-
                 let consumer = match &self.r2s_consumer {
                     Consumer::Single(v) => self.create_aggregate_consumer_from_single_consumer(v),
                     Consumer::Aggregate(v) => { v.clone() },
@@ -796,22 +613,6 @@ where
         for (window_idx, window) in self.windows.iter_mut().enumerate() {
             let query = self.rsp_query_plan.window_plans[window_idx].clone();
             let window_iri = self.window_configs[window_idx].window_iri.clone();
-            // let r2s_aggregate_consumer: Arc<dyn Fn(Vec<O>, usize) + Send + Sync> = if has_joins {
-            //     Arc::new(|_, _| {})
-            // } else {
-            //     let r2s_op = Arc::clone(&self.r2s_operator);
-            //     let consumer_fn = self.r2s_consumer.function.clone();
-            //
-            //     // Takes ALL solution mappings along with their timestamp
-            //     // Then runs consumer_fn for each of the solution mappings
-            //     Arc::new(move |results: Vec<O>, ts: usize| {
-            //         let filtered = r2s_op.lock().unwrap().eval(results, ts);
-            //         for r in filtered {
-            //             // For each solution mapping in the set of solution mappings, call the consumer function
-            //             consumer_fn(r);
-            //         }
-            //     })
-            // };
 
             /// In my API this is called the consumer
             let content_processor = create_window_content_processor(
@@ -823,20 +624,6 @@ where
                 self.window_result_sender.clone(),
                 consumer.clone(),
             );
-
-            // let processor = create_window_content_processor2(
-            //     window_iri,
-            //     query,
-            //     query_execution_mode,
-            //     r2r_store,
-            //     has_joins,
-            //     window_result_sender,
-            //     r2s_aggregate_consumer
-            // );
-
-            // Register the consumers based on the mode.
-            // In SingleThreaded: consumer is a simple callback
-            // In MultiThreaded: consumer is over some channel
 
             // Window IRI is moved inside closure of thread, therefore you clone it
             register_processor_for_window(
@@ -851,160 +638,6 @@ where
     pub fn decode(&self, input: &I) -> String {
         let guard = self.r2r.lock().expect("mutex poisoned");
         guard.decode(input)
-    }
-
-    /// Start a coordinator thread that collects and joins results from multiple windows
-    /// (and optionally joins with static background data), respecting `sync_policy`.
-    fn start_cross_window_coordinator(&self)
-    where
-        O: From<Vec<(String, String)>>,
-    {
-        let receiver = self.window_result_receiver.clone();
-        let consumer = self.r2s_consumer.clone();
-        let num_windows = self.windows.len();
-        let static_data_plan = self.rsp_query_plan.static_data_plan.clone();
-        let static_db = self.static_db.clone();
-        let sync_policy = self.sync_policy.clone();
-        let r2s_operator = Arc::clone(&self.r2s_operator);
-
-        thread::spawn(move || {
-            // Latest results per window (replace semantics)
-            let mut last_materialized: HashMap<String, Vec<HashMap<String, String>>> =
-                HashMap::new();
-            // Windows that have fired since the last reset
-            let mut cycle_triggered: HashSet<String> = HashSet::new();
-            // When the first window fired in the current cycle
-            let mut cycle_start: Option<Instant> = None;
-            let mut max_ts: usize = 0;
-
-            loop {
-                // Compute recv timeout when policy has a finite deadline
-                let timeout_remaining = match &sync_policy {
-                    SyncPolicy::Timeout { duration, .. } => {
-                        cycle_start.map(|start| duration.saturating_sub(start.elapsed()))
-                    }
-                    _ => None,
-                };
-
-                // Receive next window result (or timeout/disconnect)
-                let maybe_result: Option<WindowResult> = if let Some(remaining) = timeout_remaining
-                {
-                    match receiver.recv_timeout(remaining) {
-                        Ok(r) => Some(r),
-                        Err(RecvTimeoutError::Timeout) => {
-                            // Deadline elapsed
-                            if !cycle_triggered.is_empty() {
-                                match &sync_policy {
-                                    SyncPolicy::Timeout {
-                                        fallback: Fallback::Steal,
-                                        ..
-                                    } => {
-                                        if last_materialized.len() == num_windows {
-                                            emit_results(
-                                                &last_materialized,
-                                                &static_data_plan,
-                                                &static_db,
-                                                &r2s_operator,
-                                                max_ts,
-                                                &consumer,
-                                            );
-                                        }
-                                    }
-                                    SyncPolicy::Timeout {
-                                        fallback: Fallback::Drop,
-                                        ..
-                                    } => {
-                                        // discard this cycle
-                                    }
-                                    _ => {}
-                                }
-                                cycle_triggered.clear();
-                                cycle_start = None;
-                                max_ts = 0;
-                            }
-                            continue;
-                        }
-                        Err(RecvTimeoutError::Disconnected) => break,
-                    }
-                } else {
-                    match receiver.recv() {
-                        Ok(r) => Some(r),
-                        Err(_) => break,
-                    }
-                };
-
-                if let Some(window_result) = maybe_result {
-                    debug!(
-                        "Coordinator received {} results from window: {}",
-                        window_result.results.len(),
-                        window_result.window_iri
-                    );
-
-                    max_ts = max_ts.max(window_result.timestamp);
-                    // Update last_materialized (replace)
-                    last_materialized.insert(
-                        window_result.window_iri.clone(),
-                        window_result.results.clone(),
-                    );
-                    if cycle_triggered.is_empty() {
-                        cycle_start = Some(Instant::now());
-                    }
-                    cycle_triggered.insert(window_result.window_iri.clone());
-
-                    // Drain any additional pending results
-                    while let Ok(wr) = receiver.try_recv() {
-                        max_ts = max_ts.max(wr.timestamp);
-                        last_materialized.insert(wr.window_iri.clone(), wr.results.clone());
-                        cycle_triggered.insert(wr.window_iri.clone());
-                    }
-
-                    if cycle_triggered.len() == num_windows {
-                        // All windows fired this cycle
-                        emit_results(
-                            &last_materialized,
-                            &static_data_plan,
-                            &static_db,
-                            &r2s_operator,
-                            max_ts,
-                            &consumer,
-                        );
-                        cycle_triggered.clear();
-                        cycle_start = None;
-                        max_ts = 0;
-                    } else {
-                        match &sync_policy {
-                            SyncPolicy::Steal => {
-                                // Emit immediately using stale data from non-firing windows
-                                if last_materialized.len() == num_windows {
-                                    emit_results(
-                                        &last_materialized,
-                                        &static_data_plan,
-                                        &static_db,
-                                        &r2s_operator,
-                                        max_ts,
-                                        &consumer,
-                                    );
-                                }
-                                cycle_triggered.clear();
-                                cycle_start = None;
-                                max_ts = 0;
-                            }
-                            SyncPolicy::Wait | SyncPolicy::Timeout { .. } => {
-                                // Keep waiting for remaining windows
-                                debug!(
-                                    "Coordinator: waiting for more windows ({}/{}) — have: {:?}",
-                                    cycle_triggered.len(),
-                                    num_windows,
-                                    cycle_triggered.iter().collect::<Vec<_>>()
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-
-            debug!("Coordinator: shutdown complete");
-        });
     }
 
     fn normalize_stream_iri(s: &str) -> String {
@@ -1039,112 +672,7 @@ where
         }
     }
 
-    /// Add data to appropriate window based on stream IRI
-    pub fn add_to_stream(&mut self, stream_iri: &str, event_item: I, ts: usize) {
-        if matches!(self.operation_mode, OperationMode::SingleThread)
-            && (self.windows.len() > 1 || self.rsp_query_plan.static_data_plan.is_some())
-        {
-            self.process_single_thread_window_results();
-        }
 
-        let input_norm = Self::normalize_stream_iri(stream_iri);
-
-        // Find windows that match this stream IRI and add the event to these windows
-        for (window_idx, window_config) in self.window_configs.iter().enumerate() {
-            // Variable stream (e.g. `?s`) matches any stream.
-            if window_config.stream_iri.starts_with('?') {
-                if let Some(window) = self.windows.get_mut(window_idx) {
-                    window.add_to_window(event_item.clone(), ts);
-                }
-                continue;
-            }
-
-            let cfg_norm = Self::normalize_stream_iri(&window_config.stream_iri);
-            if cfg_norm == input_norm {
-                if let Some(window) = self.windows.get_mut(window_idx) {
-                    window.add_to_window(event_item.clone(), ts);
-                }
-            }
-        }
-    }
-
-    pub fn process_single_thread_window_results(&mut self)
-    where
-        O: From<Vec<(String, String)>>,
-    {
-        // The consumer function that will be called. We clone to get ownership, but it points to the same function
-        let consumer = self.r2s_consumer.clone();
-        let num_windows = self.windows.len();
-        let sync_policy = self.sync_policy.clone();
-
-        // Drain all pending channel results; update last_materialized with replace semantics.
-        let mut last_mat = self.single_thread_last_materialized.lock().unwrap();
-        let mut had_new_results = false;
-        let mut max_ts: usize = 0;
-
-        // Non-blocking drain of the channel: receive all results
-        while let Ok(window_result) = self.window_result_receiver.try_recv() {
-            max_ts = max_ts.max(window_result.timestamp);
-            last_mat.insert(window_result.window_iri.clone(), window_result.results);
-            had_new_results = true;
-        }
-
-        if !had_new_results {
-            return;
-        }
-
-        // Check whether to emit based on policy.
-        // Only emit when all windows have been materialized
-        if last_mat.len() == num_windows {
-            debug!(
-                "SingleThread: all {} windows materialized, emitting",
-                num_windows
-            );
-            let static_data_plan = self.rsp_query_plan.static_data_plan.clone();
-            emit_results(
-                &*last_mat,
-                &static_data_plan,
-                &self.static_db,
-                &self.r2s_operator,
-                max_ts,
-                &consumer,
-            );
-
-            match sync_policy {
-                // Wait: require all windows to fire again before next emission.
-                // Timeout: no wall-clock timer in single-threaded context; treat as Wait.
-                SyncPolicy::Wait | SyncPolicy::Timeout { .. } => {
-                    last_mat.clear();
-                }
-                // Steal: keep last_mat so stale data from non-firing windows is reused.
-                SyncPolicy::Steal => {}
-            }
-        } else {
-            debug!(
-                "SingleThread: waiting for more windows ({}/{})",
-                last_mat.len(),
-                num_windows
-            );
-        }
-    }
-
-    /// Legacy method for backward compatibility
-    pub fn legacy_add(&mut self, event_item: I, ts: usize) {
-        // Add to all windows (for backward compatibility)
-        for window in &mut self.windows {
-            window.add_to_window(event_item.clone(), ts);
-        }
-    }
-
-    pub fn stop(&mut self) {
-        for window in &mut self.windows {
-            window.flush();
-            window.stop();
-        }
-        if matches!(self.operation_mode, OperationMode::SingleThread) {
-            self.process_single_thread_window_results();
-        }
-    }
 
     /// Parses the data and returns a Vec of input elements (whatever you said would be the input)
     pub fn parse_data(&self, data: &str) -> Vec<I> {
