@@ -124,28 +124,36 @@ where
     }
 
     /// Register windows using macros to eliminate code duplication
-    pub fn register_windows(&mut self, operation_mode: OperationMode) {
-        let has_joins = self.has_joins();
-
+    pub fn register_legacy_windows(&mut self, operation_mode: OperationMode) {
         let consumer = match &self.r2s_consumer {
             Consumer::Single(v) => {self.wrap_single_consumer_in_aggregate_consumer(v)},
             Consumer::Aggregate(v) => { v.clone() }
         };
 
-        for (window_idx, window) in self.windows.iter_mut().enumerate() {
+        // First: collect all processors per window_idx
+        let mut to_register = Vec::new();
+
+        for (window_idx, _) in self.windows.iter().enumerate() {
             let query = self.rsp_query_plan.window_plans[window_idx].clone();
             let window_iri = self.window_configs[window_idx].window_iri.clone();
 
             /// In my API this is called the consumer
-            let content_processor = create_window_content_processor(
+            let content_processor = self.create_legacy_window_processor(
                 window_iri.clone(),
                 query,
                 self.query_execution_mode,
                 self.r2r.clone(),
-                has_joins,
                 self.window_result_sender.clone(),
                 consumer.clone(),
             );
+
+            to_register.push((window_idx, window_iri, content_processor));
+        }
+
+
+        // Second: mutably register all processors on the windows
+        for (window_idx, window_iri, content_processor) in to_register {
+            let window = &mut self.windows[window_idx];
 
             // Window IRI is moved inside closure of thread, therefore you clone it
             register_processor_for_window(

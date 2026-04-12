@@ -51,9 +51,7 @@ use std::{println as debug, println as error};
 use crate::rsp::builder::{AggregateConsumer, Consumer, SingleConsumer};
 pub use crate::rsp::builder::{RSPBuilder, RSPQueryConfig};
 pub use crate::rsp::simple_r2r::SimpleR2R;
-use crate::rsp_engine::content_processor::{
-    create_iter_expire_window_processor, process_window_report,
-};
+use crate::rsp_engine::content_processor::{process_window_report};
 use crate::sliding_window::SlidingWindow;
 
 /// For compatibility with the existing architecture: map (stream_iri, window_iri) to the original index of that specific window
@@ -282,7 +280,6 @@ where
             }
         }
 
-        // TODO support for tick and different reporting strategies
         let legacy_windows = Self::create_legacy_windows(&query_config.windows);
         let custom_windows = Self::create_windows(&query_config.windows);
 
@@ -318,7 +315,7 @@ where
 
         match operation_mode {
             mode @ (OperationMode::SingleThread | OperationMode::MultiThread) => {
-                engine.register_windows(mode);
+                engine.register_legacy_windows(mode);
                 if matches!(mode, OperationMode::MultiThread) {
                     let has_joins = engine.windows.len() > 1
                         || engine.rsp_query_plan.static_data_plan.is_some();
@@ -395,10 +392,40 @@ where
         has_joins
     }
 
+    pub fn create_legacy_window_processor(
+        &self,
+        window_iri: String,
+        query: PhysicalOperator,
+        query_execution_mode: QueryExecutionMode,
+        r2r_store: Arc<Mutex<Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>>>,
+        window_result_sender: Sender<WindowResult>,
+        r2s_consumer_func: AggregateConsumer<O>, // Consumes the solution mappings to put it onto the output stream
+    ) -> impl FnMut(ContentContainer<I>) + Send + 'static {
+        // You use these to decide which triples to evict from the store
+        // The R2R store maintains the current state of triples, so you need to know which ones to remove
+        let mut prev_window_triples: Vec<I> = Vec::new();
+
+        // The processor receives the window content from the sliding window
+        let has_joins = self.has_joins();
+        move |report: ContentContainer<I>| {
+            process_window_report(
+                report,
+                &window_iri,
+                &query,
+                &query_execution_mode,
+                &r2r_store,
+                &mut prev_window_triples,
+                &window_result_sender,
+                &r2s_consumer_func,
+                has_joins
+            );
+        }
+    }
+
     /// Creates a closure that receives the content of a window and processes the content through the pipeline
     /// After processing, the solutions are sent to the last stage of the pipeline: R2S
     /// R stands for 'report'
-    pub fn create_iter_expire_window_processor(
+    pub fn create_custom_window_processor(
         &self,
         window_iri: String,
         query: PhysicalOperator,
@@ -479,7 +506,7 @@ where
 
                 // Generalise to aggregate consumer because that is what the window reports
                 // (Aggregates are passed as arguments always)
-                let content_processor = Box::new(self.create_iter_expire_window_processor(
+                let content_processor = Box::new(self.create_custom_window_processor(
                     window_iri.clone(),
                     self.rsp_query_plan.window_plans[idx].clone(),
                     self.query_execution_mode,
