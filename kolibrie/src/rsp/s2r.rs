@@ -146,6 +146,8 @@ where I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static, {
     }
 }
 
+type CallbackFn<I> = Box<dyn FnMut(ContentContainer<I>) -> () + Send + 'static>;
+
 pub struct CSPARQLWindow<I>
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send,
@@ -159,7 +161,7 @@ where
     app_time: usize,
     consumer: Option<Sender<ContentContainer<I>>>,
     // Make callbacks Send so they can be safely transferred to worker threads
-    call_back: Option<Box<dyn FnMut(ContentContainer<I>) -> () + Send + 'static>>,
+    callback: Option<CallbackFn<I>>,
     uri: String
 }
 
@@ -177,7 +179,7 @@ where
             consumer: None,
             active_windows: HashMap::new(),
             tick,
-            call_back: None,
+            callback: None,
             uri
         }
     }
@@ -232,7 +234,7 @@ where
                             }
                         }
                         // Send window content to consumer (single-threaded case)
-                        if let Some(call_back) = &mut self.call_back {
+                        if let Some(call_back) = &mut self.callback {
                             (call_back)(max_window.1.clone());
                         }
                     }
@@ -293,11 +295,11 @@ where
         &mut self,
         function: Box<dyn FnMut(ContentContainer<I>) -> () + Send + 'static>,
     ) {
-        self.call_back.replace(function);
+        self.callback.replace(function);
     }
     pub fn flush(&mut self) {
         for (_, content) in &self.active_windows {
-            if let Some(call_back) = &mut self.call_back {
+            if let Some(call_back) = &mut self.callback {
                 (call_back)(content.clone());
             }
             if let Some(sender) = &self.consumer {
@@ -382,7 +384,7 @@ mod tests {
             report,
             tick: Tick::TimeDriven,
             consumer: None,
-            call_back: None,
+            callback: None,
             uri: "test_window".to_string()
         };
         let receiver = window.register_channel();
@@ -415,7 +417,7 @@ mod tests {
             report,
             tick: Tick::TimeDriven,
             consumer: None,
-            call_back: None,
+            callback: None,
             uri: "test_window".to_string()
         };
         let recieved_data = Arc::new(Mutex::new(Vec::new()));

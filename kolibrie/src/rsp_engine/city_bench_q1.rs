@@ -122,6 +122,7 @@ fn city_bench_q1_single_window() {
 fn city_bench_q1_two_window() {
 
     init_logger(log::LevelFilter::Info);
+    debug!("Banana");
     let r2r = Box::new(SimpleR2R::with_execution_mode(QueryExecutionMode::Volcano));
 
     // TODO: I don't think specific prefixes are allowed, or are they?
@@ -164,7 +165,7 @@ fn city_bench_q1_two_window() {
     ];
 
     let mut ts = 0;
-    while ts < 1 {
+    while ts < 10 {
         for stream in &mut streams {
             for graph_str in stream.iter.next().expect("Expected non-exhausted") {
                 engine.add_graph_to_stream(&stream.stream_iri, &graph_str, ts);
@@ -173,12 +174,12 @@ fn city_bench_q1_two_window() {
         ts += 1;
     }
 
-    let iter = CsvGraphIter::from_path("streams/AarhusTrafficData158505.stream", traffic_mapper("AarhusTrafficData158505")).unwrap();
-    let iter2 = CsvGraphIter::from_path("streams/AarhusTrafficData182955.stream", traffic_mapper("AarhusTrafficData182955")).unwrap();
+    // let iter = CsvGraphIter::from_path("streams/AarhusTrafficData158505.stream", traffic_mapper("AarhusTrafficData158505")).unwrap();
+    // let iter2 = CsvGraphIter::from_path("streams/AarhusTrafficData182955.stream", traffic_mapper("AarhusTrafficData182955")).unwrap();
 
     // TODO bottleneck file reading, make sure to not measure this by accident
-    for ((left_res, right_res), ts) in iter.take(50).zip(iter2.take(50)).zip(1usize..) {
-        let left_graph = left_res.unwrap();
+    // for ((left_res, right_res), ts) in iter.take(50).zip(iter2.take(50)).zip(1usize..) {
+    //     let left_graph = left_res.unwrap();
         // let right_graph = right_res.unwrap();
         // engine.add_graph_to_stream(":AarhusTrafficData158505", &left_graph, ts as Time);
         // for triple in engine.parse_data(&left_graph) {
@@ -187,5 +188,5 @@ fn city_bench_q1_two_window() {
         // for triple in engine.parse_data(&right_graph) {
         //     engine.custom_add(triple, ts);
         // }
-    }
+    // }
 }
