@@ -18,7 +18,6 @@ fn run_legacy_bench(windows: &mut Vec<LegacyWindow<String>>, nr_events: usize)
     let max_ts: crate::prototype::event::Time = nr_events as u64;
 
     // Generate events with timestamps ranging 0, 1, 2,... (not overlapping, constant distance between two events)
-    // Maybe later customise?
     let events: Vec<Event<String>> = (0..max_ts).map(|i| event(i)).collect();
 
     for e in events.into_iter() {
