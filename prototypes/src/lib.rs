@@ -4,6 +4,7 @@ pub mod bench_helpers;
 pub mod profile_helper;
 pub mod experiment_helpers;
 pub mod workloads;
+pub mod s2r;
 
 pub type IRI = String;
 
@@ -11,10 +12,10 @@ pub use prototype::{
     event::Event,
     helpers::event,
     slide_strategy::{
+        arc_strategy::ArcStrategy,
         clone_strategy::CloneStrategy,
         expire_strategy::ExpireStrategy,
         rc_strategy::RcStrategy,
-        arc_strategy::ArcStrategy,
         WindowSnapshotStrategy
     },
     sliding_window_op::SlidingWindowOperator,

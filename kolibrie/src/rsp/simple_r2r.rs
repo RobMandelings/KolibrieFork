@@ -21,7 +21,7 @@ use std::sync::Arc;
 use log::{debug, error};
 #[cfg(test)]
 use std::{println as debug, println as error};
-use crate::rsp::s2r::ContentContainer;
+use prototypes::s2r::ContentContainer;
 
 pub struct SimpleR2R {
     pub item: SparqlDatabase,

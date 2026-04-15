@@ -10,12 +10,13 @@ use std::fs::File;
 use std::path::Path;
 use std::{env, fs, io};
 use criterion::measurement::WallTime;
-use prototypes::bench_helpers::run_strategy_clone;
+use prototypes::bench_helpers::{run_strategy_clone, run_strategy_legacy};
 
 const PROFILING_FREQUENCY_HZ: i32 = 100;
 const PROFILE_ITERS: usize = 200;
 const BLOCKLIST: &[&str] = &["libc", "libgcc", "pthread", "vdso"];
 
+const ROOT: &str = "/Users/robmandelings/Documents/KULeuven/Thesis/KolibrieFork/origin-main";
 const DST_ROOT: &str = "analysis/evaluation";
 
 fn ensure_dir(path: &Path) -> io::Result<()> {
@@ -172,7 +173,10 @@ fn parse_folder_name() -> String {
 
 fn main() {
     let folder_name = parse_folder_name();
-    let root_path = Path::new(DST_ROOT).join(&folder_name);
+
+    let root_path = Path::new(ROOT);
+    let prototypes_root_path = root_path.join("prototypes");
+    let dst_root_path = prototypes_root_path.join(DST_ROOT).join(&folder_name);
 
     let mut c: Criterion = Criterion::default()
         .with_profiler(PProfProfiler::new(
@@ -185,16 +189,16 @@ fn main() {
     for workload in &workloads {
         // One group per workload
         let mut group = c.benchmark_group(&workload.name);
-        let group_path = root_path.join(&workload.name);
-        let criterion_dst_path = group_path.join("throughput");
-        let criterion_src_path = Path::new("../../../target/criterion").join(&workload.name); // Where to take the data from
+        let dst_group_path = dst_root_path.join(&workload.name);
+        let criterion_dst_path = dst_group_path.join("throughput");
+        let criterion_src_path = root_path.join("target/criterion").join(&workload.name); // Where to take the data from
 
         // TODO extract run_bench_profile for better reusability
         run_bench_and_profile(
             &mut group,
             workload,
             "clone",
-            &group_path,
+            &dst_group_path,
             |w| run_strategy_clone(w),
         );
 
@@ -202,7 +206,7 @@ fn main() {
             &mut group,
             workload,
             "refcount",
-            &group_path,
+            &dst_group_path,
             |w| run_strategy_refcount(w),
         );
 
@@ -210,23 +214,42 @@ fn main() {
             &mut group,
             workload,
             "arc",
-            &group_path,
+            &dst_group_path,
             |w| run_strategy_arc(w),
         );
 
         run_bench_and_profile(
             &mut group,
             workload,
+            "legacy",
+            &dst_group_path,
+            |w| run_strategy_legacy(w),
+        );
+
+        run_bench_and_profile(
+            &mut group,
+            workload,
             "expire",
-            &group_path,
+            &dst_group_path,
             |w| run_strategy_expire(w),
         );
 
         group.finish();
 
-        copy_group_dir(&criterion_src_path, &criterion_dst_path).expect("failed to copy criterion group");
+        match copy_group_dir(&criterion_src_path, &criterion_dst_path) {
+            Ok(()) => {}
+            Err(e) => {
+                eprintln!("copy failed: {e}");
+                eprintln!("src = {}", criterion_src_path.display());
+                eprintln!("src exists = {}", criterion_src_path.exists());
+                eprintln!("dst = {}", criterion_dst_path.display());
+                eprintln!("dst exists = {}", criterion_dst_path.exists());
+                eprintln!("dst parent = {:?}", criterion_dst_path.parent());
+                panic!("failed to copy criterion group");
+            }
+        }
 
-        let workload_path = format!("{}/workload.json", group_path.to_str().unwrap());
+        let workload_path = format!("{}/workload.json", dst_group_path.to_str().unwrap());
         write_workload_to_file(workload, &workload_path)
             .expect(&format!("Could not write workload: {}", workload_path));
         println!("Successfully copied criterion group {}", workload.name);

@@ -10,7 +10,7 @@
 use crate::parser::parse_combined_query;
 use crate::rsp::r2r::R2ROperator;
 use crate::rsp::r2s::StreamOperator;
-use crate::rsp::s2r::{ReportStrategy, Tick};
+use prototypes::s2r::{ReportStrategy, Tick};
 use crate::rsp_engine::{OperationMode, QueryExecutionMode, RSPEngine, RSPQueryPlan, RSPWindow};
 use crate::sparql_database::SparqlDatabase;
 use crate::streamertail_optimizer::{

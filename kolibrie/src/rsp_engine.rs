@@ -16,7 +16,7 @@ mod legacy_engine;
 
 use crate::rsp::r2r::R2ROperator;
 use crate::rsp::r2s::Relation2StreamOperator;
-use crate::rsp::s2r::{CSPARQLWindow, ContentContainer, Report, ReportStrategy, Tick, Window};
+use prototypes::s2r::{LegacyWindow, ContentContainer, Report, ReportStrategy, Tick, Window};
 
 use crate::parser::process_rule_definition;
 use crate::sparql_database::SparqlDatabase;
@@ -108,7 +108,7 @@ fn has_joins(windows: &Vec<RSPWindow>, rsp_query_plan: &RSPQueryPlan) -> bool {
 /// This registers the processor of the window content so that the window knows how to send consumer.
 fn register_processor_for_window2<I, P>(
     operation_mode: OperationMode,
-    window: &mut CSPARQLWindow<I>,
+    window: &mut LegacyWindow<I>,
     mut processor: P,
     window_iri: String,
 ) where
@@ -128,7 +128,7 @@ fn register_processor_for_window2<I, P>(
 /// This registers the processor of the window content so that the window knows how to send consumer.
 fn register_processor_for_window<I, P>(
     operation_mode: OperationMode,
-    window: &mut CSPARQLWindow<I>,
+    window: &mut LegacyWindow<I>,
     mut processor: P,
     window_iri: String,
 ) where
@@ -170,7 +170,7 @@ where
     legacy_window: bool, // Whether or not to use the legacy CSPARQL window implementation or not
     window_mapping: WindowMapping, // Helper mapping that maps the window_idx (from the previous implementation) to (stream_iri, window_iri) pair
     custom_windows: HashMap<IRI, SlidingWindowOperator<I, S>>,
-    windows: Vec<CSPARQLWindow<I>>,
+    windows: Vec<LegacyWindow<I>>,
     r2r: Arc<Mutex<Box<dyn R2ROperator<I, Vec<PhysicalOperator>, O>>>>,
     r2s_consumer: AggregateConsumer<O>,
     window_configs: Vec<RSPWindow>,

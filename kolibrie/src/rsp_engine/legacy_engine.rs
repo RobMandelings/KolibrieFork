@@ -10,7 +10,7 @@ use prototypes::WindowSnapshotStrategy;
 use shared::query::{Fallback, SyncPolicy};
 use crate::rsp::builder::Consumer;
 use crate::rsp::r2r::R2ROperator;
-use crate::rsp::s2r::{CSPARQLWindow, ContentContainer, Report};
+use prototypes::s2r::{LegacyWindow, ContentContainer, Report};
 use crate::rsp_engine::{emit_results, legacy_engine, register_processor_for_window, OperationMode, QueryExecutionMode, RSPEngine, RSPWindow, WindowResult};
 use crate::streamertail_optimizer::PhysicalOperator;
 
@@ -106,12 +106,12 @@ where
     S: WindowSnapshotStrategy<I>,
 {
 
-    pub fn create_legacy_windows(configs: &Vec<RSPWindow>) -> Vec<CSPARQLWindow<I>> {
+    pub fn create_legacy_windows(configs: &Vec<RSPWindow>) -> Vec<LegacyWindow<I>> {
         let mut windows = Vec::new();
         for window_config in configs {
             let mut report = Report::new();
             report.add(window_config.report_strategy.clone());
-            let window = CSPARQLWindow::new(
+            let window = LegacyWindow::new(
                 window_config.width,
                 window_config.slide,
                 report,

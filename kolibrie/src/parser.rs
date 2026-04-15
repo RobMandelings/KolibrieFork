@@ -28,7 +28,7 @@ use shared::rule::Rule;
 use shared::terms::*;
 use shared::query::*;
 // Add RSP imports
-use crate::rsp::s2r::{CSPARQLWindow, Report, ReportStrategy, Tick, WindowTriple, ContentContainer};
+use prototypes::s2r::{LegacyWindow, Report, ReportStrategy, Tick, WindowTriple, ContentContainer};
 use crate::rsp::r2s::{Relation2StreamOperator, StreamOperator};
 use std::collections::HashMap;
 
@@ -2029,7 +2029,7 @@ pub fn process_rule_definition(
             println!("Setting up RSP window processing for rule with {} windows", rule.window_clause.len());
 
             let mut all_stream_results: Vec<Triple> = Vec::new();
-            let mut rsp_windows: Vec<CSPARQLWindow<WindowTriple>> = Vec::new();
+            let mut rsp_windows: Vec<LegacyWindow<WindowTriple>> = Vec::new();
 
             // Set up stream operator based on parsed stream type
             let stream_operator = match &rule.stream_type {
@@ -2224,7 +2224,7 @@ fn matches_pattern(pattern: &TriplePattern, triple: &Triple) -> bool {
 }
 
 // Helper function to create RSP window from parsed specification
-fn create_rsp_window(window_spec: &WindowSpec) -> Result<CSPARQLWindow<WindowTriple>, String> {
+fn create_rsp_window(window_spec: &WindowSpec) -> Result<LegacyWindow<WindowTriple>, String> {
     // Create report strategy
     let mut report = Report::new();
     
@@ -2249,15 +2249,15 @@ fn create_rsp_window(window_spec: &WindowSpec) -> Result<CSPARQLWindow<WindowTri
     match window_spec.window_type {
         WindowType::Sliding => {
             let slide = window_spec.slide.unwrap_or(1);
-            Ok(CSPARQLWindow::new(window_spec.width, slide, report, tick, String::default()))
+            Ok(LegacyWindow::new(window_spec.width, slide, report, tick, String::default()))
         },
         WindowType::Tumbling => {
             // Tumbling window: slide = width
-            Ok(CSPARQLWindow::new(window_spec.width, window_spec.width, report, tick, String::default()))
+            Ok(LegacyWindow::new(window_spec.width, window_spec.width, report, tick, String::default()))
         },
         WindowType::Range => {
             // Range window: slide = 1 (continuous)
-            Ok(CSPARQLWindow::new(window_spec.width, 1, report, tick, String::default()))
+            Ok(LegacyWindow::new(window_spec.width, 1, report, tick, String::default()))
         }
     }
 }

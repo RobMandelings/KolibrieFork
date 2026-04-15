@@ -10,7 +10,7 @@
 
 use crate::sparql_database::SparqlDatabase;
 use crate::rsp::r2s::{Relation2StreamOperator, StreamOperator};
-use crate::rsp::s2r::{CSPARQLWindow, ContentContainer, Report, ReportStrategy, Tick, WindowTriple};
+use prototypes::s2r::{LegacyWindow, ContentContainer, Report, ReportStrategy, Tick, WindowTriple};
 use shared::triple::Triple;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::fmt;
@@ -54,7 +54,7 @@ pub struct QueryBuilder<'a> {
     window_config: Option<WindowConfig>,
     stream_operator: Option<StreamOperator>,
     r2s_operator: Option<Relation2StreamOperator<Triple>>,
-    window_instance: Option<CSPARQLWindow<WindowTriple>>,
+    window_instance: Option<LegacyWindow<WindowTriple>>,
     window_receiver: Option<Receiver<ContentContainer<WindowTriple>>>,
     stream_results: Arc<Mutex<Vec<Vec<Triple>>>>,
     current_timestamp: usize,
@@ -687,7 +687,7 @@ impl<'a> QueryBuilder<'a> {
                 }
             }
 
-            let mut window = CSPARQLWindow::new(
+            let mut window = LegacyWindow::new(
                 config.width,
                 config.slide,
                 report,
