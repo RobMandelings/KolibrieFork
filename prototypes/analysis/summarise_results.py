@@ -201,7 +201,6 @@ def build_overview_from_dfs(
 
 
 def plot_overview(overview, ylabel, log_scale=False, strategies=None, title=None):
-
     if strategies is None:
         strategies = overview.index.tolist()
 
@@ -213,6 +212,7 @@ def plot_overview(overview, ylabel, log_scale=False, strategies=None, title=None
         "refcount": "tab:red",
         "arc": "tab:orange",
         "expire": "tab:green",
+        "legacy": "tab:purple"
     }
 
     plt.figure(figsize=(16, 6))
@@ -268,17 +268,22 @@ def load_results(path: str) -> dict:
 
 
 def main():
-    results = load_results("my_analysis")
+    results = load_results("15_04")
     dfs_by_config = get_dfs_by_config(results)
 
     name_label_pairs = []
-    for size in [1,2,4,8,16,32,64]:
+    for size in [1, 2, 4, 8, 16]:
         for slide in [1]:
-            for events in [10_000]:
-                name_label_pairs.append((f"windows=1,size={size},slide={slide},events={events}", f"1,{size},{slide},{events}"))
+            for events in [50_000]:
+                name_label_pairs.append(
+                    (f"windows=1,size={size},slide={slide},events={events}", f"1,{size},{slide},{events}"))
 
     names = [name for name, _ in name_label_pairs]
     labels = [label for _, label in name_label_pairs]
+
+    if len(dfs_by_config.keys()) != len(labels):
+        print("name_label pairs is specified incorrectly. Number of labels is not the same as the number of configurations.")
+        return
 
     selected_dfs = select_labeled_dfs(dfs_by_config, names)
 
@@ -290,9 +295,6 @@ def main():
 
     overview_df = build_overview_from_dfs(selected_dfs, labels, "mem_total_bytes")
     plot_overview(overview_df, "mem_total_bytes", False)
-    # plot_overview(overview_df, "mem_total_bytes", False, "refcount")
-    # plot_overview(overview_df, "mem_total_bytes", False, "clone")
-    # plot_overview(overview_df, "mem_total_bytes", True, "clone")
 
 
 if __name__ == "__main__":

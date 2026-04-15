@@ -146,6 +146,10 @@ STRATEGY_CONFIG: Dict[str, dict] = {
             ],
         },
     },
+    "legacy": {
+        "labels": {
+        },
+    },
     "expire": {
         "labels": {
             "make_payload": [
