@@ -9,6 +9,8 @@ import re
 import numpy as np
 import matplotlib.pyplot as plt
 
+from sorting import sort_configs, to_labeled_dataframe_dict, LabeledDataFrame
+
 
 def parse_size(key: str) -> int:
     """Extract integer window size from 'size=1,slide=1,offset=0'."""
@@ -152,43 +154,18 @@ def filter_by_events(results: dict, target_events: int) -> dict:
     }
 
 
-def select_labeled_dfs(
-        dfs_by_config: Dict[str, pd.DataFrame],
-        workload_names: List[str],
-) -> List[pd.DataFrame]:
-    """
-    Returns a list of (label, DataFrame) for plotting.
-    name_to_label maps workload_name -> label used in the plot.
-    """
-    pairs: List[pd.DataFrame] = []
-
-    for workload_name in workload_names:
-        df = dfs_by_config.get(workload_name)
-        if df is None:
-            continue  # or raise if you want strictness
-        pairs.append(df)
-
-    return pairs
-
-
 def build_overview_from_dfs(
-        dfs: List[pd.DataFrame],
-        labels: List[str],
+        dfs: List[LabeledDataFrame],
         prop: str,
 ) -> pd.DataFrame:
-    """
-    dfs: list of DataFrames indexed by strategy.
-    labels: same-length list of column labels for each df.
-    Returns a DataFrame indexed by strategy with one column per label,
-    containing df[prop] for that label.
-    """
-    if len(dfs) != len(labels):
-        raise ValueError("dfs and labels must have the same length")
-
     base_df = None
 
-    for label, df in zip(labels, dfs):
+    for item in dfs:
+        label = item.label
+        df = item.dataframe
+
         col = df[[prop]].rename(columns={prop: label})
+
         if base_df is None:
             base_df = col
         else:
@@ -270,30 +247,18 @@ def load_results(path: str) -> dict:
 def main():
     results = load_results("15_04")
     dfs_by_config = get_dfs_by_config(results)
+    sorted_by_size_then_slide = sort_configs(dfs_by_config, "size", reverse=False)
+    labeled = to_labeled_dataframe_dict(sorted_by_size_then_slide)
 
-    name_label_pairs = []
-    for size in [1, 2, 4, 8, 16]:
-        for slide in [1]:
-            for events in [50_000]:
-                name_label_pairs.append(
-                    (f"windows=1,size={size},slide={slide},events={events}", f"1,{size},{slide},{events}"))
+    as_values = labeled.values()
 
-    names = [name for name, _ in name_label_pairs]
-    labels = [label for _, label in name_label_pairs]
-
-    if len(dfs_by_config.keys()) != len(labels):
-        print("name_label pairs is specified incorrectly. Number of labels is not the same as the number of configurations.")
-        return
-
-    selected_dfs = select_labeled_dfs(dfs_by_config, names)
-
-    overview_df = build_overview_from_dfs(selected_dfs, labels, "thr_mean_elem_rel")
+    overview_df = build_overview_from_dfs(as_values, "thr_mean_elem_rel")
     plot_overview(overview_df, "thr_mean_elem_rel", False)
 
-    overview_df = build_overview_from_dfs(selected_dfs, labels, "mem_total_blocks")
+    overview_df = build_overview_from_dfs(as_values, "mem_total_blocks")
     plot_overview(overview_df, "mem_total_blocks", False)
 
-    overview_df = build_overview_from_dfs(selected_dfs, labels, "mem_total_bytes")
+    overview_df = build_overview_from_dfs(as_values, "mem_total_bytes")
     plot_overview(overview_df, "mem_total_bytes", False)
 
 
