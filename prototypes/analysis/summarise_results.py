@@ -504,7 +504,6 @@ def get_throughput_dfs_by_workload(results: Dict[str, Any]) -> Dict[str, pd.Data
 def main(analysis_path: Path):
     results = get_results(analysis_path)
     sorted_by_size_then_slide = sort_configs(results, "size", reverse=False)
-    # dfs = extract_dfs(sorted_by_size_then_slide)
 
     labeled_dfs = to_labeled_dataframe_list(get_throughput_dfs_by_workload(sorted_by_size_then_slide))
     build_and_export_overviews(labeled_dfs, analysis_path / "overviews")
@@ -513,4 +512,4 @@ def main(analysis_path: Path):
 
 
 if __name__ == "__main__":
-    main(Path("evaluation/17_04_3_128_bytes"))
+    main(Path("evaluation/17_04-2_no_heap"))

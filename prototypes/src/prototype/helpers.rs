@@ -10,10 +10,6 @@ fn new_id() -> u64 {
     NEXT_ID.fetch_add(1, Ordering::Relaxed)
 }
 
-
-
-
-
 /// Creates a window config with UUID for quick testing
 pub fn wc(size: Time, slide: Time, offset: Time) -> S2RWindowConfig {
     S2RWindowConfig {
