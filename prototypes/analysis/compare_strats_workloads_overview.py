@@ -2,6 +2,7 @@
 For getting an overview that illustrates comparisons between different strategies across different workloads (e.g. varying window size)
 While you focus on one parameter, such as throughput or memory consumption
 """
+from pathlib import Path
 from typing import List
 
 import pandas as pd
@@ -33,7 +34,7 @@ def build_overview_from_dfs(
     return base_df
 
 
-def plot_overview(overview, ylabel, log_scale=False, strategies=None, title=None):
+def plot_overview(overview, ylabel, strategies=None, title=None, output_file=None):
     if strategies is None:
         strategies = overview.index.tolist()
 
@@ -65,12 +66,17 @@ def plot_overview(overview, ylabel, log_scale=False, strategies=None, title=None
     plt.xlabel("window size label")  # or something more specific
     plt.xticks(rotation=45, ha="right", fontsize=6)
     plt.ylabel(ylabel)
-    if log_scale:
-        plt.yscale("log")
     if title is not None:
         plt.title(title)
 
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.show()
+
+    if output_file is not None:
+        output_file = Path(output_file)
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(output_file, dpi=200, bbox_inches="tight")
+        plt.close()
+    else:
+        plt.show()

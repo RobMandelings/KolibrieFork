@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 import json
 from dataclasses import dataclass
-from typing import Dict, List, Any
-import pandas as pd
 from pathlib import Path
+from typing import Dict, List, Any
 
-ROOT = Path("evaluation")
+import pandas as pd
 
 
 @dataclass
@@ -162,19 +161,14 @@ STRATEGY_CONFIG: Dict[str, dict] = {
 CONFIG_IDS: List[int] = [0, 1, 2, 3, 4]
 
 
-def load_mem_results(dir_suffix: str = None) -> Dict[str, Dict[str, StrategyResult]]:
+def load_mem_results(path: Path = None) -> Dict[str, Dict[str, StrategyResult]]:
     """
     Load results for all workloads and strategies from mem_profiles/.
     Returns: {workload_name: {strategy_name: StrategyResult}}
     """
     all_results: Dict[str, Dict[str, StrategyResult]] = {}
 
-    if dir_suffix:
-        root = ROOT / dir_suffix
-    else:
-        root = ROOT
-
-    for workload_dir in root.iterdir():
+    for workload_dir in path.iterdir():
         if not workload_dir.is_dir():
             continue
 
