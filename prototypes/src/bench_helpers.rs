@@ -86,7 +86,7 @@ where
     run_throughput_bench(&mut op, events);
 }
 
-pub type EventFactory<I> = fn(Time) -> Event<I>;
+pub type EventFactory<I> = Box<dyn Fn(Time) -> Event<I>>;
 
 pub fn run_strategy_clone<I>(
     workload: &Workload,

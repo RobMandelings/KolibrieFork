@@ -125,10 +125,10 @@ STRATEGY_CONFIG: Dict[str, dict] = {
             ],
         },
     },
-    "refcount": {
+    "rc": {
         "labels": {
             "window_closed": [
-                "window_closed",  # adjust to your actual refcount frame names
+                "window_closed",
             ],
             "make_payload": [
                 "RSPPrototype::prototype::helpers::make_payload (src/prototype/helpers.rs:13:9)"
@@ -138,7 +138,7 @@ STRATEGY_CONFIG: Dict[str, dict] = {
     "arc": {
         "labels": {
             "window_closed": [
-                "window_closed",  # adjust to your actual refcount frame names
+                "window_closed",
             ],
             "make_payload": [
                 "RSPPrototype::prototype::helpers::make_payload (src/prototype/helpers.rs:13:9)"
@@ -179,7 +179,6 @@ def load_mem_results(path: Path = None) -> Dict[str, Dict[str, StrategyResult]]:
         if not memory_dir.is_dir():
             continue
 
-        # we expect files clone.json, expire.json, refcount.json
         for strat_name, cfg in STRATEGY_CONFIG.items():
             labels = cfg["labels"]
             path = memory_dir / f"{strat_name}.json"

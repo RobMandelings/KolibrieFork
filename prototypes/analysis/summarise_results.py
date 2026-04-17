@@ -228,4 +228,4 @@ def main(analysis_path: Path):
 
 
 if __name__ == "__main__":
-    main(Path("evaluation/15_04-2"))
+    main(Path("evaluation/17_04-2_no_heap"))

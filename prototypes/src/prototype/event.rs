@@ -7,7 +7,7 @@ pub struct Event<I> {
 // Concrete event type with heap-allocated bytes
 pub type ByteEvent = Event<Box<[u8]>>;
 
-pub fn make_byte_event(ts: Time, size: usize) -> ByteEvent {
+pub fn make_byte_event(ts: Time, size: usize) -> Event<Box<[u8]>> {
     Event {
         ts,
         payload: vec![0u8; size].into_boxed_slice(),
@@ -21,6 +21,10 @@ fn make_string_payload(len: usize) -> String {
 
 pub fn make_string_event(ts: Time) -> Event<String> {
     Event::new(ts, make_string_payload(1000))
+}
+
+pub fn make_copy_event(ts: Time) -> Event<u64> {
+    Event::new(ts, 0)
 }
 
 impl<I> Event<I> {
