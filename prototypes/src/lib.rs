@@ -9,8 +9,7 @@ pub mod s2r;
 pub type IRI = String;
 
 pub use prototype::{
-    event::Event,
-    helpers::event,
+    event::{Event, make_string_event},
     slide_strategy::{
         arc_strategy::ArcStrategy,
         clone_strategy::CloneStrategy,
@@ -25,7 +24,7 @@ pub use prototype::{
 pub use bench_helpers::{
     run_strategy_arc,
     run_strategy_expire,
-    run_strategy_refcount,
+    run_strategy_rc,
 };
 
 pub use profile_helper::run_mem_profile;

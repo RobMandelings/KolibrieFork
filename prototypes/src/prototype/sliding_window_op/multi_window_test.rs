@@ -1,7 +1,7 @@
 use crate::prototype::event::Time;
-use crate::prototype::helpers::{event, wc};
+use crate::prototype::helpers::{wc};
 use crate::prototype::slide_strategy::expire_strategy::SliceContainer;
-use crate::{ExpireStrategy, SlidingWindowOperator, WindowSnapshotStrategy};
+use crate::{make_string_event, ExpireStrategy, SlidingWindowOperator, WindowSnapshotStrategy};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -42,13 +42,13 @@ fn sliding_window_operator_reports_multiple_windows_with_distinct_params() {
 
     // Stream of events
     // t=2,5,7,9,11,13,17
-    op.event_arrives(event(2));
-    op.event_arrives(event(5));
-    op.event_arrives(event(7));
-    op.event_arrives(event(9));
-    op.event_arrives(event(11));
-    op.event_arrives(event(13));
-    op.event_arrives(event(17));
+    op.event_arrives(make_string_event(2));
+    op.event_arrives(make_string_event(5));
+    op.event_arrives(make_string_event(7));
+    op.event_arrives(make_string_event(9));
+    op.event_arrives(make_string_event(11));
+    op.event_arrives(make_string_event(13));
+    op.event_arrives(make_string_event(17));
 
     let reports = reported.borrow();
 

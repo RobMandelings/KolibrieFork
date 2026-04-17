@@ -88,8 +88,8 @@ impl<I: Clone + 'static> WindowSnapshotStrategy<I> for ExpireStrategy<I> {
 
 #[cfg(test)]
 mod tests {
+    use crate::make_string_event;
     use super::*;
-    use crate::prototype::helpers::event;
 
     fn consume_fn() -> Box<dyn for<'a> Fn(SliceContainer<String>)> {
         Box::new(|_| {})
@@ -99,7 +99,7 @@ mod tests {
     fn expire_events_none_expired() {
         let mut wc: ExpireStrategy<String> = ExpireStrategy::new();
 
-        wc.content = vec![event(10), event(20), event(30)];
+        wc.content = vec![make_string_event(10), make_string_event(20), make_string_event(30)];
         wc.add_consumer("0", consume_fn());
         let slice = wc.slice_by_ts(5); // cutoff before all
 
@@ -109,7 +109,7 @@ mod tests {
     #[test]
     fn expire_events_some_expired() {
         let mut wc = ExpireStrategy::new();
-        wc.content = vec![event(10), event(20), event(30)];
+        wc.content = vec![make_string_event(10), make_string_event(20), make_string_event(30)];
         wc.add_consumer("0", consume_fn());
         let slice = wc.slice_by_ts(25); // expire ts < 25 -> 10 and 20
 
@@ -120,7 +120,7 @@ mod tests {
     #[test]
     fn expire_events_all_expired() {
         let mut wc = ExpireStrategy::new();
-        wc.content = vec![event(10), event(20), event(30)];
+        wc.content = vec![make_string_event(10), make_string_event(20), make_string_event(30)];
         wc.add_consumer("0", consume_fn());
         let slice = wc.slice_by_ts(100);
         assert_eq!(slice.len(), 0);

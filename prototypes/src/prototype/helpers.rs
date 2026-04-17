@@ -10,14 +10,9 @@ fn new_id() -> u64 {
     NEXT_ID.fetch_add(1, Ordering::Relaxed)
 }
 
-fn make_payload(len: usize) -> String {
-    // All zeroes, or 'x', doesn't matter as long as length is `len`.
-    "0".repeat(len)
-}
 
-pub fn event(ts: Time) -> Event<String> {
-    Event::new(ts, make_payload(1000))
-}
+
+
 
 /// Creates a window config with UUID for quick testing
 pub fn wc(size: Time, slide: Time, offset: Time) -> S2RWindowConfig {

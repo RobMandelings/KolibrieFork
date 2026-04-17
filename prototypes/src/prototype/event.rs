@@ -14,6 +14,15 @@ pub fn make_byte_event(ts: Time, size: usize) -> ByteEvent {
     }
 }
 
+fn make_string_payload(len: usize) -> String {
+    // All zeroes, or 'x', doesn't matter as long as length is `len`.
+    "0".repeat(len)
+}
+
+pub fn make_string_event(ts: Time) -> Event<String> {
+    Event::new(ts, make_string_payload(1000))
+}
+
 impl<I> Event<I> {
 
     pub fn new(ts: Time, payload: I) -> Event<I> {

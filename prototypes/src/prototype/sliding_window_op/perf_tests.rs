@@ -1,14 +1,13 @@
 #[cfg(test)]
 mod perf_tests {
-    use std::rc::Rc;
-    use std::time::Instant;
     use crate::prototype::event::Time;
-    use crate::prototype::helpers::{event, wc, wc_struct};
-    use crate::prototype::slide_strategy::WindowSnapshotStrategy;
-    use crate::{CloneStrategy, Event, ExpireStrategy, RcStrategy, SlidingWindowOperator, WindowParams};
+    use crate::prototype::helpers::wc;
     use crate::prototype::slide_strategy::clone_strategy::CloneContainer;
     use crate::prototype::slide_strategy::expire_strategy::SliceContainer;
     use crate::prototype::slide_strategy::rc_strategy::RcContainer;
+    use crate::prototype::slide_strategy::WindowSnapshotStrategy;
+    use crate::{make_string_event, CloneStrategy, ExpireStrategy, RcStrategy, SlidingWindowOperator};
+    use std::time::Instant;
 
     fn run_throughput_test<S>(name: &str, mut op: SlidingWindowOperator<String, S>)
     where
@@ -21,7 +20,7 @@ mod perf_tests {
 
         for i in 0..n_events {
             let ts: Time = start_ts + (i as Time);
-            op.event_arrives(event(ts));
+            op.event_arrives(make_string_event(ts));
         }
 
         let elapsed = start.elapsed();

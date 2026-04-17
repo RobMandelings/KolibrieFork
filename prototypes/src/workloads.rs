@@ -69,8 +69,8 @@ pub fn test_workloads() -> Vec<Workload> {
 
     let mut workloads = Vec::new();
 
-    for size in [1, 2, 4, 8, 16, 32, 64, 128, 256] {
-        workloads.push(create_workload(1, 50_000, size, 1))
+    for size in [1, 2, 4, 8, 16, 32, 64] {
+        workloads.push(create_workload(1, 10_000, size, 1))
     }
 
     workloads
@@ -80,13 +80,13 @@ pub fn test_workload() -> Vec<Workload> {
 
     let mut workloads = Vec::new();
 
-    for size in [1, 2, 4, 8, 16, 32, 64, 128] {
-        workloads.push(create_workload(1, 50_000, size, 1))
+    for size in [1] {
+        workloads.push(create_workload(1, 10_000, size, 1))
     }
 
     workloads
 }
 
 pub fn default_workloads() -> Vec<Workload> {
-    test_workload()
+    test_workloads()
 }

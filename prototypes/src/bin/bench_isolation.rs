@@ -1,16 +1,15 @@
-use criterion::{black_box, BenchmarkGroup, BenchmarkId, Criterion, Throughput};
+use criterion::measurement::WallTime;
+use criterion::{BenchmarkGroup, BenchmarkId, Criterion, Throughput, black_box};
+use pprof::ProfilerGuardBuilder;
 use pprof::criterion::{Output, PProfProfiler};
 use pprof::flamegraph::Options;
-use pprof::ProfilerGuardBuilder;
-use prototypes::workloads::{default_workloads, write_workload_to_file, Workload};
-use prototypes::{
-    run_mem_profile, run_strategy_arc, run_strategy_expire, run_strategy_refcount,
-};
+use prototypes::bench_helpers::{run_strategy_clone, run_strategy_legacy, EventFactory};
+use prototypes::workloads::{Workload, default_workloads, write_workload_to_file};
+use prototypes::{run_mem_profile, run_strategy_arc, run_strategy_expire, run_strategy_rc, Event};
 use std::fs::File;
 use std::path::Path;
 use std::{env, fs, io};
-use criterion::measurement::WallTime;
-use prototypes::bench_helpers::{run_strategy_clone, run_strategy_legacy};
+use prototypes::prototype::event::{make_string_event, Time};
 
 #[global_allocator]
 static ALLOC: dhat::Alloc = dhat::Alloc;
@@ -84,8 +83,7 @@ fn write_flamegraph_for_strategy<F>(
         .build()
         .expect("failed to build pprof report");
 
-    let file = File::create(&flamegraph_path)
-        .expect("failed to create flamegraph.svg");
+    let file = File::create(&flamegraph_path).expect("failed to create flamegraph.svg");
 
     let mut options = Options::default();
     options.image_width = Some(2400);
@@ -95,24 +93,26 @@ fn write_flamegraph_for_strategy<F>(
         .expect("failed to write flamegraph");
 }
 
-fn run_bench_and_profile<F>(
-    group: &mut criterion::BenchmarkGroup<'_, criterion::measurement::WallTime>,
+fn run_bench_and_profile<I>(
+    group: &mut BenchmarkGroup<'_, WallTime>,
     workload: &Workload,
-    label: &str,    // "clone"
+    label: &str, // "clone"
     group_path: &Path,
-    run_strategy: F,
+    event_factory: EventFactory<I>,
+    run_strategy: fn(&Workload, Vec<Event<I>>),
 )
-where
-    F: Fn(&Workload) + Copy,
+where I: Clone
 {
-    bench_strategy(group, label, workload, |w| {
-        run_strategy(w)
-    });
+    let events: Vec<Event<I>> = (0..workload.nr_events as Time)
+        .map(event_factory)
+        .collect();
 
-    run_mem_profile(label, |w| run_strategy(w), workload);
+    bench_strategy(group, label, workload, |w| run_strategy(w, events.clone()));
+
+    run_mem_profile(label, |w| run_strategy(w, events), workload);
     move_profile_file(label, group_path);
-    write_flamegraph_for_strategy(workload, label, group_path, run_strategy);
 
+    // write_flamegraph_for_strategy(workload, label, group_path, run_strategy);
 }
 
 fn copy_dir_recursive(src_group: &Path, dst_group: &Path) -> io::Result<()> {
@@ -164,25 +164,106 @@ fn parse_folder_name() -> String {
 
     while let Some(arg) = args.next() {
         if arg == "--name" {
-            return args
-                .next()
-                .expect("expected a folder name after --name");
+            return args.next().expect("expected a folder name after --name");
         }
     }
 
     "".to_string()
 }
 
-fn main() {
-    let folder_name = parse_folder_name();
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum Strategy {
+    Clone,
+    Expire,
+    Rc,
+    Legacy,
+    Arc,
+}
 
+impl Strategy {
+    fn parse(s: &str) -> Option<Self> {
+        match s {
+            "clone" => Some(Self::Clone),
+            "expire" => Some(Self::Expire),
+            "rc" => Some(Self::Rc),
+            "legacy" => Some(Self::Legacy),
+            "arc" => Some(Self::Arc),
+            _ => None,
+        }
+    }
+
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::Clone => "clone",
+            Self::Expire => "expire",
+            Self::Rc => "rc",
+            Self::Legacy => "legacy",
+            Self::Arc => "arc",
+        }
+    }
+}
+
+struct Args {
+    folder_name: String,
+    only: Option<Vec<Strategy>>,
+}
+
+fn parse_args() -> Args {
+    let all_args: Vec<String> = env::args().skip(1).collect();
+    let mut i = 0;
+
+    let mut folder_name = String::new();
+    let mut only: Vec<Strategy> = Vec::new();
+
+    while i < all_args.len() {
+        match all_args[i].as_str() {
+            "--name" => {
+                i += 1;
+                folder_name = all_args
+                    .get(i)
+                    .cloned()
+                    .expect("expected a folder name after --name");
+            }
+            "--only" => {
+                i += 1;
+                while i < all_args.len() && !all_args[i].starts_with("--") {
+                    let strategy = Strategy::parse(&all_args[i])
+                        .unwrap_or_else(|| panic!("unknown strategy for --only: {}", all_args[i]));
+                    only.push(strategy);
+                    i += 1;
+                }
+                continue;
+            }
+            other => {
+                panic!("unknown argument: {other}");
+            }
+        }
+        i += 1;
+    }
+
+    Args {
+        folder_name,
+        only: if only.is_empty() { None } else { Some(only) },
+    }
+}
+
+fn should_run(only: &Option<Vec<Strategy>>, strategy: Strategy) -> bool {
+    match only {
+        None => true,
+        Some(list) => list.contains(&strategy),
+    }
+}
+
+fn main() {
+    let args = parse_args();
+    let only = args.only;
     let root_path = Path::new(ROOT);
     let prototypes_root_path = root_path.join("prototypes");
-    let dst_root_path = prototypes_root_path.join(DST_ROOT).join(&folder_name);
+    let dst_root_path = prototypes_root_path.join(DST_ROOT).join(&args.folder_name);
 
     let mut c: Criterion = Criterion::default()
         .with_profiler(PProfProfiler::new(
-            100,                    // sampling frequency (Hz)
+            100, // sampling frequency (Hz)
             Output::Flamegraph(None),
         ))
         .with_output_color(true);
@@ -195,46 +276,25 @@ fn main() {
         let criterion_dst_path = dst_group_path.join("throughput");
         let criterion_src_path = root_path.join("target/criterion").join(&workload.name); // Where to take the data from
 
-        // TODO extract run_bench_profile for better reusability
-        run_bench_and_profile(
-            &mut group,
-            workload,
-            "clone",
-            &dst_group_path,
-            |w| run_strategy_clone(w),
-        );
+        if should_run(&only, Strategy::Clone) {
+            run_bench_and_profile(&mut group, workload, "clone", &dst_group_path, make_string_event, run_strategy_clone);
+        }
 
-        run_bench_and_profile(
-            &mut group,
-            workload,
-            "refcount",
-            &dst_group_path,
-            |w| run_strategy_refcount(w),
-        );
+        if should_run(&only, Strategy::Rc) {
+            run_bench_and_profile(&mut group, workload, "rc", &dst_group_path, make_string_event, run_strategy_rc);
+        }
 
-        run_bench_and_profile(
-            &mut group,
-            workload,
-            "arc",
-            &dst_group_path,
-            |w| run_strategy_arc(w),
-        );
+        if should_run(&only, Strategy::Arc) {
+            run_bench_and_profile(&mut group, workload, "arc", &dst_group_path, make_string_event, run_strategy_arc);
+        }
 
-        run_bench_and_profile(
-            &mut group,
-            workload,
-            "legacy",
-            &dst_group_path,
-            |w| run_strategy_legacy(w),
-        );
+        if should_run(&only, Strategy::Legacy) {
+            run_bench_and_profile(&mut group, workload, "legacy", &dst_group_path, make_string_event, run_strategy_legacy);
+        }
 
-        run_bench_and_profile(
-            &mut group,
-            workload,
-            "expire",
-            &dst_group_path,
-            |w| run_strategy_expire(w),
-        );
+        if should_run(&only, Strategy::Expire) {
+            run_bench_and_profile(&mut group, workload, "expire", &dst_group_path, make_string_event, run_strategy_expire);
+        }
 
         group.finish();
 

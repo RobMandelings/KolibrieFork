@@ -1,9 +1,9 @@
 use super::*;
 use std::cell::RefCell;
 use std::rc::Rc;
-use crate::{Event, ExpireStrategy, WindowParams};
+use crate::{make_string_event, Event, ExpireStrategy, WindowParams};
 use crate::prototype::event::Time;
-use crate::prototype::helpers::{event, wc};
+use crate::prototype::helpers::{wc};
 use crate::prototype::slide_strategy::expire_strategy::SliceContainer;
 
 #[test]
@@ -25,19 +25,19 @@ fn sliding_window_operator_reports_on_window_close() {
     op.add_consumer(&window_iri, consume_fn);
 
     // First window (0,10]: events at 1, 3, 7.
-    op.event_arrives(event(1));
-    op.event_arrives(event(3));
-    op.event_arrives(event(7));
+    op.event_arrives(make_string_event(1));
+    op.event_arrives(make_string_event(3));
+    op.event_arrives(make_string_event(7));
 
     // Event at ts = 11 closes (0,10] and should report [1,3,7].
-    op.event_arrives(event(11));
+    op.event_arrives(make_string_event(11));
 
     // Second window (10,20]: events at 13, 19.
-    op.event_arrives(event(13));
-    op.event_arrives(event(19));
+    op.event_arrives(make_string_event(13));
+    op.event_arrives(make_string_event(19));
 
     // Event at ts = 21 closes (10,20] and should report [11, 13,19].
-    op.event_arrives(event(21));
+    op.event_arrives(make_string_event(21));
 
     let reports = reported.borrow();
     assert_eq!(reports.len(), 2);
@@ -67,19 +67,19 @@ fn sliding_window_operator_reports_overlapping_windows_secret_intervals() {
     // W3: (10, 20]
 
     // All three events go into W1
-    op.event_arrives(event(3));
-    op.event_arrives(event(7));
-    op.event_arrives(event(10));
+    op.event_arrives(make_string_event(3));
+    op.event_arrives(make_string_event(7));
+    op.event_arrives(make_string_event(10));
 
     // Close W1 at ts = 10; So ts = 11 closes W1 report W1's content.
     // ts 7 and 10 are included in W2
     // ts 11, 14 as well
-    op.event_arrives(event(11));
-    op.event_arrives(event(14));
+    op.event_arrives(make_string_event(11));
+    op.event_arrives(make_string_event(14));
     // Close W2 at ts = 15; report W2's content.
-    op.event_arrives(event(16));
+    op.event_arrives(make_string_event(16));
     // Close W3 at ts = 20; report W3's content.
-    op.event_arrives(event(21));
+    op.event_arrives(make_string_event(21));
 
     let reports = reported.borrow();
 
