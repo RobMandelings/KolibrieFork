@@ -6,6 +6,7 @@ from typing import Mapping, Literal, Optional, Iterable, Dict
 from matplotlib import pyplot as plt
 
 from PlotResult import PlotResult
+from constants import STRATEGY_COLORS
 from sample_outlier_detection import tukey_outliers_from_sample
 
 
@@ -63,7 +64,7 @@ def plot_samples_grouped(
         else:
             raise ValueError(f"Unknown mode: {mode!r}")
 
-        ax.scatter(x, y, s=15, label=strat_name)
+        ax.scatter(x, y, s=15, label=strat_name, color=STRATEGY_COLORS.get(strat_name, None))
 
     ax.set_xlabel("Sample index")
     ax.set_ylabel(ylabel)
@@ -76,6 +77,7 @@ def plot_samples_grouped(
     plt.tight_layout()
     if path:
         fig.savefig(path)
+        plt.close(fig)
     else:
         plt.show()
 
@@ -147,6 +149,7 @@ def plot_sample(
     plt.tight_layout()
     if path:
         fig.savefig(path)
+        plt.close()
     else:
         plt.show()
 

@@ -22,29 +22,21 @@ pub fn write_workload_to_file(workload: &Workload, path: &str) -> anyhow::Result
     Ok(())
 }
 
-fn create_workload(nr_windows: usize, nr_events: usize, size: Time, slide: Time) -> Workload {
+fn create_workload(nr_windows: usize, nr_events: usize, bytes: Option<usize>, size: Time, slide: Time) -> Workload {
     let window_config = WindowParams {
         size,
         slide,
         offset: 0
     };
 
-    let windows = {
-        match nr_windows {
-            1 => {
-                vec![wc_struct(window_config)]
-            },
-            2 => {
-                vec![wc_struct(window_config.clone()), wc_struct(window_config)]
-            },
-            _ => panic!("Not configured")
-        }
-    };
+    let windows = (0..nr_windows)
+        .map(|_| wc_struct(window_config.clone()))
+        .collect::<Vec<_>>();
 
     Workload {
         name: format!("windows={nr_windows},size={size},slide={slide},events={nr_events}"),
         nr_events,
-        bytes: Some(128),
+        bytes,
         windows,
     }
 }
@@ -57,7 +49,7 @@ fn single_window_workloads() -> Vec<Workload> {
         for &nr_events in &[1000, 10_000, 100_000] {
             for size in [1, 2, 4, 8, 16, 32, 64, 128] {
                 for slide in [1, 5, 10, 20] {
-                    workloads.push(create_workload(nr_windows, nr_events, size, slide));
+                    workloads.push(create_workload(nr_windows, nr_events, None, size, slide));
                 }
             }
         }
@@ -71,7 +63,7 @@ pub fn test_workloads() -> Vec<Workload> {
     let mut workloads = Vec::new();
 
     for size in [1, 2, 4, 8, 16, 32, 64] {
-        workloads.push(create_workload(1, 50_000, size, 1))
+        workloads.push(create_workload(1, 50_000, None, size, 1))
     }
 
     workloads
@@ -82,12 +74,12 @@ pub fn test_workload() -> Vec<Workload> {
     let mut workloads = Vec::new();
 
     for size in [1] {
-        workloads.push(create_workload(1, 50_000, size, 1))
+        workloads.push(create_workload(5, 50_000, None, size, 1))
     }
 
     workloads
 }
 
 pub fn default_workloads() -> Vec<Workload> {
-    test_workloads()
+    test_workload()
 }

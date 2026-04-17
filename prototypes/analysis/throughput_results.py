@@ -4,7 +4,7 @@ from pathlib import Path
 SKIP_NAMES = {"base", "new", "change", "report"}
 
 
-def load_estimates(path: Path = None):
+def load_results(path: Path = None):
     results = {}
 
     for estimates_path in path.rglob("estimates.json"):
@@ -50,5 +50,5 @@ def load_estimates(path: Path = None):
 
 
 if __name__ == "__main__":
-    results = load_estimates()
+    results = load_results()
     print("Hi")

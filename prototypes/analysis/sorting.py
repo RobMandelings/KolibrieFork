@@ -2,18 +2,13 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from workload_keys import parse_config_key
+
 
 @dataclass
 class LabeledDataFrame:
     label: str
     dataframe: pd.DataFrame
-
-
-def parse_config_key(key: str) -> dict:
-    return {
-        part.split("=")[0]: int(part.split("=")[1])
-        for part in key.split(",")
-    }
 
 
 def sort_configs(config_dict, *fields, reverse=False):
@@ -33,7 +28,6 @@ def sort_configs(config_dict, *fields, reverse=False):
         )
     )
 
-
 def sort_by_size(config_dict, reverse=False):
     return sort_configs(config_dict, "size", reverse=reverse)
 
@@ -48,24 +42,3 @@ def sort_by_windows(config_dict, reverse=False):
 
 def sort_by_events(config_dict, reverse=False):
     return sort_configs(config_dict, "events", reverse=reverse)
-
-
-def make_label_from_key(key: str) -> str:
-    parts = parse_config_key(key)
-    # Use whatever label format you want; this matches your "1,size,slide,events" idea
-    return f"{parts['windows']},{parts['size']},{parts['slide']},{parts['events']}"
-
-
-def to_labeled_dataframe_dict(config_dict):
-    """
-    Takes a dict {config_key: df} and returns
-    {config_key: LabeledDataFrame(label=..., dataframe=df)}.
-    The input order is preserved.
-    """
-    return {
-        key: LabeledDataFrame(
-            label=make_label_from_key(key),
-            dataframe=df,
-        )
-        for key, df in config_dict.items()
-    }

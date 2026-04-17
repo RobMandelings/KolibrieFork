@@ -6,6 +6,8 @@ from typing import Dict, List, Any
 
 import pandas as pd
 
+from dhat_parser import parse_dhat
+
 
 @dataclass
 class Metric:
@@ -161,33 +163,30 @@ STRATEGY_CONFIG: Dict[str, dict] = {
 CONFIG_IDS: List[int] = [0, 1, 2, 3, 4]
 
 
-def load_mem_results(path: Path = None) -> Dict[str, Dict[str, StrategyResult]]:
+def load_mem_results(path: Path = None) -> Dict[str, Dict[str, pd.DataFrame]]:
     """
     Load results for all workloads and strategies from mem_profiles/.
     Returns: {workload_name: {strategy_name: StrategyResult}}
     """
-    all_results: Dict[str, Dict[str, StrategyResult]] = {}
+    all_results: Dict[str, Dict[str, pd.DataFrame]] = {}
 
     for workload_dir in path.iterdir():
         if not workload_dir.is_dir():
             continue
 
         workload_name = workload_dir.name
-        cfg_results: Dict[str, StrategyResult] = {}
+        cfg_results: Dict[str, pd.DataFrame] = {}
 
         memory_dir = workload_dir / "memory"
         if not memory_dir.is_dir():
             continue
 
-        for strat_name, cfg in STRATEGY_CONFIG.items():
-            labels = cfg["labels"]
-            path = memory_dir / f"{strat_name}.json"
+        for path in memory_dir.glob("*.json"):
             if not path.is_file():
-                continue  # or raise if you want strictness
+                continue
 
-            cfg_results[strat_name] = load_strategy_results_keyword_based(
-                str(path), strat_name, labels
-            )
+            strat_name = path.stem  # e.g. "arc" from "arc.json"
+            cfg_results[strat_name] = parse_dhat(path)
 
         if cfg_results:
             all_results[workload_name] = cfg_results

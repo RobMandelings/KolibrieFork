@@ -1,3 +1,4 @@
+import copy
 import math
 from pathlib import Path
 from typing import Dict, Sequence, Any
@@ -6,10 +7,12 @@ import mem_results as mem_res_module
 import throughput_results
 import pandas as pd
 
+from workload_keys import make_label_from_key
 
-def _load_raw_results(path: Path) -> dict:
+
+def load_results(path: Path) -> dict:
     strats = mem_res_module.load_mem_results(path)
-    thr_results = throughput_results.load_estimates(path)
+    thr_results = throughput_results.load_results(path)
     combined_mem_throughput = {}
 
     for workload_name, strat_results in strats.items():
@@ -80,51 +83,33 @@ def add_sample_throughputs(result: Dict[str, Dict[str, Dict[str, Any]]]) -> None
 
 def _get_dfs_by_workload(raw_results: dict) -> Dict[str, dict]:
     """
-    Returns a dict:
+    Returns a dict shaped like the original raw_results, but with an added
+    aggregated dataframe under each config's 'throughput' key:
+
       {
         config_key: {
-          "df": pandas.DataFrame (per-strategy metrics, indexed by strategy),
-          "raw": original raw_results[config_key] (strategies dict)
+          ... original strategies ...,
+          "throughput": {
+            "dataframe": pandas.DataFrame
+          }
         },
         ...
       }
-    Each entry in raw_results[config_key][strategy] is expected to have:
-      - "memory"
-      - "throughput"
-      - "estimates"
-      - "sample"
-      - "tukey"
+
+    The dataframe contains one row per strategy and is indexed by strategy.
     """
 
+    result = copy.deepcopy(raw_results)
     rows = []
 
     for config_key, strategies in raw_results.items():
         for strat_name, strat_data in strategies.items():
-            mem_dict = strat_data["memory"]
             thr_metrics = strat_data["throughput"]
-            estimates = thr_metrics["estimates"]  # new: nested estimates dict
-            # sample = thr_metrics["sample"]      # available if you need it later
-            # tukey = thr_metrics["tukey"]
-
-            if "window_closed" in mem_dict:
-                mem_metrics = mem_dict["window_closed"]
-                mem_total_bytes = mem_metrics.total_bytes
-                mem_total_blocks = mem_metrics.total_blocks
-                mem_max_bytes = mem_metrics.t_gmax_bytes
-                mem_max_blocks = mem_metrics.t_gmax_blocks
-            else:
-                mem_total_bytes = math.nan
-                mem_total_blocks = math.nan
-                mem_max_bytes = math.nan
-                mem_max_blocks = math.nan
+            estimates = thr_metrics["estimates"]
 
             row = {
                 "config": config_key,
                 "strategy": strat_name,
-                "mem_total_bytes": mem_total_bytes,
-                "mem_total_blocks": mem_total_blocks,
-                "mem_max_bytes": mem_max_bytes,
-                "mem_max_blocks": mem_max_blocks,
                 "nr_elements": thr_metrics["nr_elements"],
                 "time_mean_ns": estimates["mean"]["point_estimate"],
                 "time_median_ns": estimates["median"]["point_estimate"],
@@ -137,33 +122,42 @@ def _get_dfs_by_workload(raw_results: dict) -> Dict[str, dict]:
 
     configs = df_all.index.get_level_values("config").unique()
 
-    # Build per-workload structure that keeps both df and raw
-    per_workload = {}
-
+    per_cfg_dfs = {}
     for cfg in configs:
         df_cfg = df_all.xs(cfg, level="config").copy()
         df_cfg["thr_mean_elem_per_s"] = df_cfg["nr_elements"] / (df_cfg["time_mean_ns"] * 1e-9)
+        per_cfg_dfs[cfg] = df_cfg
 
-        per_workload[cfg] = {
-            "df": df_cfg,
-            "raw": raw_results[cfg],
-        }
-
-    # Global baseline across all configs/strategies
     baseline = max(
-        per_workload[cfg]["df"]["thr_mean_elem_per_s"].max()
-        for cfg in configs
+        df_cfg["thr_mean_elem_per_s"].max()
+        for df_cfg in per_cfg_dfs.values()
     )
 
-    for cfg in configs:
-        df_cfg = per_workload[cfg]["df"]
+    for cfg, df_cfg in per_cfg_dfs.items():
         df_cfg["thr_mean_elem_rel"] = df_cfg["thr_mean_elem_per_s"] / baseline
 
-    return per_workload
+        result[cfg]["throughput_df"] = df_cfg
+
+    return result
+
+
+def add_labels_to_workloads(result: dict) -> dict:
+    """
+    Adds a 'label' field under each top-level workload entry.
+
+    Example:
+        result["windows=1,size=8,slide=1,events=50000"]["label"] = "1,8,1,50000"
+
+    Returns the same dict for convenience.
+    """
+    for config_key, config_data in result.items():
+        config_data["label"] = make_label_from_key(config_key)
+    return result
 
 
 def get_results(path: Path) -> Dict[str, dict]:
-    raw_results = _load_raw_results(path)
+    raw_results = load_results(path)
     add_sample_throughputs(raw_results)
     decorated = _get_dfs_by_workload(raw_results)
-    return decorated
+    with_labels = add_labels_to_workloads(decorated)
+    return with_labels
