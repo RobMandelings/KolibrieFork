@@ -1078,12 +1078,14 @@ name = "kolibrie"
 version = "0.1.1"
 dependencies = [
  "annotate-snippets",
+ "anyhow",
  "bincode",
  "chrono",
  "criterion",
  "crossbeam",
  "csv",
  "datalog",
+ "dhat",
  "env_logger",
  "gpu",
  "httparse",
@@ -1092,6 +1094,7 @@ dependencies = [
  "ml",
  "nom",
  "percent-encoding",
+ "pprof",
  "prototypes",
  "pyo3",
  "quick-xml 0.38.1",

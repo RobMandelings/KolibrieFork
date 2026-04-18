@@ -62,7 +62,8 @@ pub struct RSPBuilder<'a, I, O, S> {
     sync_policy: SyncPolicy,
     reasoning_rules: Vec<Rule>,
     sparql_rules: Vec<String>,
-    legacy_window: Option<bool>
+    legacy_window: Option<bool>,
+    print_output: bool,
 }
 
 impl<'a, I, O, S> RSPBuilder<'a, I, O, S>
@@ -85,7 +86,8 @@ where
             sync_policy: SyncPolicy::default(),
             reasoning_rules: Vec::new(),
             sparql_rules: Vec::new(),
-            legacy_window: None
+            legacy_window: None,
+            print_output: false,
         }
     }
 
@@ -153,6 +155,11 @@ where
 
     pub fn set_query_execution_mode(mut self, mode: QueryExecutionMode) -> Self {
         self.query_execution_mode = mode;
+        self
+    }
+
+    pub fn set_print_output(mut self, print_output: bool) -> Self {
+        self.print_output = print_output;
         self
     }
 
@@ -311,13 +318,13 @@ where
             None => None,
         };
 
-        println!("logical window plans {:?}", window_plans);
+        debug!("logical window plans {:?}", window_plans);
 
         let window_plans = window_plans
             .iter()
             .map(|v| optimizer.find_best_plan(v))
             .collect();
-        println!("physical window plans {:?}", window_plans);
+        debug!("physical window plans {:?}", window_plans);
 
         Ok(RSPQueryPlan {
             window_plans,
@@ -335,7 +342,15 @@ where
         let syntax = self.syntax.clone();
         let rules = self.rules.take().unwrap_or("");
 
-        let consumer = self.consumer.take().unwrap_or(Aggregate(Arc::new(Box::new(|r, ts| println!("Bindings at ts {ts}: {:?}", r)))));
+        let closure = match self.print_output {
+            true => {
+                |r, ts| println!("Bindings at ts {ts}: {:?}", r)
+            } false => {
+                |_r, _ts| {}
+            }
+        };
+
+        let consumer = self.consumer.take().unwrap_or(Aggregate(Arc::new(Box::new(closure))));
         let operation_mode = self.operation_mode;
 
         // Parse RSP-QL query and return RSPQueryConfig object instead

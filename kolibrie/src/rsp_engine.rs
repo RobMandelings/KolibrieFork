@@ -13,10 +13,12 @@ mod city_bench_q1;
 mod csv_graph_iter2;
 mod parking_mapper;
 mod legacy_engine;
+pub mod bench_pipeline_helper;
+pub mod pipeline_workload;
 
 use crate::rsp::r2r::R2ROperator;
 use crate::rsp::r2s::Relation2StreamOperator;
-use prototypes::s2r::{LegacyWindow, ContentContainer, Report, ReportStrategy, Tick, Window};
+use prototypes::s2r::{ContentContainer, LegacyWindow, Report, ReportStrategy, Tick, Window};
 
 use crate::parser::process_rule_definition;
 use crate::sparql_database::SparqlDatabase;
@@ -52,7 +54,7 @@ use crate::rsp::builder::{AggregateConsumer, Consumer, SingleConsumer};
 pub use crate::rsp::builder::{RSPBuilder, RSPQueryConfig};
 use crate::rsp::builder::Consumer::Aggregate;
 pub use crate::rsp::simple_r2r::SimpleR2R;
-use crate::rsp_engine::content_processor::{process_window_report};
+use crate::rsp_engine::content_processor::process_window_report;
 use crate::sliding_window::SlidingWindow;
 
 /// For compatibility with the existing architecture: map (stream_iri, window_iri) to the original index of that specific window
@@ -248,10 +250,10 @@ where
         let static_db = Arc::new(Mutex::new(static_sdb));
 
         // Load initial triples into the R2R store
-        match store.load_triples(triples, syntax) {
-            Err(parsing_error) => error!("Unable to load ABox: {:?}", parsing_error.to_string()),
-            _ => (),
-        }
+        // match store.load_triples(triples, syntax) {
+        //     Err(parsing_error) => error!("Unable to load ABox: {:?}", parsing_error.to_string()),
+        //     _ => (),
+        // }
 
         match store.load_rules(rules) {
             Ok(_) => debug!("Rules loaded successfully"),

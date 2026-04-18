@@ -5,11 +5,12 @@ pub mod profile_helper;
 pub mod experiment_helpers;
 pub mod workloads;
 pub mod s2r;
+pub mod bench_common;
 
 pub type IRI = String;
 
 pub use prototype::{
-    event::{Event, make_string_event},
+    event::{make_string_event, Event},
     slide_strategy::{
         arc_strategy::ArcStrategy,
         clone_strategy::CloneStrategy,
