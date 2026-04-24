@@ -10,7 +10,7 @@ from typing import List
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from constants import STRATEGY_COLORS
+from constants import STRATEGY_COLORS, STRATEGY_MARKERS
 from organising.sorting import LabeledDataFrame
 
 
@@ -52,7 +52,7 @@ def plot_overview(overview, ylabel, strategies=None, title=None, output_file=Non
             plt.plot(
                 x,
                 y,
-                marker="o",
+                marker=STRATEGY_MARKERS.get(strategy, "o"),
                 label=strategy,
                 color=STRATEGY_COLORS.get(strategy, None),
             )

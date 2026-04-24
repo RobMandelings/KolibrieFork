@@ -5,7 +5,7 @@ from typing import Mapping, Literal, Optional, Iterable
 
 from matplotlib import pyplot as plt
 
-from constants import STRATEGY_COLORS
+from constants import STRATEGY_COLORS, STRATEGY_MARKERS
 from exporting.throughput.sample_outlier_detection import tukey_outliers_from_sample
 
 
@@ -63,7 +63,14 @@ def plot_samples_grouped(
         else:
             raise ValueError(f"Unknown mode: {mode!r}")
 
-        ax.scatter(x, y, s=15, label=strat_name, color=STRATEGY_COLORS.get(strat_name, None))
+        ax.scatter(
+            x,
+            y,
+            s=15,
+            marker=STRATEGY_MARKERS.get(strat_name, "o"),
+            label=strat_name,
+            color=STRATEGY_COLORS.get(strat_name, None),
+        )
 
     ax.set_xlabel("Sample index")
     ax.set_ylabel(ylabel)

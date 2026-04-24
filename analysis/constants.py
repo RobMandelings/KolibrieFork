@@ -5,3 +5,11 @@ STRATEGY_COLORS = {
     "expire": "tab:green",
     "legacy": "tab:purple",
 }
+
+STRATEGY_MARKERS = {
+    "clone": "o",    # circle
+    "rc": "s",       # square
+    "arc": "D",      # diamond
+    "expire": "^",   # triangle up
+    "legacy": "X",   # filled x
+}

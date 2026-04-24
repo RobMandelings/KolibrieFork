@@ -7,7 +7,7 @@ from typing import Mapping, Sequence
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from constants import STRATEGY_COLORS
+from constants import STRATEGY_COLORS, STRATEGY_MARKERS
 from exporting.compare_strats_workloads_overview import build_and_export_overviews
 from exporting.throughput.sample_plotting import plot_samples_grouped
 from exporting.throughput.throughput_results import generate_throughput_results
@@ -156,7 +156,6 @@ def plot_all_memory_properties(per_workload: dict, output_dir: Path):
 
             plot_strategy_workload_table(
                 df,
-                strategy_colors=STRATEGY_COLORS,
                 title=f"{prop} for {path}",
                 ylabel=prop,
                 path=output_dir / f"{prop}_for_{path}.png"
@@ -286,7 +285,6 @@ def build_strategy_workload_table(
 
 def plot_strategy_workload_table(
         df: pd.DataFrame,
-        strategy_colors: dict,
         *,
         title: str | None = None,
         ylabel: str | None = None,
@@ -332,8 +330,8 @@ def plot_strategy_workload_table(
         ax.plot(
             x,
             y,
-            color=strategy_colors.get(strategy, "gray"),
-            marker=marker,
+            color=STRATEGY_COLORS.get(strategy, "gray"),
+            marker=STRATEGY_MARKERS.get(strategy, "o"),
             linewidth=linewidth,
             label=strategy,
         )
