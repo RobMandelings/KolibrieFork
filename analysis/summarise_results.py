@@ -191,9 +191,6 @@ def walk_workloads_and_strategies(
         plot_samples_grouped(entry, mode="throughput", path=str(workload_output_dir / "samples_throughput_grouped.png"))
 
         for strategy_name, strat_data in entry["strategies"].items():
-            if strategy_name == "throughput_df" or strategy_name == "label":
-                continue
-
             generate_throughput_results(workload_dir, strategy_name, strat_data)
             generate_memory_results(workload_dir, strategy_name)
 
@@ -415,4 +412,4 @@ def main_pipeline(analysis_path: Path):
 
 
 if __name__ == "__main__":
-    main_pipeline(Path("evaluation/large_bench_bytes_64"))
+    main_pipeline(Path("evaluation/large_bench_bytes_32"))
