@@ -23,6 +23,16 @@ pub fn write_workload_to_file(workload: &Workload, path: &str) -> anyhow::Result
 }
 
 fn create_workload(nr_windows: usize, nr_events: usize, bytes: Option<usize>, size: Time, slide: Time) -> Workload {
+    let bytes = match bytes {
+        None => {None} Some(b) => {
+            if b == 0 {
+                None
+            } else {
+                Some(b)
+            }
+        }
+    };
+
     let window_config = WindowParams {
         size,
         slide,
@@ -34,7 +44,7 @@ fn create_workload(nr_windows: usize, nr_events: usize, bytes: Option<usize>, si
         .collect::<Vec<_>>();
 
     Workload {
-        name: format!("windows={nr_windows},size={size},slide={slide},events={nr_events}"),
+        name: format!("windows={nr_windows},size={size},slide={slide},events={nr_events},bytes={}",bytes.unwrap_or(0)),
         nr_events,
         bytes,
         windows,
@@ -62,8 +72,10 @@ pub fn test_workloads() -> Vec<Workload> {
 
     let mut workloads = Vec::new();
 
-    for size in [1, 2, 4, 8, 16, 32, 64] {
-        workloads.push(create_workload(1, 50_000, None, size, 1))
+    for bytes in [32,64] {
+        for size in [1, 2, 4, 8, 16, 32, 64] {
+            workloads.push(create_workload(1, 50_000, Some(bytes), size, 1))
+        }
     }
 
     workloads
@@ -81,5 +93,5 @@ pub fn test_workload() -> Vec<Workload> {
 }
 
 pub fn default_workloads() -> Vec<Workload> {
-    test_workload()
+    test_workloads()
 }
