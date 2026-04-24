@@ -255,8 +255,9 @@ def build_strategy_workload_table(
 
     table = {}
 
-    for workload, strategies in results.items():
-        workload_label = strategies.get("label", workload)
+    for workload_key, workload_data in results.items():
+        strategies = workload_data["strategies"]
+        workload_label = workload_data.get("label")
 
         for strategy, strategy_data in strategies.items():
             if strategy == "label":
