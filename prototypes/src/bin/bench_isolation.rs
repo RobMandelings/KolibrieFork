@@ -1,17 +1,16 @@
 use criterion::measurement::WallTime;
-use criterion::{BenchmarkGroup, BenchmarkId, Criterion, Throughput, black_box};
-use pprof::ProfilerGuardBuilder;
+use criterion::{black_box, BenchmarkGroup, BenchmarkId, Criterion, Throughput};
 use pprof::criterion::{Output, PProfProfiler};
 use pprof::flamegraph::Options;
-use prototypes::bench_helpers::{run_strategy_clone, run_strategy_legacy, EventFactory};
-use prototypes::workloads::{Workload, default_workloads, write_workload_to_file};
+use pprof::ProfilerGuardBuilder;
+use prototypes::bench_common::{copy_group_dir_with_catch, move_profile_file, parse_args, should_run, Strategy};
+use prototypes::bench_helpers::{run_strategy_clone, run_strategy_legacy};
+use prototypes::prototype::event::{make_byte_event, make_copy_event, Time};
+use prototypes::workloads::{default_workloads, write_workload_to_file, Workload};
 use prototypes::{run_mem_profile, run_strategy_arc, run_strategy_expire, run_strategy_rc, Event};
 use std::fs::File;
 use std::path::Path;
-use std::{env, fs, io};
-use dhat::Profiler;
-use prototypes::bench_common::{copy_group_dir_with_catch, move_profile_file, parse_args, should_run, Strategy};
-use prototypes::prototype::event::{make_byte_event, make_copy_event, make_string_event, Time};
+use std::{fs, io};
 
 #[global_allocator]
 static ALLOC: dhat::Alloc = dhat::Alloc;
@@ -177,8 +176,8 @@ fn main() {
         let criterion_src_path = root_path.join("target/criterion").join(&workload.name); // Where to take the data from
 
         match workload.bytes {
-            None => run_copy_benches(&mut group, workload, &only, &dst_group_path),
-            Some(bytes) => run_byte_benches(&mut group, workload, &only, &dst_group_path, bytes),
+            0 => run_copy_benches(&mut group, workload, &only, &dst_group_path),
+            bytes => run_byte_benches(&mut group, workload, &only, &dst_group_path, bytes),
         }
 
         group.finish();

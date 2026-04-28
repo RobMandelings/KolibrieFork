@@ -1,9 +1,9 @@
-use std::io::pipe;
 use criterion::measurement::WallTime;
 use criterion::{black_box, BenchmarkGroup, BenchmarkId, Criterion, Throughput};
 use dhat::Profiler;
 use kolibrie::rsp_engine::bench_pipeline_helper::{preload_city_q1_two_window_graphs, run_full_pipeline_bench_q1_two_window, run_legacy_pipeline_bench_q1_two_window, CachedGraphs};
 use kolibrie::rsp_engine::helpers::init_logger;
+use kolibrie::rsp_engine::pipeline_workload::{default_workloads, write_workload_to_file, PipelineWorkload};
 use pprof::criterion::{Output, PProfProfiler};
 use prototypes::bench_common::{
     copy_group_dir_with_catch, move_profile_file, parse_args, should_run, Strategy,
@@ -11,7 +11,6 @@ use prototypes::bench_common::{
 use prototypes::{ArcStrategy, CloneStrategy, ExpireStrategy, RcStrategy, WindowSnapshotStrategy};
 use shared::triple::Triple;
 use std::path::Path;
-use kolibrie::rsp_engine::pipeline_workload::{default_workloads, test_workload, write_workload_to_file, PipelineWorkload};
 
 const ROOT: &str = "/Users/robmandelings/Documents/KULeuven/Thesis/KolibrieFork/origin-main";
 const DST_ROOT: &str = "../analysis/evaluation";

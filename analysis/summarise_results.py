@@ -406,9 +406,10 @@ def main(analysis_path: Path):
 def main_pipeline(analysis_path: Path):
     results = get_results(analysis_path)
     results = sorting.sort_by_size(results, reverse=False)
+    # results = sorting.sort_by_slide(results, reverse=False)
 
     walk_workloads_and_strategies(results, analysis_path)
 
 
 if __name__ == "__main__":
-    main_pipeline(Path("evaluation/large_bench_bytes_32"))
+    main_pipeline(Path("evaluation/archive/17_04_3_128_bytes"))

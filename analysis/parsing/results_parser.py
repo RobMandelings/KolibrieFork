@@ -124,19 +124,10 @@ def add_throughput_df(results: dict) -> None:
 
     configs = df_all.index.get_level_values("config").unique()
 
-    per_cfg_dfs = {}
     for cfg in configs:
         df_cfg = df_all.xs(cfg, level="config").copy()
         df_cfg["thr_mean_elem_per_s"] = df_cfg["nr_elements"] / (df_cfg["time_mean_ns"] * 1e-9)
-        per_cfg_dfs[cfg] = df_cfg
-
-    baseline = max(
-        df_cfg["thr_mean_elem_per_s"].max()
-        for df_cfg in per_cfg_dfs.values()
-    )
-
-    for cfg, df_cfg in per_cfg_dfs.items():
-        df_cfg["thr_mean_elem_rel"] = df_cfg["thr_mean_elem_per_s"] / baseline
+        df_cfg["thr_median_elem_per_s"] = df_cfg["nr_elements"] / (df_cfg["time_median_ns"] * 1e-9)
 
         results[cfg]["throughput_df"] = df_cfg
 
