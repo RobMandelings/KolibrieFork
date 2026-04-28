@@ -3,6 +3,7 @@ use uuid::Uuid;
 use crate::{Event, WindowParams};
 use crate::prototype::event::Time;
 use crate::prototype::window_params::S2RWindowConfig;
+use crate::workloads::Workload;
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
@@ -21,4 +22,10 @@ pub fn wc(size: Time, slide: Time, offset: Time) -> S2RWindowConfig {
 pub fn wc_struct(params: WindowParams) -> S2RWindowConfig {
     let WindowParams { size, slide, offset } = params;
     wc(size, slide, offset)
+}
+
+pub fn construct_window_configs(workload: &Workload) -> Vec<S2RWindowConfig> {
+    (0..workload.nr_windows)
+        .map(|_| wc_struct(workload.window.clone()))
+        .collect()
 }

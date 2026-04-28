@@ -1,5 +1,4 @@
-use std::fmt::Debug;
-use std::hash::Hash;
+use crate::prototype::helpers::construct_window_configs;
 // TODO find a way to put the criterion lib under dev-dependencies, not normal deps
 use crate::prototype::slide_strategy::arc_strategy::ArcContainer;
 use crate::prototype::slide_strategy::clone_strategy::CloneContainer;
@@ -8,9 +7,11 @@ use crate::prototype::slide_strategy::rc_strategy::RcContainer;
 use crate::s2r::{ContentContainer, LegacyWindow, Report, ReportStrategy, Tick};
 use crate::workloads::Workload;
 use crate::{ArcStrategy, CloneStrategy, Event, ExpireStrategy, RcStrategy
-    , SlidingWindowOperator, WindowSnapshotStrategy,
+            , SlidingWindowOperator, WindowSnapshotStrategy,
 };
 use criterion::black_box;
+use std::fmt::Debug;
+use std::hash::Hash;
 
 pub type Time = u64;
 
@@ -51,7 +52,9 @@ where
 
     let mut windows = vec![];
     let strats = vec![ReportStrategy::OnWindowClose];
-    for window_config in &workload.windows {
+
+    let window_configs = construct_window_configs(&workload);
+    for window_config in &window_configs {
         let report = Report::new_with_strats(strats.clone());
         let mut window = LegacyWindow::new(
             window_config.window_params.size as usize,
@@ -77,8 +80,11 @@ where
 {
     let consume = Box::new(|_events: SliceContainer<I>| {});
     let strat = ExpireStrategy::new();
-    let mut op = SlidingWindowOperator::new_default_iri(workload.windows.clone(), strat);
-    for window_config in &workload.windows {
+
+    let window_configs = construct_window_configs(&workload);
+    let mut op = SlidingWindowOperator::new_default_iri(window_configs.clone(), strat);
+
+    for window_config in &window_configs {
         let window_iri = &window_config.window_iri;
         op.add_consumer(window_iri, consume.clone());
     }
@@ -97,8 +103,10 @@ where
 {
     let consume = Box::new(|_events: CloneContainer<I>| {});
     let strat = CloneStrategy::new();
-    let mut op = SlidingWindowOperator::new_default_iri(workload.windows.clone(), strat);
-    for window_config in &workload.windows {
+    let window_configs = construct_window_configs(&workload);
+    let mut op = SlidingWindowOperator::new_default_iri(window_configs.clone(), strat);
+
+    for window_config in &window_configs {
         let window_iri = &window_config.window_iri;
         op.add_consumer(window_iri, consume.clone());
     }
@@ -115,8 +123,10 @@ where
 {
     let consume = Box::new(|_events: ArcContainer<I>| {});
     let strat = ArcStrategy::new();
-    let mut op = SlidingWindowOperator::new_default_iri(workload.windows.clone(), strat);
-    for window_config in &workload.windows {
+    let window_configs = construct_window_configs(&workload);
+    let mut op = SlidingWindowOperator::new_default_iri(window_configs.clone(), strat);
+
+    for window_config in &window_configs {
         let window_iri = &window_config.window_iri;
         op.add_consumer(window_iri, consume.clone());
     }
@@ -133,8 +143,10 @@ where
 {
     let consume = Box::new(|_events: RcContainer<I>| {});
     let strat = RcStrategy::new();
-    let mut op = SlidingWindowOperator::new_default_iri(workload.windows.clone(), strat);
-    for window_config in &workload.windows {
+    let window_configs = construct_window_configs(&workload);
+    let mut op = SlidingWindowOperator::new_default_iri(window_configs.clone(), strat);
+
+    for window_config in &window_configs {
         let window_iri = &window_config.window_iri;
         op.add_consumer(window_iri, consume.clone());
     }

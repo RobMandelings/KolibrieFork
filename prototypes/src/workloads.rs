@@ -12,7 +12,8 @@ pub struct Workload {
     pub name: String,
     pub nr_events: usize,
     pub bytes: usize,
-    pub windows: Vec<S2RWindowConfig>,
+    pub window: WindowParams,
+    pub nr_windows: usize,
 }
 
 pub fn write_workload_to_file(workload: &Workload, path: &str) -> anyhow::Result<()> {
@@ -35,10 +36,6 @@ fn create_workload(
         offset: 0,
     };
 
-    let windows = (0..nr_windows)
-        .map(|_| wc_struct(window_config.clone()))
-        .collect::<Vec<_>>();
-
     Workload {
         name: format!(
             "windows={nr_windows},size={size},slide={slide},events={nr_events},bytes={}",
@@ -46,7 +43,8 @@ fn create_workload(
         ),
         nr_events,
         bytes,
-        windows,
+        window: window_config,
+        nr_windows
     }
 }
 
