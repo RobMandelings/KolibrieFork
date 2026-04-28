@@ -1,10 +1,10 @@
 use criterion::measurement::WallTime;
-use criterion::{black_box, BenchmarkGroup, BenchmarkId, Criterion, Throughput};
+use criterion::{black_box, BatchSize, BenchmarkGroup, BenchmarkId, Criterion, Throughput};
 use pprof::criterion::{Output, PProfProfiler};
 use pprof::flamegraph::Options;
 use pprof::ProfilerGuardBuilder;
 use prototypes::bench_common::{copy_group_dir_with_catch, move_profile_file, parse_args, should_run, Strategy};
-use prototypes::bench_helpers::{run_strategy_clone, run_strategy_legacy};
+use prototypes::bench_helpers::{run_strategy_clone, run_strategy_legacy, RunnerFactory};
 use prototypes::prototype::event::{make_byte_event, make_copy_event, Time};
 use prototypes::workloads::{default_workloads, write_workload_to_file, Workload};
 use prototypes::{run_mem_profile, run_strategy_arc, run_strategy_expire, run_strategy_rc, Event};
@@ -26,23 +26,26 @@ fn ensure_dir(path: &Path) -> io::Result<()> {
     fs::create_dir_all(path)
 }
 
-pub fn bench_strategy<F>(
+pub fn bench_strategy(
     group: &mut BenchmarkGroup<WallTime>,
     strategy_str: &str,
-    workload: &Workload,
-    mut run_strategy: F,
-) where
-    F: FnMut(&Workload),
+    nr_events: usize,
+    setup_runner: &RunnerFactory,
+)
 {
-    group.throughput(Throughput::Elements(workload.nr_events as u64));
-
-    group.bench_with_input(
+    group.throughput(Throughput::Elements(nr_events as u64));
+    group.bench_function(
         BenchmarkId::from_parameter(strategy_str),
-        &workload,
-        |b, &workload| {
-            b.iter(|| {
-                run_strategy(&workload);
-            })
+        |b| {
+            b.iter_batched(
+                || {
+                    setup_runner()
+                },
+                |runner| {
+                    runner();
+                },
+                BatchSize::SmallInput,
+            );
         },
     );
 }
@@ -85,24 +88,16 @@ fn write_flamegraph_for_strategy<F>(
         .expect("failed to write flamegraph");
 }
 
-fn run_bench_and_profile<I, F>(
+fn run_bench_and_profile(
     group: &mut BenchmarkGroup<'_, WallTime>,
     workload: &Workload,
     label: &str, // "clone"
     group_path: &Path,
-    event_factory: F,
-    run_strategy: fn(&Workload, Vec<Event<I>>),
+    runner_factory: RunnerFactory,
 )
-where
-    I: Clone,
-    F: Fn(Time) -> Event<I>
 {
-    let events: Vec<Event<I>> = (0..workload.nr_events as Time)
-        .map(event_factory)
-        .collect();
-
-    bench_strategy(group, label, workload, |w| run_strategy(w, events.clone()));
-    run_mem_profile(label, |w| run_strategy(w, events), workload);
+    bench_strategy(group, label, workload.nr_events, &runner_factory);
+    run_mem_profile(label, &runner_factory);
     move_profile_file(label, group_path);
 }
 
@@ -113,19 +108,19 @@ fn run_copy_benches(
     dst_group_path: &Path,
 ) {
     if should_run(only, Strategy::Clone) {
-        run_bench_and_profile(group, workload, "clone", dst_group_path, make_copy_event, run_strategy_clone);
+        run_bench_and_profile(group, workload, "clone", dst_group_path, run_strategy_clone(workload, make_copy_event));
     }
     if should_run(only, Strategy::Rc) {
-        run_bench_and_profile(group, workload, "rc", dst_group_path, make_copy_event, run_strategy_rc);
+        run_bench_and_profile(group, workload, "rc", dst_group_path, run_strategy_rc(workload, make_copy_event));
     }
     if should_run(only, Strategy::Arc) {
-        run_bench_and_profile(group, workload, "arc", dst_group_path, make_copy_event, run_strategy_arc);
+        run_bench_and_profile(group, workload, "arc", dst_group_path, run_strategy_arc(workload, make_copy_event));
     }
     if should_run(only, Strategy::Legacy) {
-        run_bench_and_profile(group, workload, "legacy", dst_group_path, make_copy_event, run_strategy_legacy);
+        run_bench_and_profile(group, workload, "legacy", dst_group_path, run_strategy_legacy(workload, make_copy_event));
     }
     if should_run(only, Strategy::Expire) {
-        run_bench_and_profile(group, workload, "expire", dst_group_path, make_copy_event, run_strategy_expire);
+        run_bench_and_profile(group, workload, "expire", dst_group_path, run_strategy_expire(workload, make_copy_event));
     }
 }
 
@@ -137,19 +132,19 @@ fn run_byte_benches(
     bytes: usize,
 ) {
     if should_run(only, Strategy::Clone) {
-        run_bench_and_profile(group, workload, "clone", dst_group_path, |ts| make_byte_event(ts, bytes), run_strategy_clone);
+        run_bench_and_profile(group, workload, "clone", dst_group_path, run_strategy_clone(workload, move |ts| make_byte_event(ts, bytes)));
     }
     if should_run(only, Strategy::Rc) {
-        run_bench_and_profile(group, workload, "rc", dst_group_path, |ts| make_byte_event(ts, bytes), run_strategy_rc);
+        run_bench_and_profile(group, workload, "rc", dst_group_path, run_strategy_rc(workload, move |ts| make_byte_event(ts, bytes)));
     }
     if should_run(only, Strategy::Arc) {
-        run_bench_and_profile(group, workload, "arc", dst_group_path, |ts| make_byte_event(ts, bytes), run_strategy_arc);
+        run_bench_and_profile(group, workload, "arc", dst_group_path, run_strategy_arc(workload, move |ts| make_byte_event(ts, bytes)));
     }
     if should_run(only, Strategy::Legacy) {
-        run_bench_and_profile(group, workload, "legacy", dst_group_path, |ts| make_byte_event(ts, bytes), run_strategy_legacy);
+        run_bench_and_profile(group, workload, "legacy", dst_group_path,  run_strategy_legacy(workload, move |ts| make_byte_event(ts, bytes)));
     }
     if should_run(only, Strategy::Expire) {
-        run_bench_and_profile(group, workload, "expire", dst_group_path, |ts| make_byte_event(ts, bytes), run_strategy_expire);
+        run_bench_and_profile(group, workload, "expire", dst_group_path, run_strategy_expire(workload, move |ts| make_byte_event(ts, bytes)));
     }
 }
 

@@ -412,4 +412,4 @@ def main_pipeline(analysis_path: Path):
 
 
 if __name__ == "__main__":
-    main_pipeline(Path("evaluation/archive/17_04_3_128_bytes"))
+    main_pipeline(Path("evaluation/size_vary1_32_bytes"))

@@ -171,7 +171,7 @@ def load_mem_results(path: Path = None) -> Dict[str, Dict[str, pd.DataFrame]]:
     all_results: Dict[str, Dict[str, pd.DataFrame]] = {}
 
     for workload_dir in path.iterdir():
-        if not workload_dir.is_dir():
+        if not workload_dir.is_dir() or workload_dir.name == "overviews":
             continue
 
         workload_name = workload_dir.name

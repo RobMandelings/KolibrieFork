@@ -79,6 +79,18 @@ pub fn test_workloads() -> Vec<Workload> {
     workloads
 }
 
+pub fn vary_size() -> Vec<Workload> {
+    let mut workloads = Vec::new();
+
+    for bytes in [0, 32] {
+        for size in [1, 2, 4, 8, 16, 32, 64, 128] {
+            workloads.push(create_workload(1, 50_000, bytes, size, 1))
+        }
+    }
+
+    workloads
+}
+
 pub fn vary_slide() -> Vec<Workload> {
     let mut workloads = Vec::new();
 
@@ -102,5 +114,5 @@ pub fn test_workload() -> Vec<Workload> {
 }
 
 pub fn default_workloads() -> Vec<Workload> {
-    vary_slide()
+    test_workloads()
 }

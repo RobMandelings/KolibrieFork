@@ -1,4 +1,5 @@
 import copy
+import json
 from pathlib import Path
 from typing import Dict, Sequence, Any
 
@@ -9,14 +10,39 @@ from parsing import throughput_results
 from workload_keys import make_label_from_key
 
 
+def load_workload_jsons(path: Path = None) -> Dict[str, Any]:
+    """
+    Load workload.json for all workloads in the given directory.
+    Returns: {workload_name: workload_json_object}
+    """
+    all_results: Dict[str, Any] = {}
+
+    for workload_dir in path.iterdir():
+        if not workload_dir.is_dir() or workload_dir.name == "overviews":
+            continue
+
+        workload_name = workload_dir.name
+        workload_json_path = workload_dir / "workload.json"
+
+        if not workload_json_path.is_file():
+            continue
+
+        with open(workload_json_path, "r", encoding="utf-8") as f:
+            all_results[workload_name] = json.load(f)
+
+    return all_results
+
+
 def load_results(path: Path) -> dict:
     strats = mem_res_module.load_mem_results(path)
     thr_results = throughput_results.load_results(path)
-    combined_mem_throughput = {}
+    workload_json_results = load_workload_jsons(path)
+    results = {}
 
     for workload_name, strat_results in strats.items():
-        combined_mem_throughput[workload_name] = {
-            "strategies": {}
+        results[workload_name] = {
+            "strategies": {},
+            "workload": workload_json_results[workload_name]
         }
 
         if workload_name not in strats or workload_name not in thr_results:
@@ -27,12 +53,12 @@ def load_results(path: Path) -> dict:
             # pick the matching throughput result
             thr_result = thr_results[workload_name][strat_name]
 
-            combined_mem_throughput[workload_name]["strategies"][strat_name] = {
+            results[workload_name]["strategies"][strat_name] = {
                 "memory": mem_result,
                 "throughput": thr_result,
             }
 
-    return combined_mem_throughput
+    return results
 
 
 def add_sample_throughputs(result: Dict[str, Dict[str, Dict[str, Any]]]) -> None:

@@ -15,7 +15,8 @@ use std::hash::Hash;
 
 pub type Time = u64;
 
-fn run_legacy_bench<I>(
+/// Lets events arrive to run the legacy S2R operator
+fn run_legacy<I>(
     windows: &mut Vec<LegacyWindow<I>>,
     events: Vec<Event<I>>,
 )
@@ -29,7 +30,8 @@ where
     }
 }
 
-fn run_throughput_bench<I, S>(
+/// Lets events arrive to run the S2R operator
+pub fn run_new<I, S>(
     op: &mut SlidingWindowOperator<I, S>,
     events: Vec<Event<I>>,
 )
@@ -41,19 +43,16 @@ where
     }
 }
 
-pub fn run_strategy_legacy<I>(
-    workload: &Workload,
-    events: Vec<Event<I>>,
-)
+fn build_legacy_windows<I>(workload: &Workload) -> Vec<LegacyWindow<I>>
 where
-    I: Eq + PartialEq + Clone + Debug + Hash + Send,
+    I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
 {
     let consume = Box::new(|_events: ContentContainer<I>| {});
-
-    let mut windows = vec![];
     let strats = vec![ReportStrategy::OnWindowClose];
+    let window_configs = construct_window_configs(workload);
 
-    let window_configs = construct_window_configs(&workload);
+    let mut windows = Vec::with_capacity(window_configs.len());
+
     for window_config in &window_configs {
         let report = Report::new_with_strats(strats.clone());
         let mut window = LegacyWindow::new(
@@ -68,20 +67,17 @@ where
         windows.push(window);
     }
 
-    run_legacy_bench(&mut windows, events);
+    windows
 }
 
-pub fn run_strategy_expire<I>(
-    workload: &Workload,
-    events: Vec<Event<I>>,
-)
+fn build_operator_expire<I>(workload: &Workload) -> SlidingWindowOperator<I, ExpireStrategy<I>>
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
 {
     let consume = Box::new(|_events: SliceContainer<I>| {});
     let strat = ExpireStrategy::new();
 
-    let window_configs = construct_window_configs(&workload);
+    let window_configs = construct_window_configs(workload);
     let mut op = SlidingWindowOperator::new_default_iri(window_configs.clone(), strat);
 
     for window_config in &window_configs {
@@ -89,21 +85,17 @@ where
         op.add_consumer(window_iri, consume.clone());
     }
 
-    run_throughput_bench(&mut op, events);
+    op
 }
 
-pub type EventFactory<I> = Box<dyn Fn(Time) -> Event<I>>;
-
-pub fn run_strategy_clone<I>(
-    workload: &Workload,
-    events: Vec<Event<I>>
-)
+fn build_operator_clone<I>(workload: &Workload) -> SlidingWindowOperator<I, CloneStrategy<I>>
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
 {
     let consume = Box::new(|_events: CloneContainer<I>| {});
     let strat = CloneStrategy::new();
-    let window_configs = construct_window_configs(&workload);
+
+    let window_configs = construct_window_configs(workload);
     let mut op = SlidingWindowOperator::new_default_iri(window_configs.clone(), strat);
 
     for window_config in &window_configs {
@@ -111,19 +103,17 @@ where
         op.add_consumer(window_iri, consume.clone());
     }
 
-    run_throughput_bench(&mut op, events);
+    op
 }
 
-pub fn run_strategy_arc<I>(
-    workload: &Workload,
-    events: Vec<Event<I>>
-)
+fn build_operator_arc<I>(workload: &Workload) -> SlidingWindowOperator<I, ArcStrategy<I>>
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
 {
     let consume = Box::new(|_events: ArcContainer<I>| {});
     let strat = ArcStrategy::new();
-    let window_configs = construct_window_configs(&workload);
+
+    let window_configs = construct_window_configs(workload);
     let mut op = SlidingWindowOperator::new_default_iri(window_configs.clone(), strat);
 
     for window_config in &window_configs {
@@ -131,19 +121,17 @@ where
         op.add_consumer(window_iri, consume.clone());
     }
 
-    run_throughput_bench(&mut op, events);
+    op
 }
 
-pub fn run_strategy_rc<I>(
-    workload: &Workload,
-    events: Vec<Event<I>>
-)
+fn build_operator_rc<I>(workload: &Workload) -> SlidingWindowOperator<I, RcStrategy<I>>
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
 {
     let consume = Box::new(|_events: RcContainer<I>| {});
     let strat = RcStrategy::new();
-    let window_configs = construct_window_configs(&workload);
+
+    let window_configs = construct_window_configs(workload);
     let mut op = SlidingWindowOperator::new_default_iri(window_configs.clone(), strat);
 
     for window_config in &window_configs {
@@ -151,5 +139,124 @@ where
         op.add_consumer(window_iri, consume.clone());
     }
 
-    run_throughput_bench(&mut op, events);
+    op
+}
+
+pub type RunnerFactory = Box<dyn Fn() -> Box<dyn FnOnce()>>;
+
+pub fn run_strategy_legacy<I, F>(
+    workload: &Workload,
+    event_factory: F,
+) -> RunnerFactory
+where
+    I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
+    F: Fn(Time) -> Event<I> + Clone + 'static,
+{
+    let workload = workload.clone();
+
+    Box::new(move || {
+        let events: Vec<Event<I>> = (0..workload.nr_events as crate::prototype::event::Time)
+            .map(|ts| event_factory(ts))
+            .collect();
+
+        let mut windows = build_legacy_windows(&workload);
+
+        Box::new(move || {
+            run_legacy(&mut windows, events);
+        })
+    })
+}
+
+pub fn run_strategy_expire<I, F>(
+    workload: &Workload,
+    event_factory: F,
+) -> RunnerFactory
+where
+    I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
+    F: Fn(Time) -> Event<I> + Clone + 'static,
+{
+    let workload = workload.clone();
+
+    Box::new(move || {
+        let events: Vec<Event<I>> = (0..workload.nr_events as crate::prototype::event::Time)
+            .map(|ts| event_factory(ts))
+            .collect();
+
+        let mut op = build_operator_expire(&workload);
+
+        Box::new(move || {
+            run_new(&mut op, events);
+        })
+    })
+}
+
+pub type EventFactory<I> = Box<dyn Fn(Time) -> Event<I>>;
+
+pub fn run_strategy_clone<I, F>(
+    workload: &Workload,
+    event_factory: F,
+) -> RunnerFactory
+where
+    I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
+    F: Fn(Time) -> Event<I> + Clone + 'static,
+{
+    let workload = workload.clone();
+
+    Box::new(move || {
+        let events: Vec<Event<I>> = (0..workload.nr_events as crate::prototype::event::Time)
+            .map(|ts| event_factory(ts))
+            .collect();
+
+        let mut op = build_operator_clone(&workload);
+
+        Box::new(move || {
+            run_new(&mut op, events);
+        })
+    })
+}
+
+pub fn run_strategy_arc<I, F>(
+    workload: &Workload,
+    event_factory: F,
+) -> RunnerFactory
+where
+    I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
+    F: Fn(Time) -> Event<I> + Clone + 'static,
+{
+    let workload = workload.clone();
+
+    Box::new(move || {
+        let events: Vec<Event<I>> = (0..workload.nr_events as crate::prototype::event::Time)
+            .map(|ts| event_factory(ts))
+            .collect();
+
+        let mut op = build_operator_arc(&workload);
+
+        Box::new(move || {
+            run_new(&mut op, events);
+        })
+    })
+}
+
+pub fn run_strategy_rc<I, F>(
+    workload: &Workload,
+    event_factory: F,
+) -> RunnerFactory
+where
+    I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
+    F: Fn(Time) -> Event<I> + Clone + 'static,
+{
+    let workload = workload.clone();
+
+    Box::new(move || {
+        let events: Vec<Event<I>> = (0..workload.nr_events as crate::prototype::event::Time)
+            .map(|ts| event_factory(ts))
+            .collect();
+
+        let mut op = build_operator_rc(&workload);
+
+        Box::new(move || {
+            run_new(&mut op, events);
+        })
+    })
 }
