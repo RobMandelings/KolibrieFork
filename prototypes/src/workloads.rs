@@ -24,6 +24,20 @@ pub struct Workload {
     pub nr_windows: usize,
 }
 
+impl Workload {
+    pub fn get_short_name(&self) -> String {
+        format!("{},{},{},{},{},{},{}",
+            self.nr_windows,
+            self.window.size,
+            self.window.slide,
+            self.nr_events,
+            self.stream_config.spread,
+            self.stream_config.offset,
+            self.bytes
+        )
+    }
+}
+
 pub fn write_workload_to_file(workload: &Workload, path: &str) -> anyhow::Result<()> {
     let json = serde_json::to_string_pretty(workload)?; // or to_string for compact [web:379][web:381]
     let mut file = File::create(path)?;

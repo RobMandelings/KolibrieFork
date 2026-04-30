@@ -11,6 +11,8 @@ use prototypes::{run_mem_profile, create_arc_factory, create_expire_factory, cre
 use std::fs::File;
 use std::path::Path;
 use std::{fs, io};
+use std::fmt::Debug;
+use std::hash::Hash;
 
 #[global_allocator]
 static ALLOC: dhat::Alloc = dhat::Alloc;
@@ -101,50 +103,40 @@ fn run_bench_and_profile(
     move_profile_file(label, group_path);
 }
 
-fn run_copy_benches(
+fn run_benches<I, E>(
     group: &mut BenchmarkGroup<WallTime>,
     workload: &Workload,
     only: &Option<Vec<Strategy>>,
     dst_group_path: &Path,
-) {
-    if should_run(only, Strategy::Clone) {
-        run_bench_and_profile(group, workload, "clone", dst_group_path, create_clone_factory(workload, make_copy_event));
-    }
-    if should_run(only, Strategy::Rc) {
-        run_bench_and_profile(group, workload, "rc", dst_group_path, create_rc_factory(workload, make_copy_event));
-    }
-    if should_run(only, Strategy::Arc) {
-        run_bench_and_profile(group, workload, "arc", dst_group_path, create_arc_factory(workload, make_copy_event));
-    }
-    if should_run(only, Strategy::Legacy) {
-        run_bench_and_profile(group, workload, "legacy", dst_group_path, create_legacy_factory(workload, make_copy_event));
-    }
-    if should_run(only, Strategy::Expire) {
-        run_bench_and_profile(group, workload, "expire", dst_group_path, create_expire_factory(workload, make_copy_event));
-    }
-}
+    make_event: E,
+) where
+    I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
+    E: Fn(Time) -> Event<I> + Copy + 'static,
+{
+    use Strategy::*;
 
-fn run_byte_benches(
-    group: &mut BenchmarkGroup<WallTime>,
-    workload: &Workload,
-    only: &Option<Vec<Strategy>>,
-    dst_group_path: &Path,
-    bytes: usize,
-) {
-    if should_run(only, Strategy::Clone) {
-        run_bench_and_profile(group, workload, "clone", dst_group_path, create_clone_factory(workload, move |ts| make_byte_event(ts, bytes)));
-    }
-    if should_run(only, Strategy::Rc) {
-        run_bench_and_profile(group, workload, "rc", dst_group_path, create_rc_factory(workload, move |ts| make_byte_event(ts, bytes)));
-    }
-    if should_run(only, Strategy::Arc) {
-        run_bench_and_profile(group, workload, "arc", dst_group_path, create_arc_factory(workload, move |ts| make_byte_event(ts, bytes)));
-    }
-    if should_run(only, Strategy::Legacy) {
-        run_bench_and_profile(group, workload, "legacy", dst_group_path, create_legacy_factory(workload, move |ts| make_byte_event(ts, bytes)));
-    }
-    if should_run(only, Strategy::Expire) {
-        run_bench_and_profile(group, workload, "expire", dst_group_path, create_expire_factory(workload, move |ts| make_byte_event(ts, bytes)));
+    for strategy in [Clone, Rc, Arc, Legacy, Expire] {
+        if !should_run(only, strategy) {
+            continue;
+        }
+
+        let label = match strategy {
+            Clone  => "clone",
+            Rc     => "rc",
+            Arc    => "arc",
+            Legacy => "legacy",
+            Expire => "expire",
+        };
+
+        let factory = match strategy {
+            Clone  => create_clone_factory(workload, make_event),
+            Rc     => create_rc_factory(workload, make_event),
+            Arc    => create_arc_factory(workload, make_event),
+            Legacy => create_legacy_factory(workload, make_event),
+            Expire => create_expire_factory(workload, make_event),
+        };
+
+        run_bench_and_profile(group, workload, label, dst_group_path, factory);
     }
 }
 
@@ -167,14 +159,16 @@ fn main() {
 
         for workload in workloads {
             // One group per workload
-            let mut group = c.benchmark_group(&workload.name);
+
+            // use SHORT name for the criterion benchmark thing because for some reason it has a max filename length
+            let mut group = c.benchmark_group(&workload.get_short_name());
             let dst_group_path = grouped_dst_root_path.join(&workload.name);
             let criterion_dst_path = dst_group_path.join("throughput");
-            let criterion_src_path = root_path.join("target/criterion").join(&workload.name); // Where to take the data from
+            let criterion_src_path = root_path.join("target/criterion").join(&workload.get_short_name()); // Where to take the data from
 
             match workload.bytes {
-                0 => run_copy_benches(&mut group, workload, &only, &dst_group_path),
-                bytes => run_byte_benches(&mut group, workload, &only, &dst_group_path, bytes),
+                0 => run_benches(&mut group, workload, &only, &dst_group_path, make_copy_event),
+                bytes => run_benches(&mut group, workload, &only, &dst_group_path, move |ts| make_byte_event(ts, bytes)),
             }
 
             group.finish();
