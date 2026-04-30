@@ -24,6 +24,10 @@ pub fn wc_struct(params: WindowParams) -> S2RWindowConfig {
     wc(size, slide, offset)
 }
 
+pub fn wc_by_params(size: Time, slide: Time) -> S2RWindowConfig {
+    wc_struct(WindowParams::new(size, slide, 0))
+}
+
 pub fn construct_window_configs(workload: &Workload) -> Vec<S2RWindowConfig> {
     (0..workload.nr_windows)
         .map(|_| wc_struct(workload.window.clone()))

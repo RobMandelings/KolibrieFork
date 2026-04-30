@@ -21,6 +21,8 @@ impl<I> Clone for ArcContainer<I> {
     }
 }
 
+
+
 impl<I: 'static> ItemsReport<I> for ArcContainer<I> {
     fn iter_items(&self) -> impl Iterator<Item=&I> {
         self.0

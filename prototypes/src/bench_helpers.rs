@@ -5,7 +5,7 @@ use crate::prototype::slide_strategy::clone_strategy::CloneContainer;
 use crate::prototype::slide_strategy::expire_strategy::SliceContainer;
 use crate::prototype::slide_strategy::rc_strategy::RcContainer;
 use crate::s2r::{ContentContainer, LegacyWindow, Report, ReportStrategy, Tick};
-use crate::workloads::Workload;
+use crate::workloads::{create_events_for_workload, Workload};
 use crate::{ArcStrategy, CloneStrategy, Event, ExpireStrategy, RcStrategy
             , SlidingWindowOperator, WindowSnapshotStrategy,
 };
@@ -142,9 +142,10 @@ where
     op
 }
 
+
 pub type RunnerFactory = Box<dyn Fn() -> Box<dyn FnOnce()>>;
 
-pub fn run_strategy_legacy<I, F>(
+pub fn create_legacy_factory<I, F>(
     workload: &Workload,
     event_factory: F,
 ) -> RunnerFactory
@@ -155,10 +156,7 @@ where
     let workload = workload.clone();
 
     Box::new(move || {
-        let events: Vec<Event<I>> = (0..workload.nr_events as crate::prototype::event::Time)
-            .map(|ts| event_factory(ts))
-            .collect();
-
+        let events = create_events_for_workload(&workload, &event_factory);
         let mut windows = build_legacy_windows(&workload);
 
         Box::new(move || {
@@ -167,7 +165,7 @@ where
     })
 }
 
-pub fn run_strategy_expire<I, F>(
+pub fn create_expire_factory<I, F>(
     workload: &Workload,
     event_factory: F,
 ) -> RunnerFactory
@@ -178,10 +176,7 @@ where
     let workload = workload.clone();
 
     Box::new(move || {
-        let events: Vec<Event<I>> = (0..workload.nr_events as crate::prototype::event::Time)
-            .map(|ts| event_factory(ts))
-            .collect();
-
+        let events = create_events_for_workload(&workload, &event_factory);
         let mut op = build_operator_expire(&workload);
 
         Box::new(move || {
@@ -192,7 +187,7 @@ where
 
 pub type EventFactory<I> = Box<dyn Fn(Time) -> Event<I>>;
 
-pub fn run_strategy_clone<I, F>(
+pub fn create_clone_factory<I, F>(
     workload: &Workload,
     event_factory: F,
 ) -> RunnerFactory
@@ -203,10 +198,7 @@ where
     let workload = workload.clone();
 
     Box::new(move || {
-        let events: Vec<Event<I>> = (0..workload.nr_events as crate::prototype::event::Time)
-            .map(|ts| event_factory(ts))
-            .collect();
-
+        let events = create_events_for_workload(&workload, &event_factory);
         let mut op = build_operator_clone(&workload);
 
         Box::new(move || {
@@ -215,7 +207,7 @@ where
     })
 }
 
-pub fn run_strategy_arc<I, F>(
+pub fn create_arc_factory<I, F>(
     workload: &Workload,
     event_factory: F,
 ) -> RunnerFactory
@@ -226,10 +218,7 @@ where
     let workload = workload.clone();
 
     Box::new(move || {
-        let events: Vec<Event<I>> = (0..workload.nr_events as crate::prototype::event::Time)
-            .map(|ts| event_factory(ts))
-            .collect();
-
+        let events = create_events_for_workload(&workload, &event_factory);
         let mut op = build_operator_arc(&workload);
 
         Box::new(move || {
@@ -238,7 +227,7 @@ where
     })
 }
 
-pub fn run_strategy_rc<I, F>(
+pub fn create_rc_factory<I, F>(
     workload: &Workload,
     event_factory: F,
 ) -> RunnerFactory
@@ -249,12 +238,8 @@ where
     let workload = workload.clone();
 
     Box::new(move || {
-        let events: Vec<Event<I>> = (0..workload.nr_events as crate::prototype::event::Time)
-            .map(|ts| event_factory(ts))
-            .collect();
-
+        let events = create_events_for_workload(&workload, &event_factory);
         let mut op = build_operator_rc(&workload);
-
         Box::new(move || {
             run_new(&mut op, events);
         })

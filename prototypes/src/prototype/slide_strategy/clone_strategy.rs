@@ -20,6 +20,8 @@ impl<I: Clone> Clone for CloneContainer<I> {
     }
 }
 
+pub type CloneConsumer<I> = Box<dyn Fn(CloneContainer<I>)>;
+
 impl<I: Clone + 'static> ItemsReport<I> for CloneContainer<I> {
     fn iter_items(&self) -> impl Iterator<Item=&I> {
         self.0

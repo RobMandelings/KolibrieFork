@@ -3,6 +3,7 @@ mod tests;
 mod perf_tests;
 mod stream_content_tests;
 mod multi_window_test;
+mod test_nr_reports_generated;
 
 use std::collections::HashMap;
 use crate::prototype::event::Time;

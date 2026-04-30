@@ -23,9 +23,9 @@ pub use prototype::{
 };
 
 pub use bench_helpers::{
-    run_strategy_arc,
-    run_strategy_expire,
-    run_strategy_rc,
+    create_arc_factory,
+    create_expire_factory,
+    create_rc_factory,
 };
 
 pub use profile_helper::run_mem_profile;

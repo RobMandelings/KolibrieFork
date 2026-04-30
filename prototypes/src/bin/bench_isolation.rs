@@ -4,10 +4,10 @@ use pprof::criterion::{Output, PProfProfiler};
 use pprof::flamegraph::Options;
 use pprof::ProfilerGuardBuilder;
 use prototypes::bench_common::{copy_group_dir_with_catch, move_profile_file, parse_args, should_run, Strategy};
-use prototypes::bench_helpers::{run_strategy_clone, run_strategy_legacy, RunnerFactory};
+use prototypes::bench_helpers::{create_clone_factory, create_legacy_factory, RunnerFactory};
 use prototypes::prototype::event::{make_byte_event, make_copy_event, Time};
 use prototypes::workloads::{default_workloads, write_workload_to_file, Workload};
-use prototypes::{run_mem_profile, run_strategy_arc, run_strategy_expire, run_strategy_rc, Event};
+use prototypes::{run_mem_profile, create_arc_factory, create_expire_factory, create_rc_factory, Event};
 use std::fs::File;
 use std::path::Path;
 use std::{fs, io};
@@ -108,19 +108,19 @@ fn run_copy_benches(
     dst_group_path: &Path,
 ) {
     if should_run(only, Strategy::Clone) {
-        run_bench_and_profile(group, workload, "clone", dst_group_path, run_strategy_clone(workload, make_copy_event));
+        run_bench_and_profile(group, workload, "clone", dst_group_path, create_clone_factory(workload, make_copy_event));
     }
     if should_run(only, Strategy::Rc) {
-        run_bench_and_profile(group, workload, "rc", dst_group_path, run_strategy_rc(workload, make_copy_event));
+        run_bench_and_profile(group, workload, "rc", dst_group_path, create_rc_factory(workload, make_copy_event));
     }
     if should_run(only, Strategy::Arc) {
-        run_bench_and_profile(group, workload, "arc", dst_group_path, run_strategy_arc(workload, make_copy_event));
+        run_bench_and_profile(group, workload, "arc", dst_group_path, create_arc_factory(workload, make_copy_event));
     }
     if should_run(only, Strategy::Legacy) {
-        run_bench_and_profile(group, workload, "legacy", dst_group_path, run_strategy_legacy(workload, make_copy_event));
+        run_bench_and_profile(group, workload, "legacy", dst_group_path, create_legacy_factory(workload, make_copy_event));
     }
     if should_run(only, Strategy::Expire) {
-        run_bench_and_profile(group, workload, "expire", dst_group_path, run_strategy_expire(workload, make_copy_event));
+        run_bench_and_profile(group, workload, "expire", dst_group_path, create_expire_factory(workload, make_copy_event));
     }
 }
 
@@ -132,19 +132,19 @@ fn run_byte_benches(
     bytes: usize,
 ) {
     if should_run(only, Strategy::Clone) {
-        run_bench_and_profile(group, workload, "clone", dst_group_path, run_strategy_clone(workload, move |ts| make_byte_event(ts, bytes)));
+        run_bench_and_profile(group, workload, "clone", dst_group_path, create_clone_factory(workload, move |ts| make_byte_event(ts, bytes)));
     }
     if should_run(only, Strategy::Rc) {
-        run_bench_and_profile(group, workload, "rc", dst_group_path, run_strategy_rc(workload, move |ts| make_byte_event(ts, bytes)));
+        run_bench_and_profile(group, workload, "rc", dst_group_path, create_rc_factory(workload, move |ts| make_byte_event(ts, bytes)));
     }
     if should_run(only, Strategy::Arc) {
-        run_bench_and_profile(group, workload, "arc", dst_group_path, run_strategy_arc(workload, move |ts| make_byte_event(ts, bytes)));
+        run_bench_and_profile(group, workload, "arc", dst_group_path, create_arc_factory(workload, move |ts| make_byte_event(ts, bytes)));
     }
     if should_run(only, Strategy::Legacy) {
-        run_bench_and_profile(group, workload, "legacy", dst_group_path,  run_strategy_legacy(workload, move |ts| make_byte_event(ts, bytes)));
+        run_bench_and_profile(group, workload, "legacy", dst_group_path, create_legacy_factory(workload, move |ts| make_byte_event(ts, bytes)));
     }
     if should_run(only, Strategy::Expire) {
-        run_bench_and_profile(group, workload, "expire", dst_group_path, run_strategy_expire(workload, move |ts| make_byte_event(ts, bytes)));
+        run_bench_and_profile(group, workload, "expire", dst_group_path, create_expire_factory(workload, move |ts| make_byte_event(ts, bytes)));
     }
 }
 

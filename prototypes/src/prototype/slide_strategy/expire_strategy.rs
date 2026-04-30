@@ -23,6 +23,7 @@ impl<I: Clone> ExpireStrategy<I> {
     }
 }
 
+pub type SliceConsumer<I> = Box<dyn Fn(SliceContainer<I>)>;
 pub struct SliceContainer<'a, I>(pub &'a [Event<I>]);
 
 impl<I> Clone for SliceContainer<'_, I> {
