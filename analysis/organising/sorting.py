@@ -36,7 +36,6 @@ def sort_by_size(config_dict, reverse=False):
 def sort_by_slide(config_dict, reverse=False):
     return sort_configs(config_dict, "slide", reverse=reverse)
 
-
 def sort_by_windows(config_dict, reverse=False):
     return sort_configs(config_dict, "windows", reverse=reverse)
 

@@ -405,7 +405,7 @@ def main(analysis_path: Path):
 
 def main_pipeline(analysis_path: Path):
     results = get_results(analysis_path)
-    results = sorting.sort_by_size(results, reverse=False)
+    results = sorting.sort_by_slide(results, reverse=False)
     walk_workloads_and_strategies(results, analysis_path)
 
 
