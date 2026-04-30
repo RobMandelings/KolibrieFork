@@ -161,28 +161,34 @@ fn main() {
             Output::Flamegraph(None),
         ))
         .with_output_color(true);
-    let workloads = default_workloads();
+    let grouped_workloads = default_workloads();
+    for (group_name, workloads) in &grouped_workloads {
+        let grouped_dst_root_path = dst_root_path.join(group_name);
 
-    for workload in &workloads {
-        // One group per workload
-        let mut group = c.benchmark_group(&workload.name);
-        let dst_group_path = dst_root_path.join(&workload.name);
-        let criterion_dst_path = dst_group_path.join("throughput");
-        let criterion_src_path = root_path.join("target/criterion").join(&workload.name); // Where to take the data from
+        for workload in workloads {
+            // One group per workload
+            let mut group = c.benchmark_group(&workload.name);
+            let dst_group_path = grouped_dst_root_path.join(&workload.name);
+            let criterion_dst_path = dst_group_path.join("throughput");
+            let criterion_src_path = root_path.join("target/criterion").join(&workload.name); // Where to take the data from
 
-        match workload.bytes {
-            0 => run_copy_benches(&mut group, workload, &only, &dst_group_path),
-            bytes => run_byte_benches(&mut group, workload, &only, &dst_group_path, bytes),
+            match workload.bytes {
+                0 => run_copy_benches(&mut group, workload, &only, &dst_group_path),
+                bytes => run_byte_benches(&mut group, workload, &only, &dst_group_path, bytes),
+            }
+
+            group.finish();
+
+            copy_group_dir_with_catch(&criterion_src_path, &criterion_dst_path);
+
+            let workload_path = format!("{}/workload.json", dst_group_path.to_str().unwrap());
+            write_workload_to_file(workload, &workload_path)
+                .expect(&format!("Could not write workload: {}", workload_path));
+            println!(
+                "Successfully copied criterion group {} in {}",
+                workload.name, group_name
+            );
         }
-
-        group.finish();
-
-        copy_group_dir_with_catch(&criterion_src_path, &criterion_dst_path);
-
-        let workload_path = format!("{}/workload.json", dst_group_path.to_str().unwrap());
-        write_workload_to_file(workload, &workload_path)
-            .expect(&format!("Could not write workload: {}", workload_path));
-        println!("Successfully copied criterion group {}", workload.name);
     }
 
     c.final_summary();
