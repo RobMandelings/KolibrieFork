@@ -46,8 +46,7 @@ def load_results(path: Path) -> dict:
         }
 
         if workload_name not in strats or workload_name not in thr_results:
-            print(f"Ignoring workload {workload_name}: not present in both throughput and mem results")
-            continue
+            raise Exception(f"{workload_name}: not present in both throughput and mem results")
 
         for strat_name, mem_result in strat_results.items():
             # pick the matching throughput result

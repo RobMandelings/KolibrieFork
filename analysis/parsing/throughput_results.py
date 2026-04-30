@@ -13,6 +13,9 @@ def load_results(path: Path = None):
         if not benchmark_path.is_file():
             continue
 
+        # TODO perhaps it is better to use a workload_name from the workload.json (if there is time)
+        workload_name = estimates_path.parent.parent.parent.name
+
         sample_path = estimates_path.parent / "sample.json"
         tukey_path = estimates_path.parent / "tukey.json"
 
@@ -31,7 +34,6 @@ def load_results(path: Path = None):
             with tukey_path.open() as f:
                 tukey = json.load(f)
 
-        group_id = benchmark["group_id"]
         value_str = benchmark["value_str"]
 
         # New: store subfields instead of flattening estimates
@@ -42,9 +44,9 @@ def load_results(path: Path = None):
             "nr_elements": benchmark["throughput"]["Elements"],
         }
 
-        if not group_id in results:
-            results[group_id] = {}
-        results[group_id][value_str] = entry
+        if not workload_name in results:
+            results[workload_name] = {}
+        results[workload_name][value_str] = entry
 
     return results
 
