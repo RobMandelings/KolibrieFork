@@ -66,7 +66,6 @@ def plot_strategy_series(
         title=None,
         output_file=None,
         workload_order=None,
-        use_error_bars=False,
 ):
     if not series:
         return
@@ -128,7 +127,7 @@ def plot_strategy_series(
         marker = STRATEGY_MARKERS.get(strategy, "o")
         color = STRATEGY_COLORS.get(strategy, None)
 
-        if use_error_bars and has_any_error:
+        if has_any_error:
 
             if all(
                     err is not None and not isinstance(err, (list, tuple))
@@ -207,11 +206,27 @@ def get_throughput_estimate(strat_data, estimate_key):
     return estimates.get(estimate_key)
 
 
+def get_throughput_std_dev(strat_data):
+    throughput = strat_data.get("throughput")
+    if throughput is None:
+        raise Exception("Throughput is not present")
+
+    estimates = throughput.get("estimates")
+    if estimates is None:
+        raise Exception("Estimates is not present")
+
+    return estimates.get("thr_std_dev")
+
+
 def build_throughput_series(workloads: dict, estimate_key: str, x_label_getter):
+    error_getter = lambda strat_data, workload_key, workload_data: \
+        get_throughput_std_dev(strat_data)
+
     return build_strategy_series_from_workloads(
         workloads=workloads,
         value_getter=lambda strat_data, workload_key, workload_data:
         get_throughput_estimate(strat_data, estimate_key),
+        error_getter=error_getter,
         x_label_getter=x_label_getter
     )
 
@@ -238,10 +253,9 @@ def plot_throughput_from_workloads(
         series=series,
         xlabel=xlabel,
         ylabel=ylabel,
-        strategies=strategies,
+        strategies=["expire"],
         title=title,
         output_file=None,
         workload_order=workload_order,
-        use_error_bars=False,
     )
     print("Hello")
