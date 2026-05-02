@@ -148,8 +148,8 @@ fn main() {
     let dst_root_path = prototypes_root_path.join(DST_ROOT).join(&args.folder_name);
 
     let mut c: Criterion = Criterion::default()
-        .sample_size(300)
-        .measurement_time(std::time::Duration::from_secs(50))
+        .sample_size(10)
+        .measurement_time(std::time::Duration::from_secs(1))
         .with_profiler(PProfProfiler::new(
             100, // sampling frequency (Hz)
             Output::Flamegraph(None),
