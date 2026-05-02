@@ -148,11 +148,14 @@ fn main() {
     let dst_root_path = prototypes_root_path.join(DST_ROOT).join(&args.folder_name);
 
     let mut c: Criterion = Criterion::default()
+        .sample_size(300)
+        .measurement_time(std::time::Duration::from_secs(50))
         .with_profiler(PProfProfiler::new(
             100, // sampling frequency (Hz)
             Output::Flamegraph(None),
         ))
         .with_output_color(true);
+
     let grouped_workloads = default_workloads();
     for (group_name, workloads) in &grouped_workloads {
         let grouped_dst_root_path = dst_root_path.join(group_name);

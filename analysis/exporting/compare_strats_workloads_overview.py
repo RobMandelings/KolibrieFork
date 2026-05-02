@@ -76,7 +76,7 @@ def plot_overview(overview, ylabel, strategies=None, title=None, output_file=Non
         plt.show()
 
 
-def build_and_export_overviews(
+def build_and_export_throughput_overviews(
         dfs: List[LabeledDataFrame],
         output_dir: str | Path
 ):

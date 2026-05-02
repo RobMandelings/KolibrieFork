@@ -1,5 +1,6 @@
 import copy
 import json
+import statistics
 from pathlib import Path
 from typing import Dict, Sequence, Any
 
@@ -60,7 +61,7 @@ def load_results(path: Path) -> dict:
     return results
 
 
-def add_sample_throughputs(result: Dict[str, Dict[str, Dict[str, Any]]]) -> None:
+def add_sample_information(result: Dict[str, Dict[str, Dict[str, Any]]]) -> None:
     """
     For each workload and strategy in `result`, compute per-sample throughput
     from throughput["nr_elements"] and throughput["sample"]["times"/"iters"],
@@ -78,12 +79,12 @@ def add_sample_throughputs(result: Dict[str, Dict[str, Dict[str, Any]]]) -> None
         for strat_name, strat_data in strategies.items():
             thr = strat_data.get("throughput")
             if not thr:
-                continue
+                raise Exception("Did not find throughput")
 
             nr_elements = thr.get("nr_elements")
             sample = thr.get("sample")
             if nr_elements is None or sample is None:
-                continue
+                raise Exception("nr elements and sample is not found")
 
             times: Sequence[float] = sample.get("times", [])
             iters: Sequence[float] = sample.get("iters", [])
@@ -106,6 +107,33 @@ def add_sample_throughputs(result: Dict[str, Dict[str, Dict[str, Any]]]) -> None
             sample["times_per_iter"] = times_per_iter
             sample["throughputs"] = throughputs
             sample["nr_samples"] = len(throughputs)
+
+
+def add_throughput_estimates(result: dict):
+    for workload_key, workload_data in result.items():
+        nr_events = workload_data["workload"]["nr_events"]
+        strategies = workload_data["strategies"]
+        for strat_name, strat_data in strategies.items():
+            thr = strat_data.get("throughput")
+            if not thr:
+                raise Exception("Did not find throughput")
+
+            nr_elements = thr.get("nr_elements")
+            sample = thr.get("sample")
+            estimates = thr.get("estimates")
+            if nr_elements is None or sample is None:
+                raise Exception("nr elements and sample is not found")
+
+            throughputs = sample["throughputs"]
+            mean_ns = estimates["mean"]["point_estimate"]
+            median_ns = estimates["median"]["point_estimate"]
+
+            estimates["thr_mean"] = nr_events / (mean_ns * 1e-9)
+            estimates["thr_median"] = nr_events / (median_ns * 1e-9)
+
+            estimates["thr_std_dev"] = statistics.stdev(throughputs)
+            estimates["thr_min"] = min(throughputs)
+            estimates["thr_max"] = max(throughputs)
 
 
 def add_throughput_df(results: dict) -> None:
@@ -172,7 +200,8 @@ def add_labels_to_workloads(result: dict) -> None:
 
 def get_results(path: Path) -> Dict[str, dict]:
     results = load_results(path)
-    add_sample_throughputs(results)
+    add_sample_information(results)
+    add_throughput_estimates(results)
     add_throughput_df(results)
     add_labels_to_workloads(results)
     return results

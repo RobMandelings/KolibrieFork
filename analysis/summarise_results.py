@@ -8,7 +8,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 from constants import STRATEGY_COLORS, STRATEGY_MARKERS
-from exporting.compare_strats_workloads_overview import build_and_export_overviews
+from exporting.compare_strats_workloads_overview import build_and_export_throughput_overviews
 from exporting.throughput.sample_plotting import plot_samples_grouped
 from exporting.throughput.throughput_results import generate_throughput_results
 from exporting.workload_csv import workload_summary_to_csv
@@ -16,6 +16,7 @@ from organising import sorting
 from organising.sorting import LabeledDataFrame, sort_configs
 from parsing.dhat_parser import parse_dhat
 from parsing.results_parser import get_results
+from series import plot_throughput_from_workloads
 from workload_keys import make_label_from_key
 
 
@@ -163,7 +164,7 @@ def plot_all_memory_properties(per_workload: dict, output_dir: Path):
 
 
 def walk_workloads_and_strategies(
-        per_workload: Dict[str, Dict[str, Any]],
+        workloads: Dict[str, Dict[str, Any]],
         analysis_path: Path,
 ) -> None:
     """
@@ -178,12 +179,12 @@ def walk_workloads_and_strategies(
         per_workload[workload_key]["raw"][strategy_name] -> strat_data
     """
 
-    labeled_dfs = to_labeled_dataframe_list(get_throughput_dfs_by_workload(per_workload))
-    build_and_export_overviews(labeled_dfs, analysis_path / "overviews")
+    labeled_dfs = to_labeled_dataframe_list(get_throughput_dfs_by_workload(workloads))
 
-    plot_all_memory_properties(per_workload, analysis_path / "overviews" / "png")
+    build_and_export_throughput_overviews(labeled_dfs, analysis_path / "overviews")
+    plot_all_memory_properties(workloads, analysis_path / "overviews" / "png")
 
-    for workload_key, entry in per_workload.items():
+    for workload_key, entry in workloads.items():
         workload_dir = analysis_path / workload_key
         workload_output_dir = workload_dir / "overviews"
         workload_summary_to_csv(entry, workload_output_dir / "estimates.csv")
@@ -398,7 +399,7 @@ def main(analysis_path: Path):
     sorted_by_size_then_slide = sort_configs(results, "size", reverse=False)
 
     labeled_dfs = to_labeled_dataframe_list(get_throughput_dfs_by_workload(sorted_by_size_then_slide))
-    build_and_export_overviews(labeled_dfs, analysis_path / "overviews")
+    build_and_export_throughput_overviews(labeled_dfs, analysis_path / "overviews")
 
     walk_workloads_and_strategies(sorted_by_size_then_slide, analysis_path)
 
@@ -406,6 +407,16 @@ def main(analysis_path: Path):
 def main_pipeline(analysis_path: Path):
     results = get_results(analysis_path)
     results = sorting.sort_by_slide(results, reverse=False)
+
+    plot_throughput_from_workloads(
+        workloads=results,
+        estimate_key="thr_mean",
+        xlabel="slide",
+        ylabel="throughput (events/s)",
+        title="Mean throughput",
+        output_file="output/png/thr_mean.png",
+    )
+
     walk_workloads_and_strategies(results, analysis_path)
 
 
