@@ -62,6 +62,12 @@ def load_results(path: Path) -> dict:
     return results
 
 
+def add_workload_information(results: dict) -> None:
+
+    for workload_key, workload_data in results.items():
+        workload = workload_data["workload"]
+        workload["events_per_report"] = workload["window"]["slide"] / workload["stream_config"]["spread"]
+
 def add_sample_information(result: Dict[str, Dict[str, Dict[str, Any]]]) -> None:
     """
     For each workload and strategy in `result`, compute per-sample throughput
@@ -229,6 +235,7 @@ def add_labels_to_workloads(result: dict) -> None:
 
 def get_results(path: Path) -> Dict[str, dict]:
     results = load_results(path)
+    add_workload_information(results)
     add_sample_information(results)
     add_throughput_estimates(results)
     add_throughput_df(results)

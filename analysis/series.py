@@ -74,6 +74,8 @@ def plot_strategy_series(
         title=None,
         output_file=None,
         workload_order=None,
+        workloads=None,
+        overlay_events_per_report=False,
 ):
     if not series:
         return
@@ -102,7 +104,7 @@ def plot_strategy_series(
                 break
         x_tick_labels.append(label)
 
-    plt.figure(figsize=(16, 6))
+    fig, ax1 = plt.subplots(figsize=(16, 6))
 
     for strategy in strategies:
         if strategy not in series:
@@ -136,12 +138,11 @@ def plot_strategy_series(
         color = STRATEGY_COLORS.get(strategy, None)
 
         if has_any_error:
-
             if all(
                     err is not None and not isinstance(err, (list, tuple))
                     for err in y_errors
             ):
-                plt.errorbar(
+                ax1.errorbar(
                     cur_x_pos,
                     y_values,
                     yerr=y_errors,
@@ -156,7 +157,7 @@ def plot_strategy_series(
             ):
                 lower = [err[0] for err in y_errors]
                 upper = [err[1] for err in y_errors]
-                plt.errorbar(
+                ax1.errorbar(
                     cur_x_pos,
                     y_values,
                     yerr=[lower, upper],
@@ -166,7 +167,7 @@ def plot_strategy_series(
                     capsize=4,
                 )
             else:
-                plt.plot(
+                ax1.plot(
                     cur_x_pos,
                     y_values,
                     marker=marker,
@@ -174,7 +175,7 @@ def plot_strategy_series(
                     color=color,
                 )
         else:
-            plt.plot(
+            ax1.plot(
                 cur_x_pos,
                 y_values,
                 marker=marker,
@@ -182,22 +183,59 @@ def plot_strategy_series(
                 color=color,
             )
 
-    plt.xlabel(xlabel)
-    plt.xticks(x_pos, x_tick_labels, rotation=45, ha="right", fontsize=12)
-    plt.ylabel(ylabel, fontsize=14)
+    ax1.set_xlabel(xlabel)
+    ax1.set_xticks(x_pos)
+    ax1.set_xticklabels(x_tick_labels, rotation=45, ha="right", fontsize=12)
+    ax1.set_ylabel(ylabel, fontsize=14)
+
+    ax2 = None
+    if overlay_events_per_report and workloads is not None:
+        overlay_x = []
+        overlay_y = []
+
+        for i, workload_key in enumerate(workload_order):
+            workload_data = workloads.get(workload_key, {})
+            workload = workload_data.get("workload", {})
+            epr = workload.get("events_per_report")
+
+            if epr is None:
+                continue
+
+            overlay_x.append(i)
+            overlay_y.append(epr)
+
+        if overlay_x:
+            ax2 = ax1.twinx()
+            ax2.plot(
+                overlay_x,
+                overlay_y,
+                color="black",
+                marker="o",
+                linestyle="--",
+                linewidth=2,
+                label="Events per report",
+            )
+            ax2.set_ylabel("Events per report", fontsize=14)
 
     if title is not None:
-        plt.title(title, fontsize=16)
+        ax1.set_title(title, fontsize=16)
 
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
+    ax1.grid(True, alpha=0.3)
+
+    handles1, labels1 = ax1.get_legend_handles_labels()
+    if ax2 is not None:
+        handles2, labels2 = ax2.get_legend_handles_labels()
+        ax1.legend(handles1 + handles2, labels1 + labels2)
+    else:
+        ax1.legend()
+
+    fig.tight_layout()
 
     if output_file is not None:
         output_file = Path(output_file)
         output_file.parent.mkdir(parents=True, exist_ok=True)
-        plt.savefig(output_file, dpi=200, bbox_inches="tight")
-        plt.close()
+        fig.savefig(output_file, dpi=200, bbox_inches="tight")
+        plt.close(fig)
     else:
         plt.show()
 
@@ -232,6 +270,7 @@ def plot_throughput_from_workloads(
         title=None,
         output_file=None,
         workload_order=None,
+        overlay_events_per_report=True,
 ):
     series = build_strategy_series_from_workloads(workloads, config)
 
@@ -243,4 +282,6 @@ def plot_throughput_from_workloads(
         title=title,
         output_file=output_file,
         workload_order=workload_order,
+        workloads=workloads,
+        overlay_events_per_report=overlay_events_per_report,
     )
