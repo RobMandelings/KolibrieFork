@@ -170,6 +170,19 @@ def slide_x_label_getter(strat_data, workload_key, workload_data):
     return f"{slide}"
 
 
+def perc_overlap_getter(strat_data, workload_key, workload_data):
+    workload = workload_data.get("workload", {})
+    window = workload.get("window", {})
+    size = window.get("size")
+    slide = window.get("slide")
+
+    if size in (None, 0) or slide is None:
+        return "N/A"
+
+    perc_overlap = (size - slide) / size
+    return f"{perc_overlap:.2%} (size={size}, slide={slide})"
+
+
 def walk_workloads_and_strategies(
         workloads: Dict[str, Dict[str, Any]],
         analysis_path: Path,
@@ -192,11 +205,11 @@ def walk_workloads_and_strategies(
             if "median" in key:
                 error_getter = None
             else:
-                error_getter=err_get.get_throughput_conf_int_error
+                error_getter = err_get.get_throughput_conf_int_error
 
             thr_mean_config = make_throughput_series_config(
                 estimate_key=key,
-                x_label_getter=slide_x_label_getter,
+                x_label_getter=perc_overlap_getter,
                 error_getter=error_getter
             )
 
