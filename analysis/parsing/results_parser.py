@@ -1,9 +1,9 @@
-import copy
 import json
 import math
 import statistics
 from pathlib import Path
 from typing import Dict, Sequence, Any
+from scipy import stats
 
 import mem_results as mem_res_module
 import pandas as pd
@@ -145,6 +145,24 @@ def add_throughput_estimates(result: dict):
             estimates["thr_std_err"] = standard_error(throughputs)
             estimates["thr_min"] = min(throughputs)
             estimates["thr_max"] = max(throughputs)
+
+            n = len(throughputs)
+            if n > 1:
+                se = estimates["thr_std_err"]
+                # t critical for two-sided 95% CI with n-1 degrees of freedom
+                t_crit = stats.t.ppf(0.975, df=n - 1)
+                margin = t_crit * se
+
+                # CI around the *mean throughput* estimate
+                thr_mean = estimates["thr_mean"]
+                estimates["thr_mean_ci_lower"] = thr_mean - margin
+                estimates["thr_mean_ci_upper"] = thr_mean + margin
+                estimates["thr_mean_ci_margin"] = margin
+            else:
+                # Degenerate case: cannot form CI with 1 sample
+                estimates["thr_mean_ci_lower"] = None
+                estimates["thr_mean_ci_upper"] = None
+                estimates["thr_mean_ci_margin"] = 0
 
 
 def add_throughput_df(results: dict) -> None:

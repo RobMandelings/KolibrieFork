@@ -7,8 +7,8 @@ from typing import Mapping, Sequence
 import pandas as pd
 from matplotlib import pyplot as plt
 
+import error_getter as err_get
 from constants import STRATEGY_COLORS, STRATEGY_MARKERS, STRATEGIES, ESTIMATES
-from error_getter import get_throughput_std_err
 from exporting.compare_strats_workloads_overview import build_and_export_throughput_overviews
 from exporting.throughput.sample_plotting import plot_samples_grouped
 from exporting.throughput.throughput_results import generate_throughput_results
@@ -192,7 +192,7 @@ def walk_workloads_and_strategies(
             if "median" in key:
                 error_getter = None
             else:
-                error_getter=get_throughput_std_err
+                error_getter=err_get.get_throughput_conf_int_error
 
             thr_mean_config = make_throughput_series_config(
                 estimate_key=key,
@@ -215,6 +215,7 @@ def walk_workloads_and_strategies(
                 title=title,
                 output_file=analysis_path / "overviews" / "png" / "throughput" / key / filename
             )
+    print("Plotted all throughputs for different workloads (median and mean)")
 
     # build_and_export_throughput_overviews(labeled_dfs, analysis_path / "overviews")
     plot_all_memory_properties(workloads, analysis_path / "overviews" / "png")
@@ -447,4 +448,4 @@ def main_pipeline(analysis_path: Path):
 
 
 if __name__ == "__main__":
-    main_pipeline(Path("evaluation/vary_slide_bench/spread_slide"))
+    main_pipeline(Path("evaluation/archive_2/large_bench_bytes_64"))

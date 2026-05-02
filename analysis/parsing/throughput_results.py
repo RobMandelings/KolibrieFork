@@ -53,4 +53,3 @@ def load_results(path: Path = None):
 
 if __name__ == "__main__":
     results = load_results()
-    print("Hi")

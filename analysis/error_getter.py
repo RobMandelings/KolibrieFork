@@ -20,3 +20,15 @@ def get_throughput_std_err(strat_data, workload_key, workload_data):
         raise Exception("Estimates is not present")
 
     return estimates.get("thr_std_err")
+
+
+def get_throughput_conf_int_error(strat_data, workload_key, workload_data):
+    throughput = strat_data.get("throughput")
+    if throughput is None:
+        raise Exception("Throughput is not present")
+
+    estimates = throughput.get("estimates")
+    if estimates is None:
+        raise Exception("Estimates is not present")
+
+    return estimates.get("thr_mean_ci_margin")

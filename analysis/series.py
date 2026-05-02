@@ -244,4 +244,3 @@ def plot_throughput_from_workloads(
         output_file=output_file,
         workload_order=workload_order,
     )
-    print("Hello")
