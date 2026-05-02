@@ -3,12 +3,20 @@ import matplotlib.pyplot as plt
 
 from constants import STRATEGY_COLORS, STRATEGY_MARKERS
 
+from dataclasses import dataclass
+from typing import Callable, Optional, Any
+
+
+@dataclass
+class SeriesBuildConfig:
+    value_getter: Callable[[dict, str, dict], Any]
+    x_label_getter: Callable[[dict, str, dict], str]
+    error_getter: Optional[Callable[[dict, str, dict], Any]] = None
+
 
 def build_strategy_series_from_workloads(
         workloads: dict,
-        value_getter,
-        error_getter=None,
-        x_label_getter=None,
+        config: SeriesBuildConfig,
 ):
     """
     Returns:
@@ -32,7 +40,7 @@ def build_strategy_series_from_workloads(
         strategies = workload_data.get("strategies", {})
 
         for strat_name, strat_data in strategies.items():
-            value = value_getter(strat_data, workload_key, workload_data)
+            value = config.value_getter(strat_data, workload_key, workload_data)
             if value is None:
                 continue
 
@@ -42,14 +50,14 @@ def build_strategy_series_from_workloads(
             point = {
                 "value": value,
                 "x_label": (
-                    x_label_getter(strat_data, workload_key, workload_data)
-                    if x_label_getter is not None
+                    config.x_label_getter(strat_data, workload_key, workload_data)
+                    if config.x_label_getter is not None
                     else workload_key
                 ),
             }
 
-            if error_getter is not None:
-                yerr = error_getter(strat_data, workload_key, workload_data)
+            if config.error_getter is not None:
+                yerr = config.error_getter(strat_data, workload_key, workload_data)
                 if yerr is not None:
                     point["yerr"] = yerr
 
@@ -206,40 +214,18 @@ def get_throughput_estimate(strat_data, estimate_key):
     return estimates.get(estimate_key)
 
 
-def get_throughput_std_dev(strat_data):
-    throughput = strat_data.get("throughput")
-    if throughput is None:
-        raise Exception("Throughput is not present")
-
-    estimates = throughput.get("estimates")
-    if estimates is None:
-        raise Exception("Estimates is not present")
-
-    return estimates.get("thr_std_dev")
-
-
-def build_throughput_series(workloads: dict, estimate_key: str, x_label_getter):
-    error_getter = lambda strat_data, workload_key, workload_data: \
-        get_throughput_std_dev(strat_data)
-
-    return build_strategy_series_from_workloads(
-        workloads=workloads,
+def make_throughput_series_config(estimate_key: str, x_label_getter, error_getter):
+    return SeriesBuildConfig(
         value_getter=lambda strat_data, workload_key, workload_data:
         get_throughput_estimate(strat_data, estimate_key),
         error_getter=error_getter,
-        x_label_getter=x_label_getter
+        x_label_getter=x_label_getter,
     )
-
-
-def slide_x_label_getter(strat_data, workload_key, workload_data):
-    workload = workload_data.get("workload")
-    slide = workload["window"]["slide"]
-    return f"{slide}"
 
 
 def plot_throughput_from_workloads(
         workloads: dict,
-        estimate_key: str,  # "thr_mean" or "thr_median"
+        config: SeriesBuildConfig,
         xlabel: str,
         ylabel: str = "throughput (events/s)",
         strategies=None,
@@ -247,15 +233,15 @@ def plot_throughput_from_workloads(
         output_file=None,
         workload_order=None,
 ):
-    series = build_throughput_series(workloads, estimate_key, slide_x_label_getter)
+    series = build_strategy_series_from_workloads(workloads, config)
 
     plot_strategy_series(
         series=series,
         xlabel=xlabel,
         ylabel=ylabel,
-        strategies=["expire"],
+        strategies=strategies,
         title=title,
-        output_file=None,
+        output_file=output_file,
         workload_order=workload_order,
     )
     print("Hello")

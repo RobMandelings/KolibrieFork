@@ -1,5 +1,6 @@
 import copy
 import json
+import math
 import statistics
 from pathlib import Path
 from typing import Dict, Sequence, Any
@@ -109,6 +110,15 @@ def add_sample_information(result: Dict[str, Dict[str, Dict[str, Any]]]) -> None
             sample["nr_samples"] = len(throughputs)
 
 
+def standard_error(values):
+    n = len(values)
+    if n < 2:
+        raise ValueError("need at least 2 values to compute standard error")
+
+    sd = statistics.stdev(values)
+    return sd / math.sqrt(n)
+
+
 def add_throughput_estimates(result: dict):
     for workload_key, workload_data in result.items():
         nr_events = workload_data["workload"]["nr_events"]
@@ -132,6 +142,7 @@ def add_throughput_estimates(result: dict):
             estimates["thr_median"] = nr_events / (median_ns * 1e-9)
 
             estimates["thr_std_dev"] = statistics.stdev(throughputs)
+            estimates["thr_std_err"] = standard_error(throughputs)
             estimates["thr_min"] = min(throughputs)
             estimates["thr_max"] = max(throughputs)
 

@@ -7,7 +7,8 @@ from typing import Mapping, Sequence
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from constants import STRATEGY_COLORS, STRATEGY_MARKERS
+from constants import STRATEGY_COLORS, STRATEGY_MARKERS, STRATEGIES, ESTIMATES
+from error_getter import get_throughput_std_err
 from exporting.compare_strats_workloads_overview import build_and_export_throughput_overviews
 from exporting.throughput.sample_plotting import plot_samples_grouped
 from exporting.throughput.throughput_results import generate_throughput_results
@@ -16,7 +17,7 @@ from organising import sorting
 from organising.sorting import LabeledDataFrame, sort_configs
 from parsing.dhat_parser import parse_dhat
 from parsing.results_parser import get_results
-from series import plot_throughput_from_workloads
+from series import plot_throughput_from_workloads, make_throughput_series_config
 from workload_keys import make_label_from_key
 
 
@@ -163,6 +164,12 @@ def plot_all_memory_properties(per_workload: dict, output_dir: Path):
             )
 
 
+def slide_x_label_getter(strat_data, workload_key, workload_data):
+    workload = workload_data.get("workload")
+    slide = workload["window"]["slide"]
+    return f"{slide}"
+
+
 def walk_workloads_and_strategies(
         workloads: Dict[str, Dict[str, Any]],
         analysis_path: Path,
@@ -179,9 +186,37 @@ def walk_workloads_and_strategies(
         per_workload[workload_key]["raw"][strategy_name] -> strat_data
     """
 
-    labeled_dfs = to_labeled_dataframe_list(get_throughput_dfs_by_workload(workloads))
+    for strat in STRATEGIES + [None]:
+        for (key, title) in ESTIMATES.items():
 
-    build_and_export_throughput_overviews(labeled_dfs, analysis_path / "overviews")
+            if "median" in key:
+                error_getter = None
+            else:
+                error_getter=get_throughput_std_err
+
+            thr_mean_config = make_throughput_series_config(
+                estimate_key=key,
+                x_label_getter=slide_x_label_getter,
+                error_getter=error_getter
+            )
+
+            if strat is not None:
+                strategies = [strat]
+            else:
+                strategies = None
+
+            filename = strat if strat is not None else "all"
+            plot_throughput_from_workloads(
+                workloads=workloads,
+                config=thr_mean_config,
+                xlabel="slide",
+                ylabel="throughput (events/s)",
+                strategies=strategies,
+                title=title,
+                output_file=analysis_path / "overviews" / "png" / "throughput" / key / filename
+            )
+
+    # build_and_export_throughput_overviews(labeled_dfs, analysis_path / "overviews")
     plot_all_memory_properties(workloads, analysis_path / "overviews" / "png")
 
     for workload_key, entry in workloads.items():
@@ -407,15 +442,6 @@ def main(analysis_path: Path):
 def main_pipeline(analysis_path: Path):
     results = get_results(analysis_path)
     results = sorting.sort_by_slide(results, reverse=False)
-
-    plot_throughput_from_workloads(
-        workloads=results,
-        estimate_key="thr_mean",
-        xlabel="slide",
-        ylabel="throughput (events/s)",
-        title="Mean throughput",
-        output_file="output/png/thr_mean.png",
-    )
 
     walk_workloads_and_strategies(results, analysis_path)
 

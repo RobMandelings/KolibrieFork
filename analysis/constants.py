@@ -1,3 +1,10 @@
+STRATEGIES = ["clone", "rc", "arc", "expire", "legacy"]
+
+ESTIMATES = {
+    "thr_mean": "Mean throughput",
+    "thr_median": "Median throughput"
+}
+
 STRATEGY_COLORS = {
     "clone": "tab:blue",
     "rc": "tab:red",
