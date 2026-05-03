@@ -3,11 +3,11 @@ use std::path::Path;
 use log::{debug, info};
 
 pub fn move_profile_file(strat: &str, group_path: &Path) {
-    println!("Moving profile file");
     let dir = group_path.join("memory");
     // create mem_profiles/workload_name if needed
     fs::create_dir_all(&dir).expect("failed to create mem_profiles dir");
     let dest = dir.join(format!("{strat}.json"));
+    println!("Moving profile file to {:?}", dest);
 
     fs::rename("dhat-heap.json", &dest).expect("failed to move dhat-heap.json");
 }

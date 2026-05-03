@@ -27,6 +27,12 @@ where
     run_full_pipeline_bench::<S>(cached, &build_q1_query(&pipeline_workload.window_params));
 }
 
+pub fn run_mem_profile_legacy(cached: &CachedGraphs, pipeline_workload: &PipelineWorkload)
+{
+    let _profiler = Profiler::new_heap();
+    run_legacy_pipeline_bench(black_box(&cached), &build_q1_query(&pipeline_workload.window_params));
+}
+
 pub fn bench_city_q1_two_windows(
     group: &mut BenchmarkGroup<'_, WallTime>,
     only: &Option<Vec<Strategy>>,
@@ -87,8 +93,7 @@ pub fn bench_city_q1_two_windows(
             },
         );
 
-        let _profiler = Profiler::new_heap();
-        run_legacy_pipeline_bench(black_box(&cached_graphs), &build_q1_query(&pipeline_workload.window_params));
+        run_mem_profile_legacy(black_box(&cached_graphs), &pipeline_workload);
         move_profile_file("legacy", group_path);
     }
 }
