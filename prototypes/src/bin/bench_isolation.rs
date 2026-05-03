@@ -140,6 +140,41 @@ fn run_benches<I, E>(
     }
 }
 
+fn warmup_first_workload<I, E>(
+    workload: &Workload,
+    only: &Option<Vec<Strategy>>,
+    make_event: E,
+)
+where
+    I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
+    E: Fn(Time) -> Event<I> + Copy + 'static,
+{
+    use Strategy::*;
+
+    // Use the same fixed order; pick the first strategy that should run.
+    for strategy in [Clone, Rc, Arc, Legacy, Expire] {
+        if !should_run(only, strategy) {
+            continue;
+        }
+
+        // Build the same factory as in run_benches.
+        let factory = match strategy {
+            Clone  => create_clone_factory(workload, make_event),
+            Rc     => create_rc_factory(workload, make_event),
+            Arc    => create_arc_factory(workload, make_event),
+            Legacy => create_legacy_factory(workload, make_event),
+            Expire => create_expire_factory(workload, make_event),
+        };
+
+        // Warmup: run the runner 10 times, not measured by Criterion.
+        const WARMUP_ITERS: usize = 10;
+        for _ in 0..WARMUP_ITERS {
+            let runner = factory();
+            runner();
+        }
+    }
+}
+
 fn main() {
     let args = parse_args();
     let only = args.only;
@@ -159,6 +194,8 @@ fn main() {
     let grouped_workloads = default_workloads();
     for (group_name, workloads) in &grouped_workloads {
         let grouped_dst_root_path = dst_root_path.join(group_name);
+
+        warmup_first_workload(&workloads[0], &only, make_copy_event);
 
         for workload in workloads {
             // One group per workload
