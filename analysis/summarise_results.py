@@ -461,4 +461,4 @@ def main_pipeline(analysis_path: Path):
 
 
 if __name__ == "__main__":
-    main_pipeline(Path("evaluation/small_sample/spread_1"))
+    main_pipeline(Path("evaluation/slide_change3/spread_slide"))

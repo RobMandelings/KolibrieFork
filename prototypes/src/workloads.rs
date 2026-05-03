@@ -105,25 +105,25 @@ fn single_window_workloads() -> Vec<Workload> {
 }
 
 pub fn test_workloads() -> HashMap<String, Vec<Workload>> {
-    let mut workloads1 = Vec::new();
-        for size in [64] {
-            for slide in [1, 2, 4, 8, 16, 32, 64] {
-                // Event ts offset = size + 1 to directly trigger a report evaluation
-                workloads1.push(create_workload(1, 50_000, 1,size + 1, 0, size, slide))
-            }
-        }
+    // let mut workloads1 = Vec::new();
+        // for size in [64] {
+        //     for slide in [1, 2, 4, 8, 16, 32, 64] {
+        //         // Event ts offset = size + 1 to directly trigger a report evaluation
+        //         workloads1.push(create_workload(1, 50_000, 1,size + 1, 0, size, slide))
+        //     }
+        // }
 
     // Always triggers another report evaluation
     let mut workloads2 = Vec::new();
     for size in [64] {
-        for slide in [1, 2, 4, 8, 16, 32, 64] {
+        for slide in 1..50 {
             // Event ts offset = size + 1 to directly trigger a report evaluation
             workloads2.push(create_workload(1, 50_000, slide,size + 1, 0, size, slide))
         }
     }
 
     let mut map: HashMap<String, Vec<Workload>> = HashMap::new();
-    map.insert("spread_1".to_string(), workloads1);
+    // map.insert("spread_1".to_string(), workloads1);
     map.insert("spread_slide".to_string(), workloads2);
     map
 }
