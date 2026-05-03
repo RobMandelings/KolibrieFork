@@ -1,7 +1,7 @@
 use criterion::measurement::WallTime;
 use criterion::{black_box, BenchmarkGroup, BenchmarkId, Criterion, Throughput};
 use dhat::Profiler;
-use kolibrie::rsp_engine::bench_pipeline_helper::{preload_city_q1_two_window_graphs, run_full_pipeline_bench_q1_two_window, run_legacy_pipeline_bench_q1_two_window, CachedGraphs};
+use kolibrie::rsp_engine::bench_pipeline_helper::{preload_city_q1_two_window_graphs, run_full_pipeline_bench, run_legacy_pipeline_bench, CachedGraphs};
 use kolibrie::rsp_engine::helpers::init_logger;
 use kolibrie::rsp_engine::pipeline_workload::{default_workloads, write_workload_to_file, PipelineWorkload};
 use pprof::criterion::{Output, PProfProfiler};
@@ -11,6 +11,7 @@ use prototypes::bench_common::{
 use prototypes::{ArcStrategy, CloneStrategy, ExpireStrategy, RcStrategy, WindowSnapshotStrategy};
 use shared::triple::Triple;
 use std::path::Path;
+use kolibrie::rsp_engine::query_builders::{build_q1_query, build_q2_query};
 
 const ROOT: &str = "/Users/robmandelings/Documents/KULeuven/Thesis/KolibrieFork/origin-main";
 const DST_ROOT: &str = "../analysis/evaluation";
@@ -23,7 +24,7 @@ where
     S: WindowSnapshotStrategy<Triple> + 'static,
 {
     let _profiler = Profiler::new_heap();
-    run_full_pipeline_bench_q1_two_window::<S>(cached, &pipeline_workload.window_params);
+    run_full_pipeline_bench::<S>(cached, &build_q2_query(&pipeline_workload.window_params));
 }
 
 pub fn bench_city_q1_two_windows(
@@ -81,13 +82,13 @@ pub fn bench_city_q1_two_windows(
             &cached_graphs,
             |b, cached| {
                 b.iter(|| {
-                    run_legacy_pipeline_bench_q1_two_window(black_box(cached), &pipeline_workload.window_params);
+                    run_legacy_pipeline_bench(black_box(cached), &build_q2_query(&pipeline_workload.window_params));
                 });
             },
         );
 
         let _profiler = Profiler::new_heap();
-        run_legacy_pipeline_bench_q1_two_window(black_box(&cached_graphs), &pipeline_workload.window_params);
+        run_legacy_pipeline_bench(black_box(&cached_graphs), &build_q2_query(&pipeline_workload.window_params));
         move_profile_file("legacy", group_path);
     }
 }
@@ -107,7 +108,7 @@ fn run_bench_and_profile<S>(
         &cached_graphs,
         |b, cached| {
             b.iter(|| {
-                run_full_pipeline_bench_q1_two_window::<S>(black_box(cached), &pipeline_workload.window_params);
+                run_full_pipeline_bench::<S>(black_box(cached), &build_q2_query(&pipeline_workload.window_params));
             });
         },
     );

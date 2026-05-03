@@ -15,7 +15,7 @@ mod parking_mapper;
 mod legacy_engine;
 pub mod bench_pipeline_helper;
 pub mod pipeline_workload;
-mod query_builders;
+pub mod query_builders;
 
 use crate::rsp::r2r::R2ROperator;
 use crate::rsp::r2s::Relation2StreamOperator;

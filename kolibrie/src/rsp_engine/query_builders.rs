@@ -37,11 +37,9 @@ pub fn build_q2_query(params: &WindowParams) -> String {
     PREFIX ct:  <http://www.insight-centre.org/citytraffic#>
     REGISTER RSTREAM <http://out/stream> AS
     SELECT ?obId1 ?obId2 ?obId3 ?obId4 ?v1 ?v2 ?v3 ?v4
-    FROM <http://127.0.0.1:9000/WebGlCity/RDF/SensorRepository.rdf>
     FROM NAMED WINDOW :w1 ON :AarhusWeatherData0 [RANGE {size} STEP {slide}]
-    FROM NAMED WINDOW :w2 ON :AarhusTrafficData158505 [RANGE {size} STEP {slide}]
+    FROM NAMED WINDOW :w2 ON :AarhusTrafficData182955 [RANGE {size} STEP {slide}]
     WHERE {{
-      # Weather observations (temp, humidity, wind)
       WINDOW :w1 {{
         ?obId1 ssn:observedProperty ?p1 ;
                sao:hasValue ?v1 ;
@@ -53,19 +51,11 @@ pub fn build_q2_query(params: &WindowParams) -> String {
                sao:hasValue ?v3 ;
                ssn:observedBy <AarhusWeatherData0> .
       }}
-
-      # Traffic congestion observation
       WINDOW :w2 {{
         ?obId4 ssn:observedProperty ?p4 ;
                sao:hasValue ?v4 ;
-               ssn:observedBy <AarhusTrafficData158505> .
+               ssn:observedBy <AarhusTrafficData182955> .
       }}
-
-      # Optional: type constraints (uncomment if you want them enforced)
-      # ?p1 a ct:Temperature .
-      # ?p2 a ct:Humidity .
-      # ?p3 a ct:WindSpeed .
-      # ?p4 a ct:CongestionLevel .
     }}"#,
         size = params.size,
         slide = params.slide,
@@ -96,8 +86,6 @@ pub fn build_q3_query(params: &WindowParams) -> String {
                sao:hasValue ?v1 ;
                ssn:observedBy <AarhusTrafficData182955> .
       }}
-
-      # Second traffic stream (158505)
       WINDOW :w2 {{
         ?obId3 a ?ob ;
                ssn:observedProperty ?p3 ;
