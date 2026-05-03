@@ -1,39 +1,11 @@
 use crate::rsp_engine::csv_graph_iter2::build_stream_iter;
 use crate::rsp_engine::parking_mapper::traffic_mapper;
 use crate::rsp_engine::{OperationMode, QueryExecutionMode, RSPBuilder, RSPEngine, SimpleR2R};
-use criterion::black_box;
 use prototypes::{ExpireStrategy, WindowParams, WindowSnapshotStrategy};
 use shared::triple::Triple;
+use crate::rsp_engine::query_builders::build_q1_query;
 
 pub type CachedGraphs = Vec<(String, Vec<String>, u64)>;
-
-fn build_q1_query(params: &WindowParams) -> String {
-    format!(
-        r#"
-    PREFIX ses: <http://www.insight-centre.org/dataset/SampleEventService#>
-    PREFIX ssn: <http://purl.oclc.org/NET/ssnx/ssn#>
-    PREFIX sao: <http://purl.oclc.org/NET/sao/>
-    PREFIX ct:  <http://www.insight-centre.org/citytraffic#>
-    REGISTER RSTREAM <http://out/stream> AS
-    SELECT ?obId1 ?v1
-    FROM NAMED WINDOW :w1 ON :AarhusTrafficData158505 [RANGE {size} STEP {slide}]
-    FROM NAMED WINDOW :w2 ON :AarhusTrafficData182955 [RANGE {size} STEP {slide}]
-    WHERE {{
-      WINDOW :w1 {{
-        ?obId1 ssn:observedProperty ?p1 ;
-               sao:hasValue ?v1 ;
-               ssn:observedBy <AarhusTrafficData158505> .
-      }}
-      WINDOW :w2 {{
-        ?obId2 ssn:observedProperty ?p2 ;
-               sao:hasValue ?v2 ;
-               ssn:observedBy <AarhusTrafficData182955> .
-      }}
-    }}"#,
-        size = params.size,
-        slide = params.slide,
-    )
-}
 
 // Expire strategy is simply placeholder because we don't actually use it
 fn make_legacy_q1_window(params: &WindowParams) -> RSPEngine<Triple, Vec<(String, String)>, ExpireStrategy<Triple>>
