@@ -1478,6 +1478,7 @@ dependencies = [
  "anyhow",
  "criterion",
  "dhat",
+ "indexmap",
  "log",
  "pprof",
  "serde",

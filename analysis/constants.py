@@ -6,17 +6,17 @@ ESTIMATES = {
 }
 
 STRATEGY_COLORS = {
-    "clone": "tab:blue",
+    "slice": "tab:green",
     "rc": "tab:red",
     "arc": "tab:orange",
-    "expire": "tab:green",
+    "clone": "tab:blue",
     "legacy": "tab:purple",
 }
 
 STRATEGY_MARKERS = {
-    "clone": "o",    # circle
+    "slice": "^",   # triangle up
     "rc": "s",       # square
     "arc": "D",      # diamond
-    "expire": "^",   # triangle up
+    "clone": "o",    # circle
     "legacy": "X",   # filled x
 }

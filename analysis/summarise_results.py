@@ -187,7 +187,7 @@ def perc_overlap_getter(strat_data, workload_key, workload_data):
 def relative_throughput(workload_data, strategy_data):
     # Current strategy as baseline to consider relative improvement with slice strategy
     baseline = strategy_data["throughput"]["estimates"]["thr_mean"]
-    current = workload_data["strategies"]["expire"]["throughput"]["estimates"]["thr_mean"]
+    current = workload_data["strategies"]["slice"]["throughput"]["estimates"]["thr_mean"]
     return current / baseline
 
 
@@ -474,4 +474,4 @@ def main_pipeline(analysis_path: Path):
 
 
 if __name__ == "__main__":
-    main_pipeline(Path("evaluation/slide_change3/spread_slide"))
+    main_pipeline(Path("evaluation/final_bench/test"))

@@ -7,6 +7,7 @@ use serde_json;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
+use indexmap::IndexMap;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EventStreamConfig {
@@ -102,8 +103,8 @@ fn single_window_workloads() -> Vec<Workload> {
     workloads
 }
 
-pub fn test_workloads() -> HashMap<String, Vec<Workload>> {
-    let mut map: HashMap<String, Vec<Workload>> = HashMap::new();
+pub fn test_workloads() -> IndexMap<String, Vec<Workload>> {
+    let mut map: IndexMap<String, Vec<Workload>> = IndexMap::new();
     let nr_events = 50_000;
     for bytes in [0, 32] {
         for nr_windows in [1, 2, 5, 10] {
@@ -202,7 +203,7 @@ pub fn test_workload() -> Vec<Workload> {
     workloads
 }
 
-pub fn default_workloads() -> HashMap<String, Vec<Workload>> {
+pub fn default_workloads() -> IndexMap<String, Vec<Workload>> {
     test_workloads()
 }
 

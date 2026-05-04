@@ -12,3 +12,4 @@ anyhow = "1.0.102"
 pprof = { version = "0.15", features = ["flamegraph", "criterion"] }
 log = "0.4.29"
 uuid = { version = "1.23.0", features = ["v4"] }
+indexmap = "2"
