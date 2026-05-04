@@ -15,6 +15,7 @@ from exporting.throughput.throughput_results import generate_throughput_results
 from exporting.workload_csv import workload_summary_to_csv
 from organising import sorting
 from organising.sorting import LabeledDataFrame, sort_configs
+from overall_tables import dict_to_metric_table
 from parsing.dhat_parser import parse_dhat
 from parsing.results_parser import get_results
 from series import plot_throughput_from_workloads, make_throughput_series_config
@@ -183,6 +184,13 @@ def perc_overlap_getter(strat_data, workload_key, workload_data):
     return f"{perc_overlap:.2%} (size={size}, slide={slide})"
 
 
+def relative_throughput(workload_data, strategy_data):
+    # Current strategy as baseline to consider relative improvement with slice strategy
+    baseline = strategy_data["throughput"]["estimates"]["thr_mean"]
+    current = workload_data["strategies"]["expire"]["throughput"]["estimates"]["thr_mean"]
+    return current / baseline
+
+
 def walk_workloads_and_strategies(
         workloads: Dict[str, Dict[str, Any]],
         analysis_path: Path,
@@ -198,6 +206,11 @@ def walk_workloads_and_strategies(
     Structure assumed:
         per_workload[workload_key]["raw"][strategy_name] -> strat_data
     """
+
+    df = dict_to_metric_table(
+        workloads,
+        value_fn=relative_throughput
+    )
 
     for strat in STRATEGIES + [None]:
         for (key, title) in ESTIMATES.items():

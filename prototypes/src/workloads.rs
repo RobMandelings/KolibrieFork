@@ -1,10 +1,10 @@
-use std::collections::HashMap;
-use crate::{Event, WindowParams};
 use crate::prototype::event::Time;
 use crate::prototype::helpers::wc_struct;
 use crate::prototype::window_params::S2RWindowConfig;
+use crate::{Event, WindowParams};
 use serde::{Deserialize, Serialize};
 use serde_json;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 
@@ -26,7 +26,8 @@ pub struct Workload {
 
 impl Workload {
     pub fn get_short_name(&self) -> String {
-        format!("{},{},{},{},{},{},{}",
+        format!(
+            "{},{},{},{},{},{},{}",
             self.nr_windows,
             self.window.size,
             self.window.slide,
@@ -45,10 +46,7 @@ pub fn write_workload_to_file(workload: &Workload, path: &str) -> anyhow::Result
     Ok(())
 }
 
-pub fn create_events_for_workload<I, F>(
-    workload: &Workload,
-    mut event_factory: F,
-) -> Vec<Event<I>>
+pub fn create_events_for_workload<I, F>(workload: &Workload, mut event_factory: F) -> Vec<Event<I>>
 where
     F: FnMut(Time) -> Event<I>,
 {
@@ -79,11 +77,11 @@ fn create_workload(
         nr_events,
         stream_config: EventStreamConfig {
             spread,
-            offset: event_ts_offset
+            offset: event_ts_offset,
         },
         bytes,
         window: window_config,
-        nr_windows
+        nr_windows,
     }
 }
 
@@ -105,20 +103,18 @@ fn single_window_workloads() -> Vec<Workload> {
 }
 
 pub fn test_workloads() -> HashMap<String, Vec<Workload>> {
-    // let mut workloads1 = Vec::new();
-        // for size in [64] {
-        //     for slide in [1, 2, 4, 8, 16, 32, 64] {
-        //         // Event ts offset = size + 1 to directly trigger a report evaluation
-        //         workloads1.push(create_workload(1, 50_000, 1,size + 1, 0, size, slide))
-        //     }
-        // }
+    
+    let mut size_change = Vec::new();
+    for size in 1..101 {
+        size_change.push(create_workload(1, 50_000, 1, size + 1, 0, size, 1))
+    }
 
     // Always triggers another report evaluation
     let mut workloads2 = Vec::new();
     for size in [64] {
         for slide in 1..50 {
             // Event ts offset = size + 1 to directly trigger a report evaluation
-            workloads2.push(create_workload(1, 50_000, slide,size + 1, 0, size, slide))
+            workloads2.push(create_workload(1, 50_000, slide, size + 1, 0, size, slide))
         }
     }
 
@@ -133,7 +129,7 @@ pub fn vary_size() -> Vec<Workload> {
 
     for bytes in [0, 32] {
         for size in [1, 2, 4, 8, 16, 32, 64, 128] {
-            workloads.push(create_workload(1, 50_000, 1,0, bytes, size, 1))
+            workloads.push(create_workload(1, 50_000, 1, 0, bytes, size, 1))
         }
     }
 
@@ -145,7 +141,7 @@ pub fn vary_slide() -> Vec<Workload> {
 
     for bytes in [0] {
         for slide in [1, 2, 4, 8, 16, 32, 64] {
-            workloads.push(create_workload(1, 50_000, 1,0, bytes, 64, slide))
+            workloads.push(create_workload(1, 50_000, 1, 0, bytes, 64, slide))
         }
     }
 
@@ -156,7 +152,7 @@ pub fn test_workload() -> Vec<Workload> {
     let mut workloads = Vec::new();
 
     for size in [1] {
-        workloads.push(create_workload(5, 50_000, 1,0, 0, size, 1))
+        workloads.push(create_workload(5, 50_000, 1, 0, 0, size, 1))
     }
 
     workloads
@@ -172,7 +168,7 @@ pub fn mk_workload(nr_events: usize, spread: Time, event_ts_offset: Time) -> Wor
         nr_events,
         stream_config: EventStreamConfig {
             spread,
-            offset: event_ts_offset
+            offset: event_ts_offset,
         },
         bytes: 0,
         window: WindowParams {
@@ -195,7 +191,7 @@ mod tests {
 
     #[test]
     fn timestamps_with_spread_one() {
-        let workload = mk_workload(5, 1,0 );
+        let workload = mk_workload(5, 1, 0);
         let events = create_events_for_workload(&workload, mk_event);
         let ts: Vec<Time> = events.iter().map(|e| e.ts).collect();
         assert_eq!(ts, vec![0, 1, 2, 3, 4]);
@@ -229,7 +225,7 @@ mod tests {
 
     #[test]
     fn timestamps_with_spread_two() {
-        let workload = mk_workload(3, 2,0);
+        let workload = mk_workload(3, 2, 0);
         let events = create_events_for_workload(&workload, mk_event);
 
         let ts: Vec<Time> = events.iter().map(|e| e.ts).collect();
