@@ -50,9 +50,4 @@ def linear_trend_per_strategy(
             "r_value": r_value,
         }
 
-        print(
-            f"Strategy={strategy}: slope={slope:.4g}, "
-            f"p={p_value:.3g}, r={r_value:.4g}"
-        )
-
     return results

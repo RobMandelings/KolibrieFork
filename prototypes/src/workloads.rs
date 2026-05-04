@@ -105,14 +105,21 @@ fn single_window_workloads() -> Vec<Workload> {
 
 pub fn test_workloads() -> IndexMap<String, Vec<Workload>> {
     let mut map: IndexMap<String, Vec<Workload>> = IndexMap::new();
-    let nr_events = 50_000;
+
+    let mut warmup = Vec::new();
+    for i in 0..10 {
+        warmup.push(create_workload(1, 10_000, 1, 100 + 1, 0, 50, 1));
+    }
+    map.insert("warmup".to_string(), warmup);
+
+    let nr_events = 10_000;
     for bytes in [0, 32] {
         for nr_windows in [1, 2, 5, 10] {
             {
-                let size = 100;
+                let size = 50;
                 let mut spread_slide = Vec::new();
                 let mut spread_constant = Vec::new();
-                for slide in 1..111 {
+                for slide in 1..=55 {
                     spread_slide.push(create_workload(
                         nr_windows,
                         nr_events,
@@ -147,7 +154,7 @@ pub fn test_workloads() -> IndexMap<String, Vec<Workload>> {
             {
                 for slide in [1, 10, 50] {
                     let mut size_change = Vec::new();
-                    for size in 1..101 {
+                    for size in 1..=50 {
                         size_change.push(create_workload(
                             nr_windows,
                             nr_events,
@@ -201,6 +208,17 @@ pub fn test_workload() -> Vec<Workload> {
     }
 
     workloads
+}
+
+pub fn my_workloads() -> IndexMap<String, Vec<Workload>> {
+    let mut map = IndexMap::new();
+    let mut vec = Vec::new();
+
+    for i in 0..10 {
+        vec.push(create_workload(1, 50_000, 1, 100 + 1, 0, 100, 1));
+    }
+    map.insert("same".to_string(), vec);
+    map
 }
 
 pub fn default_workloads() -> IndexMap<String, Vec<Workload>> {

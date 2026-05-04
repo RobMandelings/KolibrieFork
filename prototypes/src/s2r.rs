@@ -208,7 +208,7 @@ where
                     window.open, window.close, event_item, ts
                 );
                 if window.open < event_time && event_time <= window.close {
-                    println!(
+                    debug!(
                         "Adding element [{:?}] to Window ({:?},{:?}]",
                         event_item, window.open, window.close
                     );
