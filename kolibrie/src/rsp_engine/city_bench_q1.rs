@@ -1,7 +1,7 @@
 use std::env;
 use log::{debug, LevelFilter};
 use prototypes::bench_helpers::Time;
-use prototypes::ExpireStrategy;
+use prototypes::SliceStrategy;
 use shared::triple::Triple;
 use crate::rsp_engine::{OperationMode, QueryExecutionMode, RSPBuilder, RSPEngine, SimpleR2R};
 use crate::rsp_engine::csv_graph_iter2;
@@ -39,7 +39,7 @@ fn rsp_ql_city_bench() {
       }
     }"#;
 
-    let mut engine: RSPEngine<Triple, Vec<(String, String)>, ExpireStrategy<Triple>> = RSPBuilder::new()
+    let mut engine: RSPEngine<Triple, Vec<(String, String)>, SliceStrategy<Triple>> = RSPBuilder::new()
         .set_legacy_window(false)
         .add_rsp_ql_query(query)
         .add_r2r(r2r)
@@ -90,7 +90,7 @@ fn city_bench_q1_single_window() {
       }
     }"#;
 
-    let mut engine: RSPEngine<Triple, Vec<(String, String)>, ExpireStrategy<Triple>> = RSPBuilder::new()
+    let mut engine: RSPEngine<Triple, Vec<(String, String)>, SliceStrategy<Triple>> = RSPBuilder::new()
         .set_legacy_window(false)
         .add_rsp_ql_query(query)
         .add_r2r(r2r)
@@ -148,7 +148,7 @@ fn city_bench_q1_two_window() {
       }
     }"#;
 
-    let mut engine: RSPEngine<Triple, Vec<(String, String)>, ExpireStrategy<Triple>> = RSPBuilder::new()
+    let mut engine: RSPEngine<Triple, Vec<(String, String)>, SliceStrategy<Triple>> = RSPBuilder::new()
         .set_legacy_window(true)
         .add_rsp_ql_query(query)
         .add_r2r(r2r)

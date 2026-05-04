@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod tests {
     use crate::prototype::event::Time;
-    use crate::{Event, ExpireStrategy, SlidingWindowOperator, WindowSnapshotStrategy};
+    use crate::{Event, SliceStrategy, SlidingWindowOperator, WindowSnapshotStrategy};
     use std::cell::RefCell;
     use std::rc::Rc;
     use crate::prototype::helpers::{wc_by_params};
-    use crate::prototype::slide_strategy::expire_strategy::{SliceConsumer, SliceContainer};
+    use crate::prototype::slide_strategy::slice_strategy::{SliceConsumer, SliceContainer};
     use crate::workloads::{create_events_for_workload, mk_workload};
 
     // Consumer that only counts how many reports it receives, for a single window.
@@ -29,7 +29,7 @@ mod tests {
     fn window_size_5_slide_1_spread_1_reports_after_filling_and_then_each_step() {
         let w = wc_by_params(5,1);
 
-        let strat: ExpireStrategy<String> = ExpireStrategy::new();
+        let strat: SliceStrategy<String> = SliceStrategy::new();
         let mut op = SlidingWindowOperator::new_default_iri(vec![w.clone()], strat);
 
         let report_count = Rc::new(RefCell::new(0usize));
@@ -56,7 +56,7 @@ mod tests {
     #[test]
     fn window_size_5_slide_5_spread_1_reports_every_five_timestamps() {
         let w = wc_by_params(5, 5);
-        let strat: ExpireStrategy<String> = ExpireStrategy::new();
+        let strat: SliceStrategy<String> = SliceStrategy::new();
         let mut op = SlidingWindowOperator::new_default_iri(vec![w.clone()], strat);
 
         let report_count = Rc::new(RefCell::new(0usize));
@@ -82,7 +82,7 @@ mod tests {
     fn window_size_5_slide_5_spread_5_reports_for_each_event() {
         let w = wc_by_params(5, 5);
 
-        let strat: ExpireStrategy<String> = ExpireStrategy::new();
+        let strat: SliceStrategy<String> = SliceStrategy::new();
         let mut op = SlidingWindowOperator::new_default_iri(vec![w.clone()], strat);
 
         let report_count = Rc::new(RefCell::new(0usize));

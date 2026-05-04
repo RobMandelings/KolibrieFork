@@ -1,13 +1,13 @@
 use crate::rsp_engine::csv_graph_iter2::build_stream_iter;
 use crate::rsp_engine::parking_mapper::traffic_mapper;
 use crate::rsp_engine::{OperationMode, QueryExecutionMode, RSPBuilder, RSPEngine, SimpleR2R};
-use prototypes::{ExpireStrategy, WindowSnapshotStrategy};
+use prototypes::{SliceStrategy, WindowSnapshotStrategy};
 use shared::triple::Triple;
 
 pub type CachedGraphs = Vec<(String, Vec<String>, u64)>;
 
 // Expire strategy is simply placeholder because we don't actually use it
-fn make_legacy_q1_engine(query: &str) -> RSPEngine<Triple, Vec<(String, String)>, ExpireStrategy<Triple>>
+fn make_legacy_q1_engine(query: &str) -> RSPEngine<Triple, Vec<(String, String)>, SliceStrategy<Triple>>
 {
     let r2r = Box::new(SimpleR2R::with_execution_mode(QueryExecutionMode::Volcano));
 
@@ -91,7 +91,7 @@ pub fn preload_city_q2_graphs(limit_per_stream: usize) -> CachedGraphs {
 
 pub fn run_legacy_pipeline_bench(cached_graphs: &CachedGraphs, query: &str)
 {
-    let mut engine: RSPEngine<Triple, Vec<(String, String)>, ExpireStrategy<Triple>> = make_legacy_q1_engine(query);
+    let mut engine: RSPEngine<Triple, Vec<(String, String)>, SliceStrategy<Triple>> = make_legacy_q1_engine(query);
     for (stream_iri, graphs, ts) in cached_graphs {
         for graph_str in graphs {
             engine.add_graph_to_stream(stream_iri, graph_str, *ts);

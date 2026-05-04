@@ -1,7 +1,7 @@
 use crate::prototype::event::Time;
 use crate::prototype::helpers::{wc};
-use crate::prototype::slide_strategy::expire_strategy::SliceContainer;
-use crate::{make_string_event, ExpireStrategy, SlidingWindowOperator, WindowSnapshotStrategy};
+use crate::prototype::slide_strategy::slice_strategy::SliceContainer;
+use crate::{make_string_event, SliceStrategy, SlidingWindowOperator, WindowSnapshotStrategy};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -33,7 +33,7 @@ fn sliding_window_operator_reports_multiple_windows_with_distinct_params() {
         (w1.window_iri.clone(), consume_w1)
     ];
 
-    let strat: ExpireStrategy<String> = ExpireStrategy::new();
+    let strat: SliceStrategy<String> = SliceStrategy::new();
     // Two windows in one operator
     let mut op = SlidingWindowOperator::new_default_iri(vec![w0, w1], strat);
     for (iri, consumer) in consumers {

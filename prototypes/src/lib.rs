@@ -14,7 +14,7 @@ pub use prototype::{
     slide_strategy::{
         arc_strategy::ArcStrategy,
         clone_strategy::CloneStrategy,
-        expire_strategy::ExpireStrategy,
+        slice_strategy::SliceStrategy,
         rc_strategy::RcStrategy,
         WindowSnapshotStrategy
     },

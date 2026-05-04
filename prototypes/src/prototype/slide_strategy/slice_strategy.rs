@@ -7,14 +7,14 @@ use crate::prototype::slide_strategy::{CutoffOrOpen, ItemsReport, WindowSnapshot
 use crate::prototype::window_bounds::after_open;
 
 /// Concrete slide_strategy: expire old events, report them as owned Events.
-pub struct ExpireStrategy<I: Clone> {
+pub struct SliceStrategy<I: Clone> {
     // Outer Vec: one entry per window
     // Inner Vec: consumers for that window
     consume_fns: HashMap<String, Vec<RefCell<Box<dyn FnMut(SliceContainer<I>)>>>>,
     pub content: Vec<Event<I>>,
 }
 
-impl<I: Clone> ExpireStrategy<I> {
+impl<I: Clone> SliceStrategy<I> {
 
     /// Take a slice of the event vector by finding the first position with a certain time stamp and last position
     pub fn slice_by_ts(&self, open: Time) -> &[Event<I>] {
@@ -44,7 +44,7 @@ impl<I: 'static> ItemsReport<I> for SliceContainer<'_, I> {
     }
 }
 
-impl<I: Clone + 'static> WindowSnapshotStrategy<I> for ExpireStrategy<I> {
+impl<I: Clone + 'static> WindowSnapshotStrategy<I> for SliceStrategy<I> {
     type ReportType<'a> = SliceContainer<'a, I>;
 
     fn new() -> Self {
@@ -98,7 +98,7 @@ mod tests {
 
     #[test]
     fn expire_events_none_expired() {
-        let mut wc: ExpireStrategy<String> = ExpireStrategy::new();
+        let mut wc: SliceStrategy<String> = SliceStrategy::new();
 
         wc.content = vec![make_string_event(10), make_string_event(20), make_string_event(30)];
         wc.add_consumer("0", consume_fn());
@@ -109,7 +109,7 @@ mod tests {
 
     #[test]
     fn expire_events_some_expired() {
-        let mut wc = ExpireStrategy::new();
+        let mut wc = SliceStrategy::new();
         wc.content = vec![make_string_event(10), make_string_event(20), make_string_event(30)];
         wc.add_consumer("0", consume_fn());
         let slice = wc.slice_by_ts(25); // expire ts < 25 -> 10 and 20
@@ -120,7 +120,7 @@ mod tests {
 
     #[test]
     fn expire_events_all_expired() {
-        let mut wc = ExpireStrategy::new();
+        let mut wc = SliceStrategy::new();
         wc.content = vec![make_string_event(10), make_string_event(20), make_string_event(30)];
         wc.add_consumer("0", consume_fn());
         let slice = wc.slice_by_ts(100);

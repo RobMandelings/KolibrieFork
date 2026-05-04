@@ -3,10 +3,10 @@ mod perf_tests {
     use crate::prototype::event::Time;
     use crate::prototype::helpers::wc;
     use crate::prototype::slide_strategy::clone_strategy::CloneContainer;
-    use crate::prototype::slide_strategy::expire_strategy::SliceContainer;
+    use crate::prototype::slide_strategy::slice_strategy::SliceContainer;
     use crate::prototype::slide_strategy::rc_strategy::RcContainer;
     use crate::prototype::slide_strategy::WindowSnapshotStrategy;
-    use crate::{make_string_event, CloneStrategy, ExpireStrategy, RcStrategy, SlidingWindowOperator};
+    use crate::{make_string_event, CloneStrategy, SliceStrategy, RcStrategy, SlidingWindowOperator};
     use std::time::Instant;
 
     fn run_throughput_test<S>(name: &str, mut op: SlidingWindowOperator<String, S>)
@@ -41,7 +41,7 @@ mod perf_tests {
         let config_iri = config.window_iri.clone();
         // Strategy 1: ExpireStrategy with borrowed events
         let consume_expire = Box::new(|_events: SliceContainer<String>| {});
-        let expire_strat = ExpireStrategy::new();
+        let expire_strat = SliceStrategy::new();
         let mut op_expire = SlidingWindowOperator::single_window(config.clone(), expire_strat);
         op_expire.add_consumer(&config_iri, consume_expire);
 

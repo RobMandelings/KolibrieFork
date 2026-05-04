@@ -2,7 +2,7 @@ use crate::prototype::event::Time;
 use crate::prototype::helpers::{wc};
 use crate::prototype::slide_strategy::WindowSnapshotStrategy;
 use crate::prototype::sliding_window_bounds::compute_earliest_open_time;
-use crate::{make_string_event, CloneStrategy, Event, ExpireStrategy, RcStrategy, SlidingWindowOperator, WindowParams};
+use crate::{make_string_event, CloneStrategy, Event, SliceStrategy, RcStrategy, SlidingWindowOperator, WindowParams};
 
 /// Invariant here: events should be removed from content once all sliding window bounds' open times
 /// are higher than the events' timestamp.
@@ -16,7 +16,7 @@ fn assert_event_respects_cutoff(e: &Event<String>, earliest: Time) {
     );
 }
 
-fn assert_expire_respects_cutoff(op: &SlidingWindowOperator<String, ExpireStrategy<String>>) {
+fn assert_expire_respects_cutoff(op: &SlidingWindowOperator<String, SliceStrategy<String>>) {
     let earliest = compute_earliest_open_time(op.sliding_windows.values());
 
     for e in &op.strategy.content {
@@ -55,7 +55,7 @@ fn strategies_invariant_no_expiry() {
 
     // Expire
     {
-        let mut op = SlidingWindowOperator::single_window(config.clone(), ExpireStrategy::new());
+        let mut op = SlidingWindowOperator::single_window(config.clone(), SliceStrategy::new());
         drive_no_expiry_scenario(&mut op);
         assert_expire_respects_cutoff(&op);
     }
@@ -94,7 +94,7 @@ fn strategies_drop_events_before_cutoff() {
 
     // Expire
     {
-        let mut op = SlidingWindowOperator::single_window(config.clone(), ExpireStrategy::new());
+        let mut op = SlidingWindowOperator::single_window(config.clone(), SliceStrategy::new());
         drive_expiry_scenario(&mut op);
         assert_expire_respects_cutoff(&op);
     }
@@ -146,8 +146,8 @@ fn overlapping_windows_earliest_from_second_window() {
 
     // ExpireStrategy
     {
-        let mut op: SlidingWindowOperator<String, ExpireStrategy<String>> =
-            SlidingWindowOperator::new_default_iri(vec![wc1.clone(), wc2.clone()], ExpireStrategy::new());
+        let mut op: SlidingWindowOperator<String, SliceStrategy<String>> =
+            SlidingWindowOperator::new_default_iri(vec![wc1.clone(), wc2.clone()], SliceStrategy::new());
 
         drive_overlapping_scenario(&mut op);
         let timestamps: Vec<Time> = op.strategy.content.iter().map(|e| e.ts).collect();

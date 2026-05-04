@@ -2,11 +2,11 @@ use crate::prototype::helpers::construct_window_configs;
 // TODO find a way to put the criterion lib under dev-dependencies, not normal deps
 use crate::prototype::slide_strategy::arc_strategy::ArcContainer;
 use crate::prototype::slide_strategy::clone_strategy::CloneContainer;
-use crate::prototype::slide_strategy::expire_strategy::SliceContainer;
+use crate::prototype::slide_strategy::slice_strategy::SliceContainer;
 use crate::prototype::slide_strategy::rc_strategy::RcContainer;
 use crate::s2r::{ContentContainer, LegacyWindow, Report, ReportStrategy, Tick};
 use crate::workloads::{create_events_for_workload, Workload};
-use crate::{ArcStrategy, CloneStrategy, Event, ExpireStrategy, RcStrategy
+use crate::{ArcStrategy, CloneStrategy, Event, SliceStrategy, RcStrategy
             , SlidingWindowOperator, WindowSnapshotStrategy,
 };
 use criterion::black_box;
@@ -70,12 +70,12 @@ where
     windows
 }
 
-fn build_operator_expire<I>(workload: &Workload) -> SlidingWindowOperator<I, ExpireStrategy<I>>
+fn build_operator_expire<I>(workload: &Workload) -> SlidingWindowOperator<I, SliceStrategy<I>>
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
 {
     let consume = Box::new(|_events: SliceContainer<I>| {});
-    let strat = ExpireStrategy::new();
+    let strat = SliceStrategy::new();
 
     let window_configs = construct_window_configs(workload);
     let mut op = SlidingWindowOperator::new_default_iri(window_configs.clone(), strat);

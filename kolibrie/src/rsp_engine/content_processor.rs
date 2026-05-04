@@ -42,7 +42,7 @@ fn send_window_result<O: 'static>(
     }
 }
 
-fn refresh_window_store<I, R, O>(
+fn update_window_store<I, R, O>(
     report: &R,
     store: &mut dyn R2ROperator<I, Vec<PhysicalOperator>, O>,
     prev_window_triples: &mut Vec<I>,
@@ -87,11 +87,8 @@ pub fn process_window_report<I, R, O>(
     );
 
     let ts = report.get_last_timestamp_changed() as usize;
-
     let mut store = r2r_store.lock().unwrap();
-
-    refresh_window_store(&report, store.as_mut(), prev_window_triples);
-
+    update_window_store(&report, store.as_mut(), prev_window_triples);
     let results = store.execute_query(query);
     debug!("Got # results {} for window {}", results.len(), window_iri);
 

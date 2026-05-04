@@ -8,7 +8,7 @@ use pprof::criterion::{Output, PProfProfiler};
 use prototypes::bench_common::{
     copy_group_dir_with_catch, move_profile_file, parse_args, should_run, Strategy,
 };
-use prototypes::{ArcStrategy, CloneStrategy, ExpireStrategy, RcStrategy, WindowSnapshotStrategy};
+use prototypes::{ArcStrategy, CloneStrategy, SliceStrategy, RcStrategy, WindowSnapshotStrategy};
 use shared::triple::Triple;
 use std::path::Path;
 use kolibrie::rsp_engine::query_builders::{build_q1_query};
@@ -73,7 +73,7 @@ pub fn bench_city_q1_two_windows(
     }
 
     if should_run(only, Strategy::Expire) {
-        run_bench_and_profile::<ExpireStrategy<Triple>>(
+        run_bench_and_profile::<SliceStrategy<Triple>>(
             group,
             "expire",
             group_path,

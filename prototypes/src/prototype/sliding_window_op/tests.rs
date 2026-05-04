@@ -1,10 +1,10 @@
 use super::*;
 use std::cell::RefCell;
 use std::rc::Rc;
-use crate::{make_string_event, Event, ExpireStrategy, WindowParams};
+use crate::{make_string_event, Event, SliceStrategy, WindowParams};
 use crate::prototype::event::Time;
 use crate::prototype::helpers::{wc};
-use crate::prototype::slide_strategy::expire_strategy::SliceContainer;
+use crate::prototype::slide_strategy::slice_strategy::SliceContainer;
 
 #[test]
 fn sliding_window_operator_reports_on_window_close() {
@@ -20,7 +20,7 @@ fn sliding_window_operator_reports_on_window_close() {
         let ts_list: Vec<Time> = events.0.iter().map(|e| e.ts).collect();
         reported_clone.borrow_mut().push(ts_list);
     });
-    let mut strat = ExpireStrategy::new();
+    let mut strat = SliceStrategy::new();
     let mut op = SlidingWindowOperator::single_window(config, strat);
     op.add_consumer(&window_iri, consume_fn);
 
@@ -57,7 +57,7 @@ fn sliding_window_operator_reports_overlapping_windows_secret_intervals() {
         let ts_list: Vec<Time> = events.0.iter().map(|e| e.ts).collect();
         reported_clone.borrow_mut().push(ts_list);
     });
-    let mut strat = ExpireStrategy::new();
+    let mut strat = SliceStrategy::new();
     let mut op = SlidingWindowOperator::single_window(config, strat);
     op.add_consumer(&window_iri, consume_fn);
 

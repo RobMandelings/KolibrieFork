@@ -5,7 +5,7 @@ use crate::Event;
 
 pub mod arc_strategy;
 pub mod clone_strategy;
-pub mod expire_strategy;
+pub mod slice_strategy;
 pub mod slice_expire_strategy;
 pub mod iter_expire_strategy;
 pub mod rc_strategy;

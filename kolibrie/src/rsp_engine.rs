@@ -36,7 +36,7 @@ use prototypes::prototype::slide_strategy::iter_expire_strategy::{
 use prototypes::prototype::slide_strategy::ItemsReport;
 use prototypes::prototype::window_params::S2RWindowConfig;
 use prototypes::{
-    ExpireStrategy, SlidingWindowOperator, WindowParams, WindowSnapshotStrategy, IRI,
+    SliceStrategy, SlidingWindowOperator, WindowParams, WindowSnapshotStrategy, IRI,
 };
 use shared::query::{Fallback, SyncPolicy};
 use shared::rule::Rule;

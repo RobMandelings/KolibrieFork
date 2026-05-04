@@ -9,7 +9,7 @@ use kolibrie::rsp::builder::Consumer;
 use kolibrie::rsp::builder::Consumer::Aggregate;
 use kolibrie::rsp_engine::{OperationMode, QueryExecutionMode, RSPBuilder, RSPEngine, SimpleR2R};
 use kolibrie::rsp_engine::helpers::{create_aggregate_consumer, SolMap};
-use prototypes::{ArcStrategy, ExpireStrategy, RcStrategy};
+use prototypes::{ArcStrategy, SliceStrategy, RcStrategy};
 use prototypes::prototype::slide_strategy::iter_expire_strategy::IterExpireStrategy;
 use shared::triple::Triple;
 //
@@ -146,7 +146,7 @@ fn rsp_ql_city_bench() {
         WHERE { WINDOW :w { ?a <http://example.org/ontology/vehicleCount> ?b . } }
     "#;
 
-    let mut engine: RSPEngine<Triple, Vec<(String, String)>, ExpireStrategy<Triple>> = RSPBuilder::new()
+    let mut engine: RSPEngine<Triple, Vec<(String, String)>, SliceStrategy<Triple>> = RSPBuilder::new()
         .set_legacy_window(false)
         .add_rsp_ql_query(query)
         .set_consumer(agg_consumer)
