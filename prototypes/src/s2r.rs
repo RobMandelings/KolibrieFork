@@ -20,6 +20,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::{f64, mem};
 use crate::prototype::event::Time;
+use crate::prototype::helpers::wc;
 use crate::prototype::slide_strategy::ItemsReport;
 
 #[derive(Clone, Debug)]
@@ -202,7 +203,7 @@ where
             .clone()
             .into_iter()
             .filter_map(|(window, mut content)| {
-                println!(
+                debug!(
                     "Processing Window [{:?}, {:?}) for element ({:?},{:?}]",
                     window.open, window.close, event_item, ts
                 );
@@ -214,7 +215,7 @@ where
                     content.add(event_item.clone(), ts);
                     Some((window, content))
                 } else {
-                    println!(
+                    debug!(
                         "Scheduling for Eviction ({:?},{:?}]",
                         window.open, window.close
                     );
@@ -270,17 +271,20 @@ where
         // log.debug("Calculating the Windows to Open. First one opens at [" + o_i + "] and closes at [" + c_sup + "]");
         //
         loop {
-            debug!(
-                "Computing Window [{:?},{:?}) if absent",
-                o_i,
-                (o_i + self.width as f64)
-            );
-            let window = Window {
-                open: o_i as usize,
-                close: (o_i + self.width as f64) as usize,
-            };
-            if let None = self.active_windows.get(&window) {
-                self.active_windows.insert(window, ContentContainer::new_with_origin(&self.uri));
+            // Only from that starting offset, windowing can begin
+            if o_i >= self.t_0 as f64 {
+                debug!(
+                    "Computing Window [{:?},{:?}) if absent",
+                    o_i,
+                    (o_i + self.width as f64)
+                );
+                let window = Window {
+                    open: o_i as usize,
+                    close: (o_i + self.width as f64) as usize,
+                };
+                if let None = self.active_windows.get(&window) {
+                    self.active_windows.insert(window, ContentContainer::new_with_origin(&self.uri));
+                }
             }
             o_i += self.slide as f64;
             // If current event time is ON the open time of the window, it is not yet included
@@ -451,3 +455,31 @@ mod tests {
     }
 }
 
+#[test]
+fn legacy_window_with_slide_one_has_90_percent_overlap() {
+    // window size = 10, slide = 1, offset = 0
+    let size = 10;
+    let config = wc(size, 1, 0);
+    let width = config.window_params.size as usize;
+    let slide = config.window_params.slide as usize;
+    let uri = config.window_iri.clone();
+
+    // Use a dummy Report that never triggers anything (we're only testing scope)
+    let report = Report::<u64>::new();
+    let tick = Tick::TimeDriven;
+
+    let mut window = LegacyWindow::new(width, slide, report, tick, uri);
+
+    // ts = 1..=10, expect 1,2,...,9,9 active windows respectively
+    for ts in 1_usize..=20 {
+        window.add_to_window(ts as u64, ts);
+        let active = window.active_windows.len();
+
+        let expected_nr_open = if ts <= size as usize { ts } else { size as usize };
+        assert_eq!(
+            active, expected_nr_open,
+            "at ts = {}, expected {} active windows, got {}",
+            ts, expected_nr_open, active
+        );
+    }
+}
