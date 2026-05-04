@@ -1,4 +1,4 @@
-STRATEGIES = ["clone", "rc", "arc", "expire", "legacy"]
+STRATEGIES = ["slice", "rc", "arc", "clone", "legacy"]
 
 ESTIMATES = {
     "thr_mean": "Mean throughput",

@@ -83,7 +83,7 @@ where
                 self.last_change = content.clone();
                 comp
             }
-            ReportStrategy::OnWindowClose => window.close <= ts,
+            ReportStrategy::OnWindowClose => ts > window.close,
             ReportStrategy::Periodic(period) => ts % period == 0,
         })
     }
@@ -100,7 +100,7 @@ pub struct ContentContainer<I>
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send,
 {
-    elements: HashSet<I>,
+    pub elements: HashSet<I>,
     last_timestamp_changed: usize,
     origin: String
 }
@@ -154,7 +154,7 @@ where I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static, {
     }
 }
 
-type CallbackFn<I> = Box<dyn FnMut(ContentContainer<I>) -> () + Send + 'static>;
+type CallbackFn<I> = Box<dyn FnMut(ContentContainer<I>) -> () + 'static>;
 
 pub struct LegacyWindow<I>
 where
@@ -202,20 +202,20 @@ where
             .clone()
             .into_iter()
             .filter_map(|(window, mut content)| {
-                debug!(
-                    "Processing Window [{:?}, {:?}) for element ({:?},{:?})",
+                println!(
+                    "Processing Window [{:?}, {:?}) for element ({:?},{:?}]",
                     window.open, window.close, event_item, ts
                 );
-                if window.open <= event_time && event_time < window.close {
-                    debug!(
-                        "Adding element [{:?}] to Window [{:?},{:?})",
+                if window.open < event_time && event_time <= window.close {
+                    println!(
+                        "Adding element [{:?}] to Window ({:?},{:?}]",
                         event_item, window.open, window.close
                     );
                     content.add(event_item.clone(), ts);
                     Some((window, content))
                 } else {
-                    debug!(
-                        "Scheduling for Eviction [{:?},{:?})",
+                    println!(
+                        "Scheduling for Eviction ({:?},{:?}]",
                         window.open, window.close
                     );
                     None
@@ -283,7 +283,8 @@ where
                 self.active_windows.insert(window, ContentContainer::new_with_origin(&self.uri));
             }
             o_i += self.slide as f64;
-            if o_i > *event_time as f64 {
+            // If current event time is ON the open time of the window, it is not yet included
+            if o_i >= *event_time as f64 {
                 break;
             }
         }
@@ -301,7 +302,7 @@ where
     /// Registers a callback function to the CSPARQLWindow that is called when window content should be consumed
     pub fn register_callback(
         &mut self,
-        function: Box<dyn FnMut(ContentContainer<I>) -> () + Send + 'static>,
+        function: Box<dyn FnMut(ContentContainer<I>) -> () + 'static>,
     ) {
         self.callback.replace(function);
     }
@@ -449,3 +450,4 @@ mod tests {
         assert_eq!(4, data_clone.lock().unwrap().len());
     }
 }
+

@@ -16,6 +16,7 @@ mod legacy_engine;
 pub mod bench_pipeline_helper;
 pub mod pipeline_workload;
 pub mod query_builders;
+mod legacy_window_tests;
 
 use crate::rsp::r2r::R2ROperator;
 use crate::rsp::r2s::Relation2StreamOperator;
