@@ -6,6 +6,8 @@ from constants import STRATEGY_COLORS, STRATEGY_MARKERS
 from dataclasses import dataclass
 from typing import Callable, Optional, Any
 
+from linreg import linear_trend_per_strategy
+
 
 @dataclass
 class SeriesBuildConfig:
@@ -66,6 +68,24 @@ def build_strategy_series_from_workloads(
     return series
 
 
+def add_regression_overlay(ax, strategy, x_values, regression_results, color="purple"):
+    reg = regression_results.get(strategy)
+    if reg is None or len(x_values) < 2:
+        return
+
+    y_fit = [reg["intercept"] + reg["slope"] * x for x in x_values]
+
+    ax.plot(
+        x_values,
+        y_fit,
+        linestyle="--",
+        linewidth=2,
+        color=color,
+        alpha=0.9,
+        label=f"{strategy} fit (p={reg['p_value']:.2g})",
+    )
+
+
 def plot_strategy_series(
         workloads,
         config,
@@ -93,6 +113,8 @@ def plot_strategy_series(
                 if workload_key not in seen:
                     seen.add(workload_key)
                     workload_order.append(workload_key)
+
+    regression_results = linear_trend_per_strategy(series, workload_order)
 
     x_pos = list(range(len(workload_order)))
 
@@ -138,6 +160,14 @@ def plot_strategy_series(
 
         marker = STRATEGY_MARKERS.get(strategy, "o")
         color = STRATEGY_COLORS.get(strategy, None)
+
+        add_regression_overlay(
+            ax=ax1,
+            strategy=strategy,
+            x_values=cur_x_pos,
+            regression_results=regression_results,
+            color="purple",
+        )
 
         if has_any_error:
             if all(
