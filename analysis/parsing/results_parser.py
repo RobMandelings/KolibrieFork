@@ -9,6 +9,7 @@ import my_stats
 import mem_results as mem_res_module
 import pandas as pd
 
+from exporting.throughput.sample_outlier_detection import remove_outliers_tukey
 from parsing import throughput_results
 from workload_keys import make_label_from_key
 
@@ -111,6 +112,8 @@ def add_sample_information(result: Dict[str, Dict[str, Dict[str, Any]]]) -> None
                 nr_elements * it / t * 1e9
                 for t, it in zip(times, iters)
             ]
+
+            thr["sample_no_outlier"] = remove_outliers_tukey(throughputs)
 
             # sample["times_per_iter"] = times_per_iter
             thr["sample"] = throughputs

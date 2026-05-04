@@ -67,16 +67,18 @@ def build_strategy_series_from_workloads(
 
 
 def plot_strategy_series(
-        series: dict,
+        workloads,
+        config,
         xlabel: str,
         ylabel: str,
         strategies=None,
         title=None,
         output_file=None,
         workload_order=None,
-        workloads=None,
         overlay_events_per_report=False,
+        remove_outliers=False,
 ):
+    series = build_strategy_series_from_workloads(workloads, config)
     if not series:
         return
 
@@ -250,38 +252,3 @@ def get_throughput_estimate(strat_data, estimate_key):
         return None
 
     return estimates.get(estimate_key)
-
-
-def make_throughput_series_config(estimate_key: str, x_label_getter, error_getter):
-    return SeriesBuildConfig(
-        value_getter=lambda strat_data, workload_key, workload_data:
-        get_throughput_estimate(strat_data, estimate_key),
-        error_getter=error_getter,
-        x_label_getter=x_label_getter,
-    )
-
-
-def plot_throughput_from_workloads(
-        workloads: dict,
-        config: SeriesBuildConfig,
-        xlabel: str,
-        ylabel: str = "throughput (events/s)",
-        strategies=None,
-        title=None,
-        output_file=None,
-        workload_order=None,
-        overlay_events_per_report=True,
-):
-    series = build_strategy_series_from_workloads(workloads, config)
-
-    plot_strategy_series(
-        series=series,
-        xlabel=xlabel,
-        ylabel=ylabel,
-        strategies=strategies,
-        title=title,
-        output_file=output_file,
-        workload_order=workload_order,
-        workloads=workloads,
-        overlay_events_per_report=overlay_events_per_report,
-    )

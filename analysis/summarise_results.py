@@ -17,9 +17,9 @@ from my_stats import thr_mean
 from organising import sorting
 from organising.sorting import LabeledDataFrame, sort_configs
 from overall_tables import dict_to_metric_table
+from overview_plotting import generate_throughput_overview_plots
 from parsing.dhat_parser import parse_dhat
 from parsing.results_parser import get_results
-from series import plot_throughput_from_workloads, make_throughput_series_config
 from workload_keys import make_label_from_key
 
 
@@ -166,26 +166,6 @@ def plot_all_memory_properties(per_workload: dict, output_dir: Path):
             )
 
 
-def slide_x_label_getter(strat_data, workload_key, workload_data):
-    workload = workload_data.get("workload")
-    slide = workload["window"]["slide"]
-    return f"{slide}"
-
-
-def perc_overlap_getter(strat_data, workload_key, workload_data):
-    workload = workload_data.get("workload", {})
-    window = workload.get("window", {})
-    size = window.get("size")
-    slide = window.get("slide")
-
-    if size in (None, 0) or slide is None:
-        return "N/A"
-
-    perc_overlap = (size - slide) / size
-    return f"{perc_overlap:.2%}"
-    # return f"{perc_overlap:.2%} (size={size}, slide={slide})"
-
-
 def relative_throughput(workload_data, strategy_data):
     # Current strategy as baseline to consider relative improvement with slice strategy
     baseline = thr_mean(strategy_data["throughput"]["sample"])
@@ -214,35 +194,8 @@ def walk_workloads_and_strategies(
         value_fn=relative_throughput
     )
 
-    for strat in STRATEGIES + [None]:
-        for (key, title) in ESTIMATES.items():
+    generate_throughput_overview_plots(workloads, analysis_path)
 
-            if "median" in key:
-                error_getter = None
-            else:
-                error_getter = err_get.get_throughput_conf_int_error
-
-            thr_mean_config = make_throughput_series_config(
-                estimate_key=key,
-                x_label_getter=perc_overlap_getter,
-                error_getter=error_getter
-            )
-
-            if strat is not None:
-                strategies = [strat]
-            else:
-                strategies = None
-
-            filename = strat if strat is not None else "all"
-            plot_throughput_from_workloads(
-                workloads=workloads,
-                config=thr_mean_config,
-                xlabel="slide",
-                ylabel="throughput (events/s)",
-                strategies=strategies,
-                title=title,
-                output_file=analysis_path / "overviews" / "png" / "throughput" / key / filename
-            )
     print("Plotted all throughputs for different workloads (median and mean)")
 
     # build_and_export_throughput_overviews(labeled_dfs, analysis_path / "overviews")

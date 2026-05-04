@@ -34,4 +34,4 @@ def get_throughput_conf_int_error(strat_data, workload_key, workload_data):
     if sample is None:
         raise Exception("Estimates is not present")
 
-    return thr_mean_ci_95(sample)
+    return thr_mean_ci_95(sample)["margin"]

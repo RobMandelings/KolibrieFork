@@ -1,4 +1,4 @@
-from typing import Mapping, Sequence
+from typing import Mapping, Sequence, List
 
 import numpy as np
 
@@ -31,3 +31,11 @@ def tukey_outliers_from_sample(
     return is_outlier, (lower_fence, upper_fence)
 
 
+def remove_outliers_tukey(sample: List[float]) -> List[float]:
+    """
+    Return a new list with Tukey outliers removed.
+    The original `sample` is not modified.
+    """
+    is_outlier, fences = tukey_outliers_from_sample(sample)
+    # Keep only values where the corresponding flag is False
+    return [x for x, flag in zip(sample, is_outlier) if not flag]
