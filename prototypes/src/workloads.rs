@@ -103,24 +103,68 @@ fn single_window_workloads() -> Vec<Workload> {
 }
 
 pub fn test_workloads() -> HashMap<String, Vec<Workload>> {
-    
-    let mut size_change = Vec::new();
-    for size in 1..101 {
-        size_change.push(create_workload(1, 50_000, 1, size + 1, 0, size, 1))
-    }
+    let mut map: HashMap<String, Vec<Workload>> = HashMap::new();
+    let nr_events = 50_000;
+    for bytes in [0, 32] {
+        for nr_windows in [1, 2, 5, 10] {
+            {
+                let size = 100;
+                let mut spread_slide = Vec::new();
+                let mut spread_constant = Vec::new();
+                for slide in 1..111 {
+                    spread_slide.push(create_workload(
+                        nr_windows,
+                        nr_events,
+                        slide,
+                        size + 1,
+                        bytes,
+                        size,
+                        slide,
+                    ));
 
-    // Always triggers another report evaluation
-    let mut workloads2 = Vec::new();
-    for size in [64] {
-        for slide in 1..50 {
-            // Event ts offset = size + 1 to directly trigger a report evaluation
-            workloads2.push(create_workload(1, 50_000, slide, size + 1, 0, size, slide))
+                    // Spread is kept constant
+                    spread_constant.push(create_workload(
+                        nr_windows,
+                        nr_events,
+                        1,
+                        size + 1,
+                        bytes,
+                        size,
+                        slide,
+                    ))
+                }
+                map.insert(
+                    format!("windows_{nr_windows}_bytes_{bytes}_size_{size}_spread_slide"),
+                    spread_slide,
+                );
+                map.insert(
+                    format!("windows_{nr_windows}_bytes_{bytes}_size{size}_spread_constant"),
+                    spread_constant,
+                );
+            }
+
+            {
+                for slide in [1, 10, 50] {
+                    let mut size_change = Vec::new();
+                    for size in 1..101 {
+                        size_change.push(create_workload(
+                            nr_windows,
+                            nr_events,
+                            1,
+                            size + 1,
+                            bytes,
+                            size,
+                            slide,
+                        ))
+                    }
+                    map.insert(
+                        format!("windows_{nr_windows}_bytes_{bytes}_slide_{slide}"),
+                        size_change,
+                    );
+                }
+            }
         }
     }
-
-    let mut map: HashMap<String, Vec<Workload>> = HashMap::new();
-    // map.insert("spread_1".to_string(), workloads1);
-    map.insert("spread_slide".to_string(), workloads2);
     map
 }
 

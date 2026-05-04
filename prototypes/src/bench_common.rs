@@ -88,7 +88,7 @@ pub fn parse_folder_name() -> String {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Strategy {
     Clone,
-    Expire,
+    Slice,
     Rc,
     Legacy,
     Arc,
@@ -98,7 +98,7 @@ impl Strategy {
     fn parse(s: &str) -> Option<Self> {
         match s {
             "clone" => Some(Self::Clone),
-            "expire" => Some(Self::Expire),
+            "expire" => Some(Self::Slice),
             "rc" => Some(Self::Rc),
             "legacy" => Some(Self::Legacy),
             "arc" => Some(Self::Arc),
@@ -109,7 +109,7 @@ impl Strategy {
     fn as_str(&self) -> &'static str {
         match self {
             Self::Clone => "clone",
-            Self::Expire => "expire",
+            Self::Slice => "expire",
             Self::Rc => "rc",
             Self::Legacy => "legacy",
             Self::Arc => "arc",

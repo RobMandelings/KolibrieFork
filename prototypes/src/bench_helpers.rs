@@ -70,7 +70,7 @@ where
     windows
 }
 
-fn build_operator_expire<I>(workload: &Workload) -> SlidingWindowOperator<I, SliceStrategy<I>>
+fn build_operator_slice<I>(workload: &Workload) -> SlidingWindowOperator<I, SliceStrategy<I>>
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
 {
@@ -165,7 +165,7 @@ where
     })
 }
 
-pub fn create_expire_factory<I, F>(
+pub fn create_slice_factory<I, F>(
     workload: &Workload,
     event_factory: F,
 ) -> RunnerFactory
@@ -177,7 +177,7 @@ where
 
     Box::new(move || {
         let events = create_events_for_workload(&workload, &event_factory);
-        let mut op = build_operator_expire(&workload);
+        let mut op = build_operator_slice(&workload);
 
         Box::new(move || {
             run_new(&mut op, events);

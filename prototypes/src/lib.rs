@@ -24,7 +24,7 @@ pub use prototype::{
 
 pub use bench_helpers::{
     create_arc_factory,
-    create_expire_factory,
+    create_slice_factory,
     create_rc_factory,
 };
 

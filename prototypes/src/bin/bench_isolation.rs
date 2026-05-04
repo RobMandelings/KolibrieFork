@@ -1,3 +1,4 @@
+use std::clone::Clone;
 use criterion::measurement::WallTime;
 use criterion::{black_box, BatchSize, BenchmarkGroup, BenchmarkId, Criterion, Throughput};
 use pprof::criterion::{Output, PProfProfiler};
@@ -7,7 +8,7 @@ use prototypes::bench_common::{copy_group_dir_with_catch, move_profile_file, par
 use prototypes::bench_helpers::{create_clone_factory, create_legacy_factory, RunnerFactory};
 use prototypes::prototype::event::{make_byte_event, make_copy_event, Time};
 use prototypes::workloads::{default_workloads, write_workload_to_file, Workload};
-use prototypes::{run_mem_profile, create_arc_factory, create_expire_factory, create_rc_factory, Event};
+use prototypes::{run_mem_profile, create_arc_factory, create_slice_factory, create_rc_factory, Event};
 use std::fs::File;
 use std::path::Path;
 use std::{fs, io};
@@ -115,25 +116,25 @@ fn run_benches<I, E>(
 {
     use Strategy::*;
 
-    for strategy in [Clone, Rc, Arc, Legacy, Expire] {
+    for strategy in [Slice, Rc, Arc, Clone, Legacy] {
         if !should_run(only, strategy) {
             continue;
         }
 
         let label = match strategy {
-            Clone  => "clone",
+            Slice => "slice",
             Rc     => "rc",
             Arc    => "arc",
+            Clone  => "clone",
             Legacy => "legacy",
-            Expire => "expire",
         };
 
         let factory = match strategy {
-            Clone  => create_clone_factory(workload, make_event),
+            Slice => create_slice_factory(workload, make_event),
             Rc     => create_rc_factory(workload, make_event),
             Arc    => create_arc_factory(workload, make_event),
+            Clone  => create_clone_factory(workload, make_event),
             Legacy => create_legacy_factory(workload, make_event),
-            Expire => create_expire_factory(workload, make_event),
         };
 
         run_bench_and_profile(group, workload, label, dst_group_path, factory);
@@ -152,18 +153,18 @@ where
     use Strategy::*;
 
     // Use the same fixed order; pick the first strategy that should run.
-    for strategy in [Clone, Rc, Arc, Legacy, Expire] {
+    for strategy in [Slice, Rc, Arc, Clone, Legacy] {
         if !should_run(only, strategy) {
             continue;
         }
 
         // Build the same factory as in run_benches.
         let factory = match strategy {
-            Clone  => create_clone_factory(workload, make_event),
+            Slice => create_slice_factory(workload, make_event),
             Rc     => create_rc_factory(workload, make_event),
             Arc    => create_arc_factory(workload, make_event),
+            Clone  => create_clone_factory(workload, make_event),
             Legacy => create_legacy_factory(workload, make_event),
-            Expire => create_expire_factory(workload, make_event),
         };
 
         // Warmup: run the runner 10 times, not measured by Criterion.
