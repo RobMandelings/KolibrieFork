@@ -42,13 +42,6 @@ def generate_throughput_results(workload_dir, strategy_name, strat_data):
     )
     plot_sample_with_outliers(
         sample,
-        "time",
-        "Sample times",
-        path=strat_dir / "samples_time.png",
-    )
-    plot_sample_with_outliers(
-        sample,
-        "throughput",
         "Sample throughputs",
         path=strat_dir / "samples_throughput.png",
     )

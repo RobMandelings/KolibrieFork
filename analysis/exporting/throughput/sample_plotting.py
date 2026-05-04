@@ -19,7 +19,6 @@ def extract_samples_by_strategy(workload: dict) -> dict:
 
 def plot_samples_grouped(
         workload: dict,
-        mode: Literal["time", "throughput"] = "time",
         title: str | None = None,
         path: str = None,
 ) -> None:
@@ -41,28 +40,11 @@ def plot_samples_grouped(
     fig, ax = plt.subplots()
     samples = extract_samples_by_strategy(workload)
 
+    ylabel = "Throughput (elements / s)"
     for strat_name, sample in samples.items():
-        times = sample["times"]
-        iters = sample["iters"]
 
-        if len(times) != len(iters):
-            raise ValueError(f"times and iters length mismatch for strategy {strat_name!r}")
-
-        x = list(range(len(times)))
-
-        if mode == "time":
-            y = [t / i for t, i in zip(times, iters)]
-            ylabel = "Time per iteration (ns)"
-        elif mode == "throughput":
-            if "throughputs" not in sample:
-                raise ValueError(
-                    f"sample['throughputs'] is missing for strategy {strat_name!r}; compute it first"
-                )
-            y = sample["throughputs"]
-            ylabel = "Throughput (elements / s)"
-        else:
-            raise ValueError(f"Unknown mode: {mode!r}")
-
+        x = list(range(len(sample)))
+        y = sample
         ax.scatter(
             x,
             y,
@@ -75,7 +57,7 @@ def plot_samples_grouped(
     ax.set_xlabel("Sample index")
     ax.set_ylabel(ylabel)
     if title is None:
-        title = f"Sample plot ({mode})"
+        title = f"Sample plot (throughput)"
     ax.set_title(title)
     ax.grid(True, alpha=0.3)
     ax.legend()
@@ -89,44 +71,16 @@ def plot_samples_grouped(
 
 
 def plot_sample(
-        sample: Mapping,
-        mode: Literal["time", "throughput"] = "time",
+        sample: list,
         title: Optional[str] = None,
         outlier_indices: Optional[Iterable[int]] = None,
         path: str = None
 ) -> None:
-    """
-    Plot a Criterion sample:
-      - mode="time": y-axis = per-iteration time in nanoseconds
-      - mode="throughput": y-axis = throughput (elements/sec), using sample["throughputs"]
 
-    Assumes:
-      sample["times"]      -> list of total sample times in ns
-      sample["iters"]      -> list of iterations per sample
-      sample["throughputs"] (optional) -> list of elements/sec per sample
+    x = list(range(len(sample)))
 
-    outlier_indices:
-      Iterable of sample indices to highlight as outliers (plotted in red).
-    """
-    times = sample["times"]
-    iters = sample["iters"]
-
-    if len(times) != len(iters):
-        raise ValueError("times and iters must have the same length")
-
-    x = list(range(len(times)))
-
-    if mode == "time":
-        # per-iteration time in ns
-        y = [t / i for t, i in zip(times, iters)]
-        ylabel = "Time per iteration (ns)"
-    elif mode == "throughput":
-        if "throughputs" not in sample:
-            raise ValueError("sample['throughputs'] is missing; compute it first")
-        y = sample["throughputs"]
-        ylabel = "Throughput (elements / s)"
-    else:
-        raise ValueError(f"Unknown mode: {mode!r}")
+    y = sample
+    ylabel = "Throughput (elements / s)"
 
     fig, ax = plt.subplots()
     ax.scatter(x, y, s=15, color="C0", label="samples")
@@ -145,7 +99,7 @@ def plot_sample(
     ax.set_xlabel("Sample index")
     ax.set_ylabel(ylabel)
     if title is None:
-        title = f"Sample plot ({mode})"
+        title = f"Sample plot (throughput)"
     ax.set_title(title)
     ax.grid(True, alpha=0.3)
 
@@ -160,12 +114,11 @@ def plot_sample(
         plt.show()
 
 
-def plot_sample_with_outliers(sample: Mapping,
-                              mode: Literal["time", "throughput"] = "time",
+def plot_sample_with_outliers(sample: list,
                               title: Optional[str] = None,
                               path: str = None
                               ):
     is_outlier, fences = tukey_outliers_from_sample(sample)
     outlier_indices = [i for i, flag in enumerate(is_outlier) if flag]
-    plot_sample(sample, mode, title, outlier_indices, path)
+    plot_sample(sample, title, outlier_indices, path)
     print(f"Plotting and saving: {path}")

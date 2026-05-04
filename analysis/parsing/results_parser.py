@@ -191,6 +191,6 @@ def get_results(path: Path) -> Dict[str, dict]:
     results = load_results(path)
     add_workload_information(results)
     add_sample_information(results)
-    add_throughput_df(results)
+    # add_throughput_df(results)
     add_labels_to_workloads(results)
     return results

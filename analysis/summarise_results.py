@@ -252,7 +252,7 @@ def walk_workloads_and_strategies(
         workload_dir = analysis_path / workload_key
         workload_output_dir = workload_dir / "overviews"
         workload_summary_to_csv(entry, workload_output_dir / "estimates.csv")
-        plot_samples_grouped(entry, mode="throughput", path=str(workload_output_dir / "samples_throughput_grouped.png"))
+        plot_samples_grouped(entry, path=str(workload_output_dir / "samples_throughput_grouped.png"))
 
         for strategy_name, strat_data in entry["strategies"].items():
             generate_throughput_results(workload_dir, strategy_name, strat_data)
