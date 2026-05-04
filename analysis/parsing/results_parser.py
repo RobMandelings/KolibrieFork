@@ -4,6 +4,7 @@ import statistics
 from pathlib import Path
 from typing import Dict, Sequence, Any
 from scipy import stats
+import my_stats
 
 import mem_results as mem_res_module
 import pandas as pd
@@ -63,10 +64,10 @@ def load_results(path: Path) -> dict:
 
 
 def add_workload_information(results: dict) -> None:
-
     for workload_key, workload_data in results.items():
         workload = workload_data["workload"]
         workload["events_per_report"] = workload["window"]["slide"] / workload["stream_config"]["spread"]
+
 
 def add_sample_information(result: Dict[str, Dict[str, Dict[str, Any]]]) -> None:
     """
@@ -100,9 +101,9 @@ def add_sample_information(result: Dict[str, Dict[str, Dict[str, Any]]]) -> None
                 raise Exception("Sample sizes do not match!")
 
             # Time per iteration (ns) for each sample
-            times_per_iter = [
-                t / it for t, it in zip(times, iters)
-            ]
+            # times_per_iter = [
+            #     t / it for t, it in zip(times, iters)
+            # ]
 
             # elements per second for each sample:
             # E * iters[i] / (times[i] ns) * 1e9
@@ -111,9 +112,8 @@ def add_sample_information(result: Dict[str, Dict[str, Dict[str, Any]]]) -> None
                 for t, it in zip(times, iters)
             ]
 
-            sample["times_per_iter"] = times_per_iter
-            sample["throughputs"] = throughputs
-            sample["nr_samples"] = len(throughputs)
+            # sample["times_per_iter"] = times_per_iter
+            thr["sample"] = throughputs
 
 
 def standard_error(values):
@@ -123,52 +123,6 @@ def standard_error(values):
 
     sd = statistics.stdev(values)
     return sd / math.sqrt(n)
-
-
-def add_throughput_estimates(result: dict):
-    for workload_key, workload_data in result.items():
-        nr_events = workload_data["workload"]["nr_events"]
-        strategies = workload_data["strategies"]
-        for strat_name, strat_data in strategies.items():
-            thr = strat_data.get("throughput")
-            if not thr:
-                raise Exception("Did not find throughput")
-
-            nr_elements = thr.get("nr_elements")
-            sample = thr.get("sample")
-            estimates = thr.get("estimates")
-            if nr_elements is None or sample is None:
-                raise Exception("nr elements and sample is not found")
-
-            throughputs = sample["throughputs"]
-            mean_ns = estimates["mean"]["point_estimate"]
-            median_ns = estimates["median"]["point_estimate"]
-
-            estimates["thr_mean"] = nr_events / (mean_ns * 1e-9)
-            estimates["thr_median"] = nr_events / (median_ns * 1e-9)
-
-            estimates["thr_std_dev"] = statistics.stdev(throughputs)
-            estimates["thr_std_err"] = standard_error(throughputs)
-            estimates["thr_min"] = min(throughputs)
-            estimates["thr_max"] = max(throughputs)
-
-            n = len(throughputs)
-            if n > 1:
-                se = estimates["thr_std_err"]
-                # t critical for two-sided 95% CI with n-1 degrees of freedom
-                t_crit = stats.t.ppf(0.975, df=n - 1)
-                margin = t_crit * se
-
-                # CI around the *mean throughput* estimate
-                thr_mean = estimates["thr_mean"]
-                estimates["thr_mean_ci_lower"] = thr_mean - margin
-                estimates["thr_mean_ci_upper"] = thr_mean + margin
-                estimates["thr_mean_ci_margin"] = margin
-            else:
-                # Degenerate case: cannot form CI with 1 sample
-                estimates["thr_mean_ci_lower"] = None
-                estimates["thr_mean_ci_upper"] = None
-                estimates["thr_mean_ci_margin"] = 0
 
 
 def add_throughput_df(results: dict) -> None:
@@ -237,7 +191,6 @@ def get_results(path: Path) -> Dict[str, dict]:
     results = load_results(path)
     add_workload_information(results)
     add_sample_information(results)
-    add_throughput_estimates(results)
     add_throughput_df(results)
     add_labels_to_workloads(results)
     return results

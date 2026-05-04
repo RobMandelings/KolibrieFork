@@ -13,6 +13,7 @@ from exporting.compare_strats_workloads_overview import build_and_export_through
 from exporting.throughput.sample_plotting import plot_samples_grouped
 from exporting.throughput.throughput_results import generate_throughput_results
 from exporting.workload_csv import workload_summary_to_csv
+from my_stats import thr_mean
 from organising import sorting
 from organising.sorting import LabeledDataFrame, sort_configs
 from overall_tables import dict_to_metric_table
@@ -187,8 +188,8 @@ def perc_overlap_getter(strat_data, workload_key, workload_data):
 
 def relative_throughput(workload_data, strategy_data):
     # Current strategy as baseline to consider relative improvement with slice strategy
-    baseline = strategy_data["throughput"]["estimates"]["thr_mean"]
-    current = workload_data["strategies"]["slice"]["throughput"]["estimates"]["thr_mean"]
+    baseline = thr_mean(strategy_data["throughput"]["sample"])
+    current = thr_mean(workload_data["strategies"]["slice"]["throughput"]["sample"])
     return current / baseline
 
 
