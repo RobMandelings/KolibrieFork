@@ -185,7 +185,7 @@ def plot_strategy_series(
 
     ax1.set_xlabel(xlabel)
     ax1.set_xticks(x_pos)
-    ax1.set_xticklabels(x_tick_labels, rotation=45, ha="right", fontsize=12)
+    ax1.set_xticklabels(x_tick_labels, rotation=45, ha="right", fontsize=8)
     ax1.set_ylabel(ylabel, fontsize=14)
 
     ax2 = None

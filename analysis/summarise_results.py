@@ -181,7 +181,8 @@ def perc_overlap_getter(strat_data, workload_key, workload_data):
         return "N/A"
 
     perc_overlap = (size - slide) / size
-    return f"{perc_overlap:.2%} (size={size}, slide={slide})"
+    return f"{perc_overlap:.2%}"
+    # return f"{perc_overlap:.2%} (size={size}, slide={slide})"
 
 
 def relative_throughput(workload_data, strategy_data):
