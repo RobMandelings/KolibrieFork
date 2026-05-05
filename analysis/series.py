@@ -10,14 +10,17 @@ from linreg import linear_trend_per_strategy
 
 
 @dataclass
-class SeriesBuildConfig:
-    workloads: dict
+class PlotterConfig:
+    title: str
     value_getter: Callable[[dict, str, dict], Any]
     x_label_getter: Callable[[dict, str, dict], str]
+    x_label: str
+    y_label: str
+    subdir: Path
     error_getter: Optional[Callable[[dict, str, dict], Any]] = None
 
 
-def build_strategy_series(config: SeriesBuildConfig):
+def build_strategy_series(config: PlotterConfig, workloads):
     """
     Returns:
     {
@@ -36,11 +39,11 @@ def build_strategy_series(config: SeriesBuildConfig):
     """
     series = {}
 
-    for workload_key, workload_data in config.workloads.items():
+    for workload_key, workload_data in workloads.items():
         strategies = workload_data.get("strategies", {})
 
         for strat_name, strat_data in strategies.items():
-            value = config.value_getter(config.workloads, workload_key, strat_name)
+            value = config.value_getter(workloads, workload_key, strat_name)
             if value is None:
                 continue
 
