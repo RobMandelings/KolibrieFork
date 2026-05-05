@@ -23,8 +23,10 @@ def perc_overlap_getter(strat_data, workload_key, workload_data):
         return "N/A"
 
     perc_overlap = (size - slide) / size
+    if perc_overlap < 0:
+        perc_overlap = 0
+
     return f"{perc_overlap:.2%}"
-    # return f"{perc_overlap:.2%} (size={size}, slide={slide})"
 
 
 def get_thr_mean(strat_data, workload_key, workload_data):
