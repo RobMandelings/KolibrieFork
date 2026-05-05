@@ -199,7 +199,7 @@ def walk_workloads_and_strategies(
     print("Plotted all throughputs for different workloads (median and mean)")
 
     # build_and_export_throughput_overviews(labeled_dfs, analysis_path / "overviews")
-    plot_all_memory_properties(workloads, analysis_path / "overviews" / "png")
+    # plot_all_memory_properties(workloads, analysis_path / "overviews" / "png")
 
     for workload_key, entry in workloads.items():
         workload_dir = analysis_path / workload_key
@@ -423,10 +423,10 @@ def main(analysis_path: Path):
 
 def main_pipeline(analysis_path: Path):
     results = get_results(analysis_path)
-    results = sorting.sort_by_slide(results, reverse=False)
+    results = sorting.sort_by_slide(results, reverse=True)
 
     walk_workloads_and_strategies(results, analysis_path)
 
 
 if __name__ == "__main__":
-    main_pipeline(Path("evaluation/test/windows_1_bytes_0_size50_spread_constant"))
+    main_pipeline(Path("evaluation/test/windows_1_bytes_0_size_50_spread_slide"))

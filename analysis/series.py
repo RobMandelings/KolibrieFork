@@ -72,7 +72,7 @@ def build_strategy_series(config: PlotterConfig, workloads):
     return series
 
 
-def add_regression_overlay(ax, strategy, x_values, regression_results, color="purple"):
+def add_regression_overlay(ax, strategy, x_values, regression_results):
     reg = regression_results.get(strategy)
     if reg is None or len(x_values) < 2:
         return
@@ -83,10 +83,9 @@ def add_regression_overlay(ax, strategy, x_values, regression_results, color="pu
         x_values,
         y_fit,
         linestyle="--",
-        linewidth=2,
-        color=color,
+        linewidth=0.5,
+        color=STRATEGY_COLORS[strategy],
         alpha=0.9,
-        label=f"{strategy} fit (p={reg['p_value']:.2g})",
     )
 
 
@@ -167,7 +166,6 @@ def plot_strategy_series(
             strategy=strategy,
             x_values=cur_x_pos,
             regression_results=regression_results,
-            color="purple",
         )
 
         if has_any_error:
