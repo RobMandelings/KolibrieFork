@@ -11,15 +11,13 @@ from linreg import linear_trend_per_strategy
 
 @dataclass
 class SeriesBuildConfig:
+    workloads: dict
     value_getter: Callable[[dict, str, dict], Any]
     x_label_getter: Callable[[dict, str, dict], str]
     error_getter: Optional[Callable[[dict, str, dict], Any]] = None
 
 
-def build_strategy_series_from_workloads(
-        workloads: dict,
-        config: SeriesBuildConfig,
-):
+def build_strategy_series(config: SeriesBuildConfig):
     """
     Returns:
     {
@@ -38,11 +36,11 @@ def build_strategy_series_from_workloads(
     """
     series = {}
 
-    for workload_key, workload_data in workloads.items():
+    for workload_key, workload_data in config.workloads.items():
         strategies = workload_data.get("strategies", {})
 
         for strat_name, strat_data in strategies.items():
-            value = config.value_getter(strat_data, workload_key, workload_data)
+            value = config.value_getter(config.workloads, workload_key, strat_name)
             if value is None:
                 continue
 
@@ -64,6 +62,9 @@ def build_strategy_series_from_workloads(
                     point["yerr"] = yerr
 
             series[strat_name][workload_key] = point
+
+    if not series:
+        raise Exception
 
     return series
 
@@ -88,7 +89,7 @@ def add_regression_overlay(ax, strategy, x_values, regression_results, color="pu
 
 def plot_strategy_series(
         workloads,
-        config,
+        series,
         xlabel: str,
         ylabel: str,
         strategies=None,
@@ -98,9 +99,6 @@ def plot_strategy_series(
         overlay_events_per_report=False,
         remove_outliers=False,
 ):
-    series = build_strategy_series_from_workloads(workloads, config)
-    if not series:
-        return
 
     if strategies is None:
         strategies = list(series.keys())
