@@ -75,7 +75,7 @@ pub fn bench_city_q1_two_windows(
     if should_run(only, Strategy::Slice) {
         run_bench_and_profile::<SliceStrategy<Triple>>(
             group,
-            "expire",
+            "slice",
             group_path,
             cached_graphs.clone(),
             pipeline_workload,
