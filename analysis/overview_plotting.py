@@ -4,7 +4,8 @@ from typing import Any
 from constants import STRATEGIES
 from series import plot_strategy_series, PlotterConfig, build_strategy_series
 from series_configs import build_median_throughput_config, build_mean_throughput_config, perc_overlap_getter, \
-    build_total_bytes_config, get_total_bytes, get_total_bytes_window_closed
+    build_total_bytes_config, get_total_bytes, get_total_bytes_window_closed, build_relative_median_throughput_config, \
+    build_relative_mean_throughput_config
 from series_export import export_result_to_csv
 
 
@@ -86,6 +87,20 @@ def generate_throughput_overview_plots(
         analysis_path=analysis_path,
         config=build_median_throughput_config("Median throughput", "% Overlap", "Throughput (events/s)",
                                               perc_overlap_getter)
+    )
+
+    plot_overviews(
+        workloads=workloads,
+        analysis_path=analysis_path,
+        config=build_relative_median_throughput_config(workloads, "Median throughput", "% Overlap", "Throughput (events/s)",
+                                                       perc_overlap_getter)
+    )
+
+    plot_overviews(
+        workloads=workloads,
+        analysis_path=analysis_path,
+        config=build_relative_mean_throughput_config(workloads, "Median throughput", "% Overlap", "Throughput (events/s)",
+                                                     perc_overlap_getter)
     )
 
     plot_overviews(

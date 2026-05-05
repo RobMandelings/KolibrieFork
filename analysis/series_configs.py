@@ -112,18 +112,6 @@ def build_mean_throughput_config(title, x_label, y_label, x_label_getter):
     )
 
 
-def build_mean_throughput_config(title, x_label, y_label, x_label_getter):
-    return PlotterConfig(
-        title=title,
-        value_getter=get_thr_mean,
-        error_getter=error_getter.get_throughput_conf_int_error,
-        x_label=x_label,
-        y_label=y_label,
-        subdir=Path("throughput") / "mean",
-        x_label_getter=x_label_getter,
-    )
-
-
 def build_relative_median_throughput_config(
         workloads,
         title,
