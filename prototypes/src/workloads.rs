@@ -200,14 +200,17 @@ pub fn vary_slide() -> Vec<Workload> {
     workloads
 }
 
-pub fn test_workload() -> Vec<Workload> {
+pub fn test_workload() -> IndexMap<String, Vec<Workload>> {
     let mut workloads = Vec::new();
 
-    for size in [1] {
-        workloads.push(create_workload(5, 50_000, 1, 0, 0, size, 1))
+    let size = 64;
+    for slide in 1..50 {
+        workloads.push(create_workload(1, 10_000, 1, 0, 0, size, slide))
     }
 
-    workloads
+    let mut map = IndexMap::new();
+    map.insert("setup".to_string(), workloads);
+    map
 }
 
 pub fn my_workloads() -> IndexMap<String, Vec<Workload>> {
@@ -222,7 +225,7 @@ pub fn my_workloads() -> IndexMap<String, Vec<Workload>> {
 }
 
 pub fn default_workloads() -> IndexMap<String, Vec<Workload>> {
-    test_workloads()
+    test_workload()
 }
 
 pub fn mk_workload(nr_events: usize, spread: Time, event_ts_offset: Time) -> Workload {

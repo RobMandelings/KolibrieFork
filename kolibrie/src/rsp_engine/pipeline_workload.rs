@@ -9,7 +9,7 @@ use prototypes::WindowParams;
 pub struct PipelineWorkload {
     pub name: String,
     pub nr_events: usize,
-    pub window_params: WindowParams,
+    pub window: WindowParams,
 }
 
 pub fn write_workload_to_file(workload: &PipelineWorkload, path: &str) -> anyhow::Result<()> {
@@ -29,7 +29,7 @@ fn create_workload(nr_events: usize, size: Time, slide: Time) -> PipelineWorkloa
     PipelineWorkload {
         name: format!("size={size},slide={slide},events={nr_events}"),
         nr_events,
-        window_params: window_config
+        window: window_config
     }
 }
 
