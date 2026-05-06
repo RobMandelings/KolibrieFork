@@ -54,7 +54,7 @@ def plot_overviews(
         selected_strategies = [strat] if strat is not None else None
         filename = strat if strat is not None else "all"
 
-        print("Exporting to PNG")
+        print(f"Exporting plot to PNG for strat: {strat}")
         plot_strategy_series(
             workloads=workloads,
             series=series,

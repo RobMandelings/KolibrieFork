@@ -423,10 +423,10 @@ def main(analysis_path: Path):
 
 def main_pipeline(analysis_path: Path):
     results = get_results(analysis_path)
-    results = sorting.sort_by_slide(results, reverse=True)
+    results = sorting.sort_by_slide(results, reverse=False)
 
     walk_workloads_and_strategies(results, analysis_path)
 
 
 if __name__ == "__main__":
-    main_pipeline(Path("evaluation/test/windows_1_bytes_0_size_50_spread_slide"))
+    main_pipeline(Path("evaluation/test_weird_throughput/decrease_slide"))

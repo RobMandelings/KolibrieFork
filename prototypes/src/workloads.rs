@@ -2,12 +2,12 @@ use crate::prototype::event::Time;
 use crate::prototype::helpers::wc_struct;
 use crate::prototype::window_params::S2RWindowConfig;
 use crate::{Event, WindowParams};
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
-use indexmap::IndexMap;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EventStreamConfig {
@@ -204,8 +204,18 @@ pub fn test_workload() -> IndexMap<String, Vec<Workload>> {
     let mut workloads = Vec::new();
 
     let size = 64;
-    for slide in 1..50 {
-        workloads.push(create_workload(1, 10_000, 1, 0, 0, size, slide))
+    for slide in [1, 49] {
+        for extra_events in 1..50 {
+            workloads.push(create_workload(
+                1,
+                10_000 + extra_events,
+                slide,
+                size + 1,
+                0,
+                size,
+                slide,
+            ))
+        }
     }
 
     let mut map = IndexMap::new();
