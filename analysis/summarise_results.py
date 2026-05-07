@@ -12,7 +12,7 @@ from constants import STRATEGY_COLORS, STRATEGY_MARKERS, STRATEGIES, ESTIMATES
 from my_stats import thr_mean
 from organising import sorting
 from organising.sorting import LabeledDataFrame, sort_configs
-from overview_plotters import plot_mean_throughput_overlap
+from overview_plotters import plot_mean_throughput_overlap, make_default_overview_plotters
 from overview_plotting import plot_overview_from_df
 from parsing.dhat_parser import parse_dhat
 from parsing.results_parser import get_results
@@ -423,7 +423,10 @@ def generate_csvs(analysis_path: Path):
 
 def plot_overviews(analysis_path: Path):
     df = pd.read_csv(analysis_path / "csv" / "summary.csv")
-    plot_mean_throughput_overlap(df, analysis_path)
+    # plot_mean_throughput_overlap(df, analysis_path)
+    plotters = make_default_overview_plotters()
+    for plotter in plotters:
+        plotter(df, analysis_path)
 
 
 if __name__ == "__main__":
