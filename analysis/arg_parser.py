@@ -1,3 +1,6 @@
+import argparse
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Generate CSV summaries from raw workload results"
