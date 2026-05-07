@@ -8,6 +8,7 @@ from series import workloads_to_dataframe, workloads_samples_to_dataframe
 def generate_csvs(analysis_path: Path):
     csv_dir = analysis_path / "csv"
     csv_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Outputting to csv dir: {csv_dir}")
     workloads = get_results(analysis_path / "raw")
     df = workloads_to_dataframe(workloads)
     df.to_csv(csv_dir / "summary.csv", index=False)
