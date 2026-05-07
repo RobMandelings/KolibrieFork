@@ -6,6 +6,7 @@ pub mod experiment_helpers;
 pub mod workloads;
 pub mod s2r;
 pub mod bench_common;
+pub mod bench_config_parser;
 
 pub type IRI = String;
 

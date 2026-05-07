@@ -14,6 +14,7 @@ use std::path::{Path, PathBuf};
 use std::{env, fs, io};
 use std::fmt::Debug;
 use std::hash::Hash;
+use prototypes::bench_config_parser::resolve_output_root;
 
 #[global_allocator]
 static ALLOC: dhat::Alloc = dhat::Alloc;
@@ -21,8 +22,6 @@ static ALLOC: dhat::Alloc = dhat::Alloc;
 const PROFILING_FREQUENCY_HZ: i32 = 100;
 const PROFILE_ITERS: usize = 200;
 const BLOCKLIST: &[&str] = &["libc", "libgcc", "pthread", "vdso"];
-
-const DST_ROOT: &str = "../analysis/evaluation";
 
 fn ensure_dir(path: &Path) -> io::Result<()> {
     fs::create_dir_all(path)
@@ -201,8 +200,8 @@ fn main() {
 
     let args = parse_args();
     let only = args.only;
-    let prototypes_root_path = root.join("prototypes");
-    let dst_root_path = prototypes_root_path.join(DST_ROOT).join(&args.folder_name);
+    let dst_root = resolve_output_root();
+    let dst_root_path = dst_root.join(&args.folder_name);
 
     let mut c: Criterion = Criterion::default()
         .sample_size(args.sample_size)
