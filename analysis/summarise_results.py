@@ -9,17 +9,13 @@ from matplotlib import pyplot as plt
 
 import error_getter as err_get
 from constants import STRATEGY_COLORS, STRATEGY_MARKERS, STRATEGIES, ESTIMATES
-from exporting.compare_strats_workloads_overview import build_and_export_throughput_overviews
-from exporting.throughput.sample_plotting import plot_samples_grouped
-from exporting.throughput.throughput_results import generate_throughput_results
-from exporting.workload_csv import workload_summary_to_csv
 from my_stats import thr_mean
 from organising import sorting
 from organising.sorting import LabeledDataFrame, sort_configs
-from overall_tables import dict_to_metric_table
-from overview_plotting import generate_throughput_overview_plots
+from overview_plotting import plot_strategy_series_df
 from parsing.dhat_parser import parse_dhat
 from parsing.results_parser import get_results
+from series import workloads_to_dataframe, workloads_samples_to_dataframe, add_perc_overlap_label
 from workload_keys import make_label_from_key
 
 
@@ -189,27 +185,33 @@ def walk_workloads_and_strategies(
         per_workload[workload_key]["raw"][strategy_name] -> strat_data
     """
 
-    df = dict_to_metric_table(
-        workloads,
-        value_fn=relative_throughput
+    overview_dir = Path(analysis_path / "overviews")
+
+    # overview_dir.mkdir(parents=True, exist_ok=True)
+    # df = workloads_to_dataframe(workloads)
+    # df.to_csv(overview_dir / "summary.csv", index=False)
+    # samples_df = workloads_samples_to_dataframe(workloads)
+    # samples_df.to_csv(overview_dir / "samples.csv", index=False)
+
+    df = pd.read_csv(analysis_path / "overviews" / "summary.csv")
+    df = add_perc_overlap_label(df)
+    plot_strategy_series_df(
+        df=df,
+        y_col="thr_mean",
+        xlabel="% Overlap",
+        ylabel="Throughput (events/s)",
+        title="Mean throughput",
+        workload_index_col="window.slide",
+        descending=True,
+        output_file=analysis_path / "overviews" / "throughput" / "mean" / "mean_throughput.png",
     )
 
-    generate_throughput_overview_plots(workloads, analysis_path)
+    # generate_throughput_overview_plots(workloads, analysis_path)
 
     print("Plotted all throughputs for different workloads (median and mean)")
 
     # build_and_export_throughput_overviews(labeled_dfs, analysis_path / "overviews")
     # plot_all_memory_properties(workloads, analysis_path / "overviews" / "png")
-
-    for workload_key, entry in workloads.items():
-        workload_dir = analysis_path / workload_key
-        workload_output_dir = workload_dir / "overviews"
-        workload_summary_to_csv(entry, workload_output_dir / "estimates.csv")
-        plot_samples_grouped(entry, path=str(workload_output_dir / "samples_throughput_grouped.png"))
-
-        for strategy_name, strat_data in entry["strategies"].items():
-            generate_throughput_results(workload_dir, strategy_name, strat_data)
-            generate_memory_results(workload_dir, strategy_name)
 
 
 def extract_dfs(result: dict) -> dict:
@@ -409,16 +411,6 @@ def get_throughput_dfs_by_workload(results: Dict[str, Any]) -> Dict[str, pd.Data
             out[workload] = throughput_df
 
     return out
-
-
-def main(analysis_path: Path):
-    results = get_results(analysis_path)
-    sorted_by_size_then_slide = sort_configs(results, "size", reverse=False)
-
-    labeled_dfs = to_labeled_dataframe_list(get_throughput_dfs_by_workload(sorted_by_size_then_slide))
-    build_and_export_throughput_overviews(labeled_dfs, analysis_path / "overviews")
-
-    walk_workloads_and_strategies(sorted_by_size_then_slide, analysis_path)
 
 
 def main_pipeline(analysis_path: Path):
