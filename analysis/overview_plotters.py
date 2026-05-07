@@ -22,6 +22,7 @@ def make_default_overview_plotters():
     metrics = [
         {
             "y_col": "thr_mean",
+            "yerr_col": "thr_std_dev",  # Toggle to show standard deviation as error bars
             "title": "Mean throughput",
             "subdir": Path("overviews") / "throughput" / "mean",
             "filename": "mean_throughput",
@@ -36,6 +37,7 @@ def make_default_overview_plotters():
 
     for metric in metrics:
         y_col = metric["y_col"]
+        yerr_col = metric.get("yerr_col")
         title = metric["title"]
         subdir = metric["subdir"]
         filename = metric["filename"]
@@ -49,11 +51,6 @@ def make_default_overview_plotters():
                 suffix = strategy
                 strategies = [strategy]
 
-            if metric["y_col"] == "thr_mean":
-                # Add error bar to it as well
-                yerr_col = "thr_std_dev"
-            else:
-                yerr_col = None
             plotters.append(
                 make_overview_plotter(
                     y_col=y_col,
