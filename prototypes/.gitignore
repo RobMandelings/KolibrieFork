@@ -1,3 +1,4 @@
+bench_config.toml
 /target
 analysis/dhat-heap/**
 # Created by https://www.toptal.com/developers/gitignore/api/jetbrains,rust,macos
