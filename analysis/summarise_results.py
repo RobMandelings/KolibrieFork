@@ -411,14 +411,7 @@ def main_pipeline(analysis_path: Path):
     walk_workloads_and_strategies(results, analysis_path)
 
 
-def generate_csvs(analysis_path: Path):
-    csv_dir = analysis_path / "csv"
-    csv_dir.mkdir(parents=True, exist_ok=True)
-    workloads = get_results(analysis_path / "raw")
-    df = workloads_to_dataframe(workloads)
-    df.to_csv(csv_dir / "summary.csv", index=False)
-    samples_df = workloads_samples_to_dataframe(workloads)
-    samples_df.to_csv(csv_dir / "samples.csv", index=False)
+
 
 
 def plot_overviews(analysis_path: Path):
