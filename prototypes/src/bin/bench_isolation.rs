@@ -202,6 +202,7 @@ fn main() {
     let only = args.only;
     let dst_root = resolve_output_root();
     let dst_root_path = dst_root.join(&args.folder_name);
+    println!("destination path for benchmarks:: {}", dst_root_path.display());
 
     let mut c: Criterion = Criterion::default()
         .sample_size(args.sample_size)
