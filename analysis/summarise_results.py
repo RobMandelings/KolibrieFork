@@ -414,12 +414,7 @@ def main_pipeline(analysis_path: Path):
 
 
 
-def plot_overviews(analysis_path: Path):
-    df = pd.read_csv(analysis_path / "csv" / "summary.csv")
-    # plot_mean_throughput_overlap(df, analysis_path)
-    plotters = make_default_overview_plotters()
-    for plotter in plotters:
-        plotter(df, analysis_path)
+
 
 
 if __name__ == "__main__":
