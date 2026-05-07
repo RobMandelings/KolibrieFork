@@ -188,12 +188,6 @@ def walk_workloads_and_strategies(
 
     overview_dir = Path(analysis_path / "overviews")
 
-    # overview_dir.mkdir(parents=True, exist_ok=True)
-    # df = workloads_to_dataframe(workloads)
-    # df.to_csv(overview_dir / "summary.csv", index=False)
-    # samples_df = workloads_samples_to_dataframe(workloads)
-    # samples_df.to_csv(overview_dir / "samples.csv", index=False)
-
     df = pd.read_csv(overview_dir / "summary.csv")
     samples_df = pd.read_csv(overview_dir / "samples.csv")
     df = add_perc_overlap_label(df)
@@ -214,14 +208,10 @@ def walk_workloads_and_strategies(
         workload_index=idx,
         path=overview_dir / f"workload_{idx}_grouped",
     )
-    plot_sample_with_outliers_df(df=samples_df, workload_index=idx, strategy="legacy", path=overview_dir / f"workload_{idx}_legacy")
-
-    # generate_throughput_overview_plots(workloads, analysis_path)
+    plot_sample_with_outliers_df(df=samples_df, workload_index=idx, strategy="legacy",
+                                 path=overview_dir / f"workload_{idx}_legacy")
 
     print("Plotted all throughputs for different workloads (median and mean)")
-
-    # build_and_export_throughput_overviews(labeled_dfs, analysis_path / "overviews")
-    # plot_all_memory_properties(workloads, analysis_path / "overviews" / "png")
 
 
 def extract_dfs(result: dict) -> dict:
@@ -430,5 +420,15 @@ def main_pipeline(analysis_path: Path):
     walk_workloads_and_strategies(results, analysis_path)
 
 
+def generate_csvs(analysis_path: Path):
+    csv_dir = analysis_path / "csv"
+    csv_dir.mkdir(parents=True, exist_ok=True)
+    workloads = get_results(analysis_path / "raw")
+    df = workloads_to_dataframe(workloads)
+    df.to_csv(csv_dir / "summary.csv", index=False)
+    samples_df = workloads_samples_to_dataframe(workloads)
+    samples_df.to_csv(csv_dir / "samples.csv", index=False)
+
+
 if __name__ == "__main__":
-    main_pipeline(Path("evaluation/test_weird_throughput/decrease_slide"))
+    generate_csvs(Path("evaluation") / "test_weird_throughput" / "decrease_slide")
