@@ -56,7 +56,7 @@ where
         .collect()
 }
 
-fn create_workload(
+pub fn create_workload(
     nr_windows: usize,
     nr_events: usize,
     spread: Time,

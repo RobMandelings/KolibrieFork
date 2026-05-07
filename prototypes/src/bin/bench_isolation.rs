@@ -91,6 +91,19 @@ fn write_flamegraph_for_strategy<F>(
         .expect("failed to write flamegraph");
 }
 
+fn print_running_benchmark(strategy: &str, workload: &Workload) {
+    println!(
+        "[BENCH] strategy={strategy} | windows={} | events={} | size={} | slide={} | spread={} | event_offset={} | bytes={}",
+        workload.nr_windows,
+        workload.nr_events,
+        workload.window.size,
+        workload.window.slide,
+        workload.stream_config.spread,
+        workload.stream_config.offset,
+        workload.bytes,
+    );
+}
+
 fn run_bench_and_profile(
     group: &mut BenchmarkGroup<'_, WallTime>,
     workload: &Workload,
@@ -99,6 +112,7 @@ fn run_bench_and_profile(
     runner_factory: RunnerFactory,
 )
 {
+    print_running_benchmark(label, workload);
     bench_strategy(group, label, workload.nr_events, &runner_factory);
     run_mem_profile(label, &runner_factory);
     move_profile_file(label, group_path);
@@ -184,26 +198,19 @@ fn main() {
     let dst_root_path = prototypes_root_path.join(DST_ROOT).join(&args.folder_name);
 
     let mut c: Criterion = Criterion::default()
-        .sample_size(300)
-        .measurement_time(std::time::Duration::from_secs(10))
+        .sample_size(args.sample_size)
         .with_profiler(PProfProfiler::new(
             100, // sampling frequency (Hz)
             Output::Flamegraph(None),
         ))
         .with_output_color(true);
 
-    let grouped_workloads = default_workloads();
-    for (group_name, workloads) in &grouped_workloads {
-        let grouped_dst_root_path = dst_root_path.join(group_name);
-
-        warmup_first_workload(&workloads[0], &only, make_copy_event);
-
-        for workload in workloads {
+    for workload in &args.workloads {
             // One group per workload
 
             // use SHORT name for the criterion benchmark thing because for some reason it has a max filename length
             let mut group = c.benchmark_group(&workload.get_short_name());
-            let dst_group_path = grouped_dst_root_path.join(&workload.name);
+            let dst_group_path = dst_root_path.join(&workload.name);
             let criterion_dst_path = dst_group_path.join("throughput");
             let criterion_src_path = root_path.join("target/criterion").join(&workload.get_short_name()); // Where to take the data from
 
@@ -220,10 +227,9 @@ fn main() {
             write_workload_to_file(workload, &workload_path)
                 .expect(&format!("Could not write workload: {}", workload_path));
             println!(
-                "Successfully copied criterion group {} in {}",
-                workload.name, group_name
+                "Successfully copied criterion group {}",
+                workload.name
             );
-        }
     }
 
     c.final_summary();
