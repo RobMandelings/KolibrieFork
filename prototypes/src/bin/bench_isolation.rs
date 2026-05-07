@@ -201,7 +201,7 @@ fn main() {
     let args = parse_args();
     let only = args.only;
     let dst_root = resolve_output_root();
-    let dst_root_path = dst_root.join(&args.folder_name);
+    let dst_root_path = dst_root.join(&args.folder_name).join("raw");
     println!("destination path for benchmarks:: {}", dst_root_path.display());
 
     let mut c: Criterion = Criterion::default()
