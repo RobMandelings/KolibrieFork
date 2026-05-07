@@ -9,14 +9,15 @@ from matplotlib import pyplot as plt
 
 import error_getter as err_get
 from constants import STRATEGY_COLORS, STRATEGY_MARKERS, STRATEGIES, ESTIMATES
-from exporting.throughput.sample_plotting import plot_samples_grouped_df, plot_sample_with_outliers_df
 from my_stats import thr_mean
 from organising import sorting
 from organising.sorting import LabeledDataFrame, sort_configs
-from overview_plotting import plot_strategy_series_df
+from overview_plotters import plot_mean_throughput_overlap
+from overview_plotting import plot_overview_from_df
 from parsing.dhat_parser import parse_dhat
 from parsing.results_parser import get_results
-from series import workloads_to_dataframe, workloads_samples_to_dataframe, add_perc_overlap_label
+from series import workloads_to_dataframe, workloads_samples_to_dataframe, \
+    perc_overlap_label
 from workload_keys import make_label_from_key
 
 
@@ -189,9 +190,8 @@ def walk_workloads_and_strategies(
     overview_dir = Path(analysis_path / "overviews")
 
     df = pd.read_csv(overview_dir / "summary.csv")
-    samples_df = pd.read_csv(overview_dir / "samples.csv")
-    df = add_perc_overlap_label(df)
-    plot_strategy_series_df(
+    df = add_label_column(df, label_fn=perc_overlap_label, out_col="x_label")
+    plot_overview_from_df(
         df=df,
         y_col="thr_mean",
         xlabel="% Overlap",
@@ -201,15 +201,6 @@ def walk_workloads_and_strategies(
         descending=True,
         output_file=overview_dir / "throughput" / "mean" / "mean_throughput.png",
     )
-
-    idx = 4
-    plot_samples_grouped_df(
-        df=samples_df,
-        workload_index=idx,
-        path=overview_dir / f"workload_{idx}_grouped",
-    )
-    plot_sample_with_outliers_df(df=samples_df, workload_index=idx, strategy="legacy",
-                                 path=overview_dir / f"workload_{idx}_legacy")
 
     print("Plotted all throughputs for different workloads (median and mean)")
 
@@ -430,5 +421,10 @@ def generate_csvs(analysis_path: Path):
     samples_df.to_csv(csv_dir / "samples.csv", index=False)
 
 
+def plot_overviews(analysis_path: Path):
+    df = pd.read_csv(analysis_path / "csv" / "summary.csv")
+    plot_mean_throughput_overlap(df, analysis_path)
+
+
 if __name__ == "__main__":
-    generate_csvs(Path("evaluation") / "test_weird_throughput" / "decrease_slide")
+    plot_overviews(Path("evaluation") / "test_weird_throughput" / "decrease_slide")

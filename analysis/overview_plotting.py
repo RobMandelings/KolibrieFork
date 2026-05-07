@@ -1,144 +1,81 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from constants import STRATEGIES, STRATEGY_COLORS, STRATEGY_MARKERS
-from series import plot_strategy_series, PlotterConfig, build_strategy_series, workloads_to_dataframe, \
-    linear_trend_per_strategy_df, add_regression_overlay
-from series_configs import build_median_throughput_config, build_mean_throughput_config, perc_overlap_getter, \
-    build_total_bytes_config, get_total_bytes, get_total_bytes_window_closed, build_relative_median_throughput_config, \
-    build_relative_mean_throughput_config
-from series_export import export_result_to_csv
+from constants import STRATEGY_COLORS, STRATEGY_MARKERS
+from series import linear_trend_per_strategy_df, add_regression_overlay
 
 
-# def build_throughput_series_config(workloads, key, relative=False):
-#     if "median" in key:
-#         base_value_getter = get_thr_med
-#         err_get_fn = None
-#     else:
-#         base_value_getter = get_thr_mean
-#         err_get_fn = error_getter.get_throughput_conf_int_error
-#
-#     value_getter = (
-#         make_relative_to_baseline_getter(workloads, base_value_getter)
-#         if relative
-#         else base_value_getter
-#     )
-#
-#     return PlotterConfig(
-#         value_getter=value_getter,
-#         error_getter=err_get_fn,
-#         x_label_getter=perc_overlap_getter,
-#     )
-
-
-def plot_overviews(
-        workloads,
-        analysis_path,
-        config: PlotterConfig,
+def make_overview_plotter(
+        *,
+        y_col: str,
+        title: str,
+        xlabel: str,
+        ylabel: str,
+        workload_index_col: str,
+        output_file,
+        label_fn,
+        strategies=None,
+        descending: bool = False,
+        x_label_col: str = "x_label",
+        strategy_col: str = "strategy",
+        yerr_col=None,
 ):
-    print(f"Plotting overviews: {config.title}")
-
-    series = build_strategy_series(config, workloads)
-
-    print("Exporting to CSV")
-    export_result_to_csv(
-        series,
-        csv_path=(
-                analysis_path
-                / "overviews"
-                / config.subdir
-                / "all.csv"
-        ),
-    )
-
-    for strat in STRATEGIES + [None]:
-        selected_strategies = [strat] if strat is not None else None
-        filename = strat if strat is not None else "all"
-
-        print(f"Exporting plot to PNG for strat: {strat}")
-        plot_strategy_series(
-            workloads=workloads,
-            series=series,
-            xlabel=config.x_label,
-            ylabel=config.y_label,
-            strategies=selected_strategies,
-            title=config.title,
-            output_file=(
-                    analysis_path
-                    / "overviews"
-                    / config.subdir
-                    / filename
-            ),
+    def plotter(df: pd.DataFrame, analysis_path):
+        print(f"Plotting to output: {output_file}")
+        plot_overview_from_df(
+            df=df,
+            analysis_path=analysis_path,
+            y_col=y_col,
+            title=title,
+            xlabel=xlabel,
+            ylabel=ylabel,
+            workload_index_col=workload_index_col,
+            output_file=output_file,
+            label_fn=label_fn,
+            strategies=strategies,
+            descending=descending,
+            x_label_col=x_label_col,
+            strategy_col=strategy_col,
+            yerr_col=yerr_col,
         )
 
-
-def generate_throughput_overview_plots(
-        workloads: Any,
-        analysis_path: Path,
-) -> None:
-    plot_overviews(
-        workloads=workloads,
-        analysis_path=analysis_path,
-        config=build_mean_throughput_config("Mean throughput", "% Overlap", "Throughput (events/s)",
-                                            perc_overlap_getter)
-    )
-
-    plot_overviews(
-        workloads=workloads,
-        analysis_path=analysis_path,
-        config=build_median_throughput_config("Median throughput", "% Overlap", "Throughput (events/s)",
-                                              perc_overlap_getter)
-    )
-
-    plot_overviews(
-        workloads=workloads,
-        analysis_path=analysis_path,
-        config=build_relative_median_throughput_config(workloads, "Median throughput", "% Overlap",
-                                                       "Throughput (events/s)",
-                                                       perc_overlap_getter)
-    )
-
-    plot_overviews(
-        workloads=workloads,
-        analysis_path=analysis_path,
-        config=build_relative_mean_throughput_config(workloads, "Median throughput", "% Overlap",
-                                                     "Throughput (events/s)",
-                                                     perc_overlap_getter)
-    )
-
-    plot_overviews(
-        workloads=workloads,
-        analysis_path=analysis_path,
-        config=build_total_bytes_config("Total bytes", "% Overlap", "Bytes", perc_overlap_getter, subdir=Path("memory"))
-    )
-
-    plot_overviews(
-        workloads=workloads,
-        analysis_path=analysis_path,
-        config=PlotterConfig(
-            title="Total bytes from window close",
-            value_getter=get_total_bytes_window_closed,
-            error_getter=None,
-            x_label="% Overlap",
-            y_label="Bytes",
-            subdir=Path("memory") / "window_close",
-            x_label_getter=perc_overlap_getter,
-        ))
-
-    # plot_throughput_overviews(
-    #     workloads=workloads,
-    #     analysis_path=analysis_path,
-    #     estimates=ESTIMATES,
-    #     strategies=STRATEGIES,
-    #     relative=True,
-    # )
+    return plotter
 
 
-def plot_strategy_series_df(
+def add_label_column(
+        df: pd.DataFrame,
+        label_fn: Callable[[pd.Series], Any],
+        out_col: str = "x_label",
+) -> pd.DataFrame:
+    """
+    Add a label column computed from each row using `label_fn`.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe.
+    label_fn : callable
+        Function that accepts a row (pd.Series) and returns the label.
+    out_col : str
+        Name of the output column to create.
+
+    Returns
+    -------
+    pd.DataFrame
+        Copy of df with the new column added.
+    """
+    df = df.copy()
+    df[out_col] = df.apply(label_fn, axis=1)
+    return df
+
+
+def plot_overview_from_df(
         df,
+        analysis_path: Path,
+        label_fn: Callable[[pd.Series], Any],
         y_col: str,
         xlabel: str,
         ylabel: str,
@@ -151,6 +88,7 @@ def plot_strategy_series_df(
         yerr_col=None,
         descending: bool = False,
 ):
+    df = add_label_column(df, label_fn=label_fn, out_col=x_label_col)
     df = df.copy()
 
     if strategies is None:
@@ -269,7 +207,7 @@ def plot_strategy_series_df(
     fig.tight_layout()
 
     if output_file is not None:
-        output_file = Path(output_file)
+        output_file = analysis_path / Path(output_file)
         output_file.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(output_file, dpi=200, bbox_inches="tight")
         plt.close(fig)
