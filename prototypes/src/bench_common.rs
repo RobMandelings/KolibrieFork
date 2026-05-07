@@ -1,4 +1,5 @@
 use std::{env, fs, io};
+use std::fmt::format;
 use std::path::Path;
 use log::{debug, info};
 use crate::prototype::event::Time;
@@ -7,7 +8,7 @@ use crate::workloads::{create_workload, Workload};
 pub fn move_profile_file(strat: &str, group_path: &Path) {
     let dir = group_path.join("memory");
     // create mem_profiles/workload_name if needed
-    fs::create_dir_all(&dir).expect("failed to create mem_profiles dir");
+    fs::create_dir_all(&dir).expect(&format!("failed to create mem_profiles dir: {:?}", dir));
     let dest = dir.join(format!("{strat}.json"));
     println!("Moving profile file to {:?}", dest);
 
