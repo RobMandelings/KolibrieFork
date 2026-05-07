@@ -10,8 +10,8 @@ use prototypes::prototype::event::{make_byte_event, make_copy_event, Time};
 use prototypes::workloads::{default_workloads, write_workload_to_file, Workload};
 use prototypes::{run_mem_profile, create_arc_factory, create_slice_factory, create_rc_factory, Event};
 use std::fs::File;
-use std::path::Path;
-use std::{fs, io};
+use std::path::{Path, PathBuf};
+use std::{env, fs, io};
 use std::fmt::Debug;
 use std::hash::Hash;
 
@@ -22,7 +22,6 @@ const PROFILING_FREQUENCY_HZ: i32 = 100;
 const PROFILE_ITERS: usize = 200;
 const BLOCKLIST: &[&str] = &["libc", "libgcc", "pthread", "vdso"];
 
-const ROOT: &str = "/Users/robmandelings/Documents/KULeuven/Thesis/KolibrieFork/origin-main";
 const DST_ROOT: &str = "../analysis/evaluation";
 
 fn ensure_dir(path: &Path) -> io::Result<()> {
@@ -191,10 +190,18 @@ where
 }
 
 fn main() {
+
+    let cwd = env::current_dir().expect("cannot get working directory");
+    println!("cwd: {}", cwd.display());
+    let root: PathBuf = cwd
+        .parent()
+        .map(|p| p.to_path_buf())
+        .expect("cwd has no parent");
+    println!("root (one up): {}", root.display());
+
     let args = parse_args();
     let only = args.only;
-    let root_path = Path::new(ROOT);
-    let prototypes_root_path = root_path.join("prototypes");
+    let prototypes_root_path = root.join("prototypes");
     let dst_root_path = prototypes_root_path.join(DST_ROOT).join(&args.folder_name);
 
     let mut c: Criterion = Criterion::default()
@@ -212,7 +219,7 @@ fn main() {
             let mut group = c.benchmark_group(&workload.get_short_name());
             let dst_group_path = dst_root_path.join(&workload.name);
             let criterion_dst_path = dst_group_path.join("throughput");
-            let criterion_src_path = root_path.join("target/criterion").join(&workload.get_short_name()); // Where to take the data from
+            let criterion_src_path = root.join("target/criterion").join(&workload.get_short_name()); // Where to take the data from
 
             match workload.bytes {
                 0 => run_benches(&mut group, workload, &only, &dst_group_path, make_copy_event),
