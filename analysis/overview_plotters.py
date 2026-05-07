@@ -48,6 +48,12 @@ def make_default_overview_plotters():
             else:
                 suffix = strategy
                 strategies = [strategy]
+
+            if metric["y_col"] == "thr_mean":
+                # Add error bar to it as well
+                yerr_col = "thr_std_dev"
+            else:
+                yerr_col = None
             plotters.append(
                 make_overview_plotter(
                     y_col=y_col,
@@ -59,6 +65,7 @@ def make_default_overview_plotters():
                     output_file=subdir / f"{filename}_{suffix}.png",
                     label_fn=perc_overlap_label,
                     strategies=strategies,
+                    yerr_col=yerr_col
                 )
             )
 
