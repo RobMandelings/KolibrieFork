@@ -200,9 +200,16 @@ fn main() {
 
     let args = parse_args();
     let only = args.only;
-    let dst_root = resolve_output_root();
-    let dst_root_path = dst_root.join(&args.folder_name).join("raw");
+    let dst_root = resolve_output_root().join(&args.folder_name);
+    let dst_root_path = dst_root.join("raw");
     println!("destination path for benchmarks:: {}", dst_root_path.display());
+
+    fs::create_dir_all(&dst_root)
+        .expect("failed to create benchmark output root");
+
+    let command_file = dst_root.join("command.txt");
+    fs::write(&command_file, format!("{}\n", args.raw_command))
+        .expect("failed to write command.txt");
 
     let mut c: Criterion = Criterion::default()
         .sample_size(args.sample_size)
