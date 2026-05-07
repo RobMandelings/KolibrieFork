@@ -9,6 +9,7 @@ from matplotlib import pyplot as plt
 
 import error_getter as err_get
 from constants import STRATEGY_COLORS, STRATEGY_MARKERS, STRATEGIES, ESTIMATES
+from exporting.throughput.sample_plotting import plot_samples_grouped_df, plot_sample_with_outliers_df
 from my_stats import thr_mean
 from organising import sorting
 from organising.sorting import LabeledDataFrame, sort_configs
@@ -193,7 +194,8 @@ def walk_workloads_and_strategies(
     # samples_df = workloads_samples_to_dataframe(workloads)
     # samples_df.to_csv(overview_dir / "samples.csv", index=False)
 
-    df = pd.read_csv(analysis_path / "overviews" / "summary.csv")
+    df = pd.read_csv(overview_dir / "summary.csv")
+    samples_df = pd.read_csv(overview_dir / "samples.csv")
     df = add_perc_overlap_label(df)
     plot_strategy_series_df(
         df=df,
@@ -203,8 +205,16 @@ def walk_workloads_and_strategies(
         title="Mean throughput",
         workload_index_col="window.slide",
         descending=True,
-        output_file=analysis_path / "overviews" / "throughput" / "mean" / "mean_throughput.png",
+        output_file=overview_dir / "throughput" / "mean" / "mean_throughput.png",
     )
+
+    idx = 4
+    plot_samples_grouped_df(
+        df=samples_df,
+        workload_index=idx,
+        path=overview_dir / f"workload_{idx}_grouped",
+    )
+    plot_sample_with_outliers_df(df=samples_df, workload_index=idx, strategy="legacy", path=overview_dir / f"workload_{idx}_legacy")
 
     # generate_throughput_overview_plots(workloads, analysis_path)
 
