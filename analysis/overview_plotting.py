@@ -72,6 +72,9 @@ def add_label_column(
     return df
 
 
+OVERLAY_REGRESSION = False
+
+
 def plot_overview_from_df(
         df,
         analysis_path: Path,
@@ -116,13 +119,16 @@ def plot_overview_from_df(
 
     fig, ax1 = plt.subplots(figsize=(16, 6))
 
-    regression_results = linear_trend_per_strategy_df(
-        df=df,
-        y_col=y_col,
-        strategy_col=strategy_col,
-        descending=descending,
-        x_order_col="window.slide",
-    )
+    if OVERLAY_REGRESSION:
+        regression_results = linear_trend_per_strategy_df(
+            df=df,
+            y_col=y_col,
+            strategy_col=strategy_col,
+            descending=descending,
+            x_order_col="window.slide",
+        )
+    else:
+        regression_results = None
 
     for strategy in strategies:
         strat_df = df[df[strategy_col] == strategy].copy()
@@ -159,12 +165,13 @@ def plot_overview_from_df(
         marker = STRATEGY_MARKERS.get(strategy, "o")
         color = STRATEGY_COLORS.get(strategy, None)
 
-        add_regression_overlay(
-            ax=ax1,
-            strategy=strategy,
-            x_values=cur_x_pos,
-            regression_results=regression_results,
-        )
+        if regression_results:
+            add_regression_overlay(
+                ax=ax1,
+                strategy=strategy,
+                x_values=cur_x_pos,
+                regression_results=regression_results,
+            )
 
         if has_any_error:
             if all(err is not None and not isinstance(err, (list, tuple)) for err in y_errors):

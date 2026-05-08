@@ -53,6 +53,11 @@ def perc_overlap_label(row: pd.Series) -> str:
     return f"{perc_overlap:.2%}"
 
 
+def slide_label(row: pd.Series) -> str:
+    slide = row.get("window.slide")
+    return f"{slide}"
+
+
 def workloads_to_dataframe(workloads: dict) -> pd.DataFrame:
     """
     Transform workloads dict into a flat DataFrame with one row per (workload, strategy).
