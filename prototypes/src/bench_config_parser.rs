@@ -6,9 +6,10 @@ struct BenchConfig {
     output: Option<OutputConfig>,
 }
 
-#[derive(Debug, Deserialize)]
-struct OutputConfig {
-    root: Option<PathBuf>,
+#[derive(Debug, Deserialize, Clone)]
+pub struct OutputConfig {
+    pub dst: PathBuf,
+    pub criterion_src: PathBuf,
 }
 
 fn repo_root() -> PathBuf {
@@ -20,10 +21,6 @@ fn repo_root() -> PathBuf {
 
 fn bench_config_path() -> PathBuf {
     repo_root().join("bench_config.toml")
-}
-
-fn default_output_root() -> PathBuf {
-    repo_root().join("analysis").join("evaluation")
 }
 
 fn load_bench_config() -> BenchConfig {
@@ -40,19 +37,23 @@ fn load_bench_config() -> BenchConfig {
         .unwrap_or_else(|e| panic!("failed to parse TOML config {:?}: {e}", path))
 }
 
-pub fn resolve_output_root() -> PathBuf {
-    let config = load_bench_config();
 
-    match config.output.and_then(|o| o.root) {
-        Some(path) => {
-            if !path.is_absolute() {
-                panic!(
-                    "configured output.root must be an absolute path, got {:?}",
-                    path
-                );
-            }
-            path
-        }
-        None => default_output_root(),
+pub fn resolve_output_config() -> OutputConfig {
+    let output = load_bench_config().output.unwrap();
+
+    if !output.dst.is_absolute() {
+        panic!(
+            "configured output.dst must be an absolute path, got {:?}",
+            output.dst
+        );
     }
+
+    if !output.criterion_src.is_absolute() {
+        panic!(
+            "configured output.criterion_src must be an absolute path, got {:?}",
+            output.criterion_src
+        );
+    }
+
+    output
 }

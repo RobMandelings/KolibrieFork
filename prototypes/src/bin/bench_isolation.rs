@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use std::{env, fs, io};
 use std::fmt::Debug;
 use std::hash::Hash;
-use prototypes::bench_config_parser::resolve_output_root;
+use prototypes::bench_config_parser::{resolve_output_config};
 
 #[global_allocator]
 static ALLOC: dhat::Alloc = dhat::Alloc;
@@ -200,7 +200,10 @@ fn main() {
 
     let args = parse_args();
     let only = args.only;
-    let dst_root = resolve_output_root().join(&args.folder_name);
+
+    let output_cfg = resolve_output_config();
+    let dst_root = output_cfg.dst.join(&args.folder_name);
+    let criterion_src = output_cfg.criterion_src;
     let dst_root_path = dst_root.join("raw");
     println!("destination path for benchmarks:: {}", dst_root_path.display());
 
@@ -226,7 +229,9 @@ fn main() {
             let mut group = c.benchmark_group(&workload.get_short_name());
             let dst_group_path = dst_root_path.join(&workload.name);
             let criterion_dst_path = dst_group_path.join("throughput");
-            let criterion_src_path = root.join("target/criterion").join(&workload.get_short_name()); // Where to take the data from
+
+            // Not just the criterion source but appended with the workload name to copy that file exactly
+            let criterion_workload_src = criterion_src.join(&workload.get_short_name()); // Where to take the data from
 
             match workload.bytes {
                 0 => run_benches(&mut group, workload, &only, &dst_group_path, make_copy_event),
@@ -235,14 +240,16 @@ fn main() {
 
             group.finish();
 
-            copy_group_dir_with_catch(&criterion_src_path, &criterion_dst_path);
+            copy_group_dir_with_catch(&criterion_workload_src, &criterion_dst_path);
 
             let workload_path = format!("{}/workload.json", dst_group_path.to_str().unwrap());
             write_workload_to_file(workload, &workload_path)
                 .expect(&format!("Could not write workload: {}", workload_path));
             println!(
-                "Successfully copied criterion group {}",
-                workload.name
+                "Successfully copied criterion group '{}' from '{}' to '{}'",
+                workload.name,
+                criterion_workload_src.display(),
+                criterion_dst_path.display(),
             );
     }
 

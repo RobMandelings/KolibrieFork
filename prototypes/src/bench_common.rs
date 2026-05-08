@@ -101,7 +101,7 @@ impl Strategy {
     fn parse(s: &str) -> Option<Self> {
         match s {
             "clone" => Some(Self::Clone),
-            "expire" => Some(Self::Slice),
+            "slice" => Some(Self::Slice),
             "rc" => Some(Self::Rc),
             "legacy" => Some(Self::Legacy),
             "arc" => Some(Self::Arc),
@@ -112,7 +112,7 @@ impl Strategy {
     fn as_str(&self) -> &'static str {
         match self {
             Self::Clone => "clone",
-            Self::Slice => "expire",
+            Self::Slice => "slice",
             Self::Rc => "rc",
             Self::Legacy => "legacy",
             Self::Arc => "arc",
@@ -130,10 +130,16 @@ pub struct Args {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) enum EventSpreadSpec {
+    Values(Vec<usize>),
+    FollowSlide,
+}
+
+#[derive(Clone, Debug)]
 pub(crate) enum WorkloadDim {
     NrWindows(Vec<usize>),
     NrEvents(Vec<usize>),
-    EventSpread(Vec<usize>),
+    EventSpread(EventSpreadSpec),
     EventOffset(Vec<usize>),
     Bytes(Vec<usize>),
     Size(Vec<usize>),
@@ -207,15 +213,20 @@ fn parse_time_list(spec: &str) -> Result<Vec<Time>, String> {
 }
 
 fn parse_workload_dim(flag: &str, spec: &str) -> Result<WorkloadDim, String> {
-    let value = parse_number_list(spec)?;
     match flag {
-        "--nr-windows" => Ok(WorkloadDim::NrWindows(value)),
-        "--nr-events" => Ok(WorkloadDim::NrEvents(value)),
-        "--event-spread" => Ok(WorkloadDim::EventSpread(value)),
-        "--event-offset" => Ok(WorkloadDim::EventOffset(value)),
-        "--bytes" => Ok(WorkloadDim::Bytes(value)),
-        "--size" => Ok(WorkloadDim::Size(value)),
-        "--slide" => Ok(WorkloadDim::Slide(value)),
+        "--nr-windows" => Ok(WorkloadDim::NrWindows(parse_number_list(spec)?)),
+        "--nr-events" => Ok(WorkloadDim::NrEvents(parse_number_list(spec)?)),
+        "--event-spread" => {
+            if spec.trim() == "slide" {
+                Ok(WorkloadDim::EventSpread(EventSpreadSpec::FollowSlide))
+            } else {
+                Ok(WorkloadDim::EventSpread(EventSpreadSpec::Values(parse_number_list(spec)?)))
+            }
+        }
+        "--event-offset" => Ok(WorkloadDim::EventOffset(parse_number_list(spec)?)),
+        "--bytes" => Ok(WorkloadDim::Bytes(parse_number_list(spec)?)),
+        "--size" => Ok(WorkloadDim::Size(parse_number_list(spec)?)),
+        "--slide" => Ok(WorkloadDim::Slide(parse_number_list(spec)?)),
         _ => Err(format!("unknown workload dimension flag: {flag}")),
     }
 }
@@ -226,6 +237,7 @@ fn build_workloads_from_dims(dims: &[WorkloadDim]) -> Result<Vec<Workload>, Stri
         nr_windows: Option<usize>,
         nr_events: Option<usize>,
         event_spread: Option<usize>,
+        event_spread_follows_slide: bool,
         event_offset: Option<usize>,
         bytes: Option<usize>,
         size: Option<usize>,
@@ -238,12 +250,20 @@ fn build_workloads_from_dims(dims: &[WorkloadDim]) -> Result<Vec<Workload>, Stri
                 nr_windows: None,
                 nr_events: None,
                 event_spread: None,
+                event_spread_follows_slide: false,
                 event_offset: None,
                 bytes: None,
                 size: None,
                 slide: None,
             }
         }
+
+        fn with_event_spread_follow_slide(&self) -> Self {
+            let mut next = self.clone();
+            next.event_spread_follows_slide = true;
+            next
+        }
+
 
         fn with_dim(&self, dim: &WorkloadDim, value: usize) -> Self {
             let mut next = self.clone();
@@ -262,11 +282,16 @@ fn build_workloads_from_dims(dims: &[WorkloadDim]) -> Result<Vec<Workload>, Stri
         fn finalize(self) -> Result<Workload, String> {
             let nr_windows = self.nr_windows.ok_or("missing workload dimension: nr_windows")?;
             let nr_events  = self.nr_events.ok_or("missing workload dimension: nr_events")?;
-            let spread_u   = self.event_spread.ok_or("missing workload dimension: event_spread")?;
             let offset_u   = self.event_offset.ok_or("missing workload dimension: event_offset")?;
             let bytes      = self.bytes.ok_or("missing workload dimension: bytes")?;
             let size_u     = self.size.ok_or("missing workload dimension: size")?;
             let slide_u    = self.slide.ok_or("missing workload dimension: slide")?;
+
+            let spread_u = if self.event_spread_follows_slide {
+                slide_u
+            } else {
+                self.event_spread.ok_or("missing workload dimension: event_spread")?
+            };
 
             let spread: Time = spread_u as Time;
             let offset: Time = offset_u as Time;
@@ -296,23 +321,37 @@ fn build_workloads_from_dims(dims: &[WorkloadDim]) -> Result<Vec<Workload>, Stri
     let mut partials = vec![Partial::new()];
 
     for dim in dims {
-        let values: &[usize] = match dim {
-            crate::bench_common::WorkloadDim::NrWindows(v) => v,
-            crate::bench_common::WorkloadDim::NrEvents(v) => v,
-            crate::bench_common::WorkloadDim::EventSpread(v) => v,
-            crate::bench_common::WorkloadDim::EventOffset(v) => v,
-            crate::bench_common::WorkloadDim::Bytes(v) => v,
-            crate::bench_common::WorkloadDim::Size(v) => v,
-            crate::bench_common::WorkloadDim::Slide(v) => v,
-        };
-
-        let mut next_partials = Vec::with_capacity(partials.len() * values.len());
-        for partial in &partials {
-            for &value in values {
-                next_partials.push(partial.with_dim(dim, value));
+        match dim {
+            WorkloadDim::NrWindows(values)
+            | WorkloadDim::NrEvents(values)
+            | WorkloadDim::EventOffset(values)
+            | WorkloadDim::Bytes(values)
+            | WorkloadDim::Size(values)
+            | WorkloadDim::Slide(values) => {
+                let mut next_partials = Vec::with_capacity(partials.len() * values.len());
+                for partial in &partials {
+                    for &value in values {
+                        next_partials.push(partial.with_dim(dim, value));
+                    }
+                }
+                partials = next_partials;
+            }
+            WorkloadDim::EventSpread(EventSpreadSpec::Values(values)) => {
+                let mut next_partials = Vec::with_capacity(partials.len() * values.len());
+                for partial in &partials {
+                    for &value in values {
+                        next_partials.push(partial.with_dim(dim, value));
+                    }
+                }
+                partials = next_partials;
+            }
+            WorkloadDim::EventSpread(EventSpreadSpec::FollowSlide) => {
+                partials = partials
+                    .into_iter()
+                    .map(|p| p.with_event_spread_follow_slide())
+                    .collect();
             }
         }
-        partials = next_partials;
     }
 
     partials.into_iter().map(|p| p.finalize()).collect()
