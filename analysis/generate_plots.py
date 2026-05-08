@@ -63,10 +63,10 @@ def decorate_df(df: pd.DataFrame, x_variant: PlotVariant, descending=False):
 
 def generate_plots(analysis_path: Path):
     x_variant = PlotVariant.PERC_OVERLAP
-    descending = True
+    descending = False
     df = pd.read_csv(analysis_path / "csv" / "summary.csv")
     df = decorate_df(df, x_variant, descending)
-    plotters = make_default_overview_plotters(PlotVariant.PERC_OVERLAP, Y_THR_MEAN_REL, descending)
+    plotters = make_default_overview_plotters(PlotVariant.NR_EVENTS, Y_THR_MEAN, descending)
     for plotter in plotters:
         plotter(df, analysis_path)
 
