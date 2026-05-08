@@ -44,6 +44,11 @@ def load_results(path: Path) -> dict:
     results = {}
 
     for workload_name, strat_results in strats.items():
+
+        if not workload_name in workload_json_results:
+            print(f"Cannot find key {workload_name} in workload_json_results. Probably unfinished benchmark.")
+            continue
+
         results[workload_name] = {
             "strategies": {},
             "workload": workload_json_results[workload_name]
