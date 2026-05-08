@@ -70,6 +70,15 @@ Y_THR_MEDIAN = YConfig(
     filename="median_throughput",
 )
 
+Y_MEM = YConfig(
+    y_col="mem_total",
+    yerr_col=None,
+    default_title="Memory usage",
+    ylabel="Bytes",
+    subdir=Path("overviews") / "memory",
+    filename="total_bytes",
+)
+
 Y_THR_MEAN_REL = YConfig(
     y_col="thr_mean_rel",
     yerr_col=None,

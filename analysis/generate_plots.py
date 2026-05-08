@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 
 from arg_parser import parse_args
-from overview_plotters import make_default_overview_plotters, PlotVariant, Y_THR_MEAN, Y_THR_MEAN_REL
+from overview_plotters import make_default_overview_plotters, PlotVariant, Y_THR_MEAN, Y_THR_MEAN_REL, Y_MEM
 
 
 def add_relative_metric(
@@ -66,7 +66,7 @@ def generate_plots(analysis_path: Path):
     descending = False
     df = pd.read_csv(analysis_path / "csv" / "summary.csv")
     df = decorate_df(df, x_variant, descending)
-    plotters = make_default_overview_plotters(PlotVariant.NR_EVENTS, Y_THR_MEAN, descending)
+    plotters = make_default_overview_plotters(PlotVariant.PERC_OVERLAP, Y_MEM, descending)
     for plotter in plotters:
         plotter(df, analysis_path)
 
