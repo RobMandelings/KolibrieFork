@@ -43,23 +43,39 @@ def load_results(path: Path) -> dict:
     workload_json_results = load_workload_jsons(path)
     results = {}
 
-    for workload_name, strat_results in strats.items():
+    workload_names = sorted(
+        set(strats) | set(thr_results) | set(workload_json_results)
+    )
 
-        if not workload_name in workload_json_results:
-            print(f"WARN: Cannot find key {workload_name} in workload_json_results. Probably unfinished benchmark. Continuing with the rest")
+    for workload_name in workload_names:
+        print(f"Loading results work workload: {workload_name}")
+        missing_from = []
+
+        if workload_name not in strats:
+            missing_from.append("memory results")
+        if workload_name not in thr_results:
+            missing_from.append("throughput results")
+        if workload_name not in workload_json_results:
+            missing_from.append("workload json results")
+
+        if missing_from:
+            print(
+                f"WARN: workload '{workload_name}' missing from "
+                + ", ".join(missing_from)
+                + ". Skipping."
+            )
             continue
+
+        strat_results = strats[workload_name]
+        workload_thr_results = thr_results[workload_name]
 
         results[workload_name] = {
             "strategies": {},
-            "workload": workload_json_results[workload_name]
+            "workload": workload_json_results[workload_name],
         }
 
-        if workload_name not in strats or workload_name not in thr_results:
-            raise Exception(f"{workload_name}: not present in both throughput and mem results")
-
         for strat_name, mem_result in strat_results.items():
-            # pick the matching throughput result
-            thr_result = thr_results[workload_name][strat_name]
+            thr_result = workload_thr_results[strat_name]
 
             results[workload_name]["strategies"][strat_name] = {
                 "memory": mem_result,
