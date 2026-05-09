@@ -54,24 +54,30 @@ impl<I: Clone + 'static> WindowSnapshotStrategy<I> for SliceStrategy<I> {
         }
     }
 
-    fn window_closed<'a>(&mut self, window_iri: &str, cutoff_or_open: &CutoffOrOpen, report: bool) {
+    fn report_window<'a>(&mut self, window_iri: &str, open_time: Time) {
+        let slice = self.slice_by_ts(open_time);
+        self.consume_window(window_iri, SliceContainer(slice));
 
-        match cutoff_or_open {
-            CutoffOrOpen::Cutoff(cutoff) => {
-                if report {
-                    self.consume_window(window_iri, SliceContainer(&self.content));
-                }
-                // Remove all content before cutoff
-                self.content.retain(|e| after_open(cutoff, &e.ts));
-            }
-            CutoffOrOpen::Open(open) => {
+        // match cutoff_or_open {
+        //     CutoffOrOpen::Cutoff(cutoff) => {
+        //         if report {
+        //             self.consume_window(window_iri, SliceContainer(&self.content));
+        //         }
+        //         // Remove all content before cutoff
+        //         self.content.retain(|e| after_open(cutoff, &e.ts));
+        //     }
+        //     CutoffOrOpen::Open(open) => {
+        //
+        //
+        //         if report {
+        //
+        //         }
+        //     }
+        // };
+    }
 
-                let slice = self.slice_by_ts(*open);
-                if report {
-                    self.consume_window(window_iri, SliceContainer(slice));
-                }
-            }
-        };
+    fn drop_expired_events(&mut self, open_time: Time) {
+        self.content.retain(|e| after_open(&open_time, &e.ts));
     }
 
     fn add_event(&mut self, event: Event<I>) {

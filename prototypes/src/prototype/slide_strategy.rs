@@ -35,12 +35,13 @@ where
     /// Slides the given sliding window to match the timestamp
     /// Report: whether to report the window content at closing time
     /// (in the semantics 'right before the slide happens')
-    fn window_closed<'a>(
+    fn report_window<'a>(
         &mut self,
         window_iri: &str,
-        cutoff_or_open: &CutoffOrOpen,
-        report: bool,
+        open_time: Time,
     );
+
+    fn drop_expired_events(&mut self, threshold: Time);
 
     fn add_event(&mut self, event: Event<I>);
 

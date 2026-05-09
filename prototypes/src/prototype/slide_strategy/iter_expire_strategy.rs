@@ -1,10 +1,10 @@
-use std::cell::RefCell;
-use crate::{Event, IRI};
 use crate::prototype::event::Time;
 use crate::prototype::slide_strategy::{CutoffOrOpen, ItemsReport, WindowSnapshotStrategy};
+use crate::{Event, IRI};
+use log::debug;
+use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 use std::rc::Rc;
-use log::debug;
 
 // TODO use generics for better performance?
 #[derive(Clone)]
@@ -21,17 +21,19 @@ where
 pub type IterConsumer<I> = dyn for<'a> FnMut(IterExpireContainer<'a, I>);
 
 /// Continuous report: containing slice
-pub type IterReport<'a, I> =
-<IterExpireStrategy<I> as WindowSnapshotStrategy<I>>::ReportType<'a>;
+pub type IterReport<'a, I> = <IterExpireStrategy<I> as WindowSnapshotStrategy<I>>::ReportType<'a>;
 
 // for any <'a, I, It>, define the methods for the type IterExpireContainer<'a, I, It>
-impl<'a, I> IterExpireContainer<'a, I>
-{
-    pub fn new(last_ts: Time, batches: &'a BTreeMap<Time, Vec<I>>, open: Time) -> IterExpireContainer<'a, I> {
+impl<'a, I> IterExpireContainer<'a, I> {
+    pub fn new(
+        last_ts: Time,
+        batches: &'a BTreeMap<Time, Vec<I>>,
+        open: Time,
+    ) -> IterExpireContainer<'a, I> {
         IterExpireContainer {
             last_timestamp_changed: last_ts,
             batches,
-            open
+            open,
         }
     }
 }
@@ -90,7 +92,6 @@ pub struct IterExpireStrategy<I: Clone + 'static> {
 }
 
 impl<I: Clone> IterExpireStrategy<I> {
-
     fn get_last_batch_ts(&self) -> Time {
         self.batches.last_key_value().map(|(&t, _)| t).unwrap()
     }
@@ -99,7 +100,6 @@ impl<I: Clone> IterExpireStrategy<I> {
 // TODO what if you allow references to be passed instead then? So it contains references?
 // That would be weird
 impl<I: Clone + 'static> WindowSnapshotStrategy<I> for IterExpireStrategy<I> {
-
     type ReportType<'a> = IterExpireContainer<'a, I>;
 
     fn new() -> Self {
@@ -109,32 +109,15 @@ impl<I: Clone + 'static> WindowSnapshotStrategy<I> for IterExpireStrategy<I> {
         }
     }
 
-    fn window_closed<'a>(
-        &mut self,
-        window_iri: &str,
-        cutoff_or_open: &CutoffOrOpen,
-        report: bool,
-    ) {
-        match cutoff_or_open {
-            CutoffOrOpen::Cutoff(cutoff) => {
-                if report {
-                    let container = IterExpireContainer::new(self.get_last_batch_ts(), &self.batches, *cutoff);
-                    self.consume_window(window_iri, container);
-                }
+    fn report_window<'a>(&mut self, window_iri: &str, open_time: Time) {
+        let container =
+            IterExpireContainer::new(self.get_last_batch_ts(), &self.batches, open_time);
+        self.consume_window(window_iri, container);
+    }
 
-                // Remove everything before the cutoff index
-                let newer = self.batches.split_off(&cutoff);
-                self.batches = newer;
-
-                // debug!("All events before the cutoff timestamp {cutoff} are dropped. Remaining elements: {}", self.content.len());
-            }
-            CutoffOrOpen::Open(open) => {
-                if report {
-                    let container = IterExpireContainer::new(self.get_last_batch_ts(), &self.batches, *open);
-                    self.consume_window(window_iri, container);
-                }
-            }
-        };
+    fn drop_expired_events(&mut self, open_time: Time) {
+        let newer = self.batches.split_off(&open_time);
+        self.batches = newer;
     }
 
     fn add_event(&mut self, event: Event<I>) {
@@ -144,19 +127,23 @@ impl<I: Clone + 'static> WindowSnapshotStrategy<I> for IterExpireStrategy<I> {
             .push(event.payload);
     }
 
-    fn consume_fns(&self) -> &HashMap<String, Vec<RefCell<Box<dyn for<'a> FnMut(Self::ReportType<'a>)>>>> {
+    fn consume_fns(
+        &self,
+    ) -> &HashMap<String, Vec<RefCell<Box<dyn for<'a> FnMut(Self::ReportType<'a>)>>>> {
         &self.consume_fns
     }
 
-    fn consume_fns_mut(&mut self) -> &mut HashMap<String, Vec<RefCell<Box<dyn for<'a> FnMut(Self::ReportType<'a>)>>>> {
+    fn consume_fns_mut(
+        &mut self,
+    ) -> &mut HashMap<String, Vec<RefCell<Box<dyn for<'a> FnMut(Self::ReportType<'a>)>>>> {
         &mut self.consume_fns
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::prototype::slide_strategy::CutoffOrOpen::Open;
     use super::*;
+    use crate::prototype::slide_strategy::CutoffOrOpen::Open;
 
     fn consume_fn() -> Box<IterConsumer<String>> {
         Box::new(|_| {})
@@ -193,7 +180,6 @@ mod tests {
 
     #[test]
     fn expire_events_none_expired() {
-
         let strat = init_expire_empty_consume();
         let slice = get_slice(&strat, 5);
         let iter = slice.iter_items();
@@ -227,9 +213,16 @@ mod tests {
         let mut strat = init_expire();
         let consumer = Box::new(|report: IterReport<String>| {
             println!("{}", report.last_timestamp_changed);
-            println!("{}", report.iter_items().map(|s: &String| s.as_str()).collect::<Vec<&str>>().join(","));
+            println!(
+                "{}",
+                report
+                    .iter_items()
+                    .map(|s: &String| s.as_str())
+                    .collect::<Vec<&str>>()
+                    .join(",")
+            );
         });
         strat.add_consumer("0", consumer);
-        strat.window_closed("0", &Open(20), true);
+        strat.report_window("0", 20);
     }
 }

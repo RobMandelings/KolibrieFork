@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use crate::Event;
+use crate::prototype::event::Time;
 use crate::prototype::slide_strategy::{CutoffOrOpen, ItemsReport, WindowSnapshotStrategy};
 use crate::prototype::window_bounds::after_open;
 
@@ -41,26 +42,13 @@ impl<I: Clone + 'static> WindowSnapshotStrategy<I> for CloneStrategy<I> {
         }
     }
 
-    fn window_closed<'a>(&mut self, window_iri: &str, cutoff_or_open: &CutoffOrOpen, report: bool) {
+    fn report_window<'a>(&mut self, window_iri: &str, open_time: Time) {
+        let snapshot = self.content.iter().filter(|e| after_open(&open_time, &e.ts)).cloned().collect();
+        self.consume_window(window_iri, CloneContainer(snapshot));
+    }
 
-        let snapshot: Vec<Event<I>> = match cutoff_or_open {
-            CutoffOrOpen::Cutoff(cutoff) => {
-                // Clone all current item content
-                let snapshot = self.content.clone();
-
-                // Remove all content before the cutoff
-                self.content.retain(|e| after_open(cutoff, &e.ts));
-                snapshot
-            }
-            CutoffOrOpen::Open(open) => {
-                // Clone all current item content
-                self.content.iter().filter(|e| after_open(open, &e.ts)).cloned().collect()
-            }
-        };
-
-        if report {
-            self.consume_window(window_iri, CloneContainer(snapshot));
-        }
+    fn drop_expired_events(&mut self, open_time: Time) {
+        self.content.retain(|e| after_open(&open_time, &e.ts));
     }
 
     fn add_event(&mut self, event: Event<I>) {

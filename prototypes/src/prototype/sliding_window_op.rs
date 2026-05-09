@@ -7,7 +7,7 @@ mod test_nr_reports_generated;
 
 use std::collections::HashMap;
 use crate::prototype::event::Time;
-use crate::prototype::slide_strategy::WindowSnapshotStrategy;
+use crate::prototype::slide_strategy::{CutoffOrOpen, WindowSnapshotStrategy};
 use crate::prototype::sliding_window_bounds::{compute_earliest_open_time, SlidingWindowBounds};
 use crate::{Event, IRI};
 use crate::prototype::slide_strategy::CutoffOrOpen::{Cutoff, Open};
@@ -78,59 +78,16 @@ where
             self.app_time = event.ts;
         }
 
-        let to_process: Vec<IRI> = self
-            .sliding_windows
-            .iter()
-            .filter_map(|(iri, window)| {
-                if window.slides_at(event.ts) {
-                    Some(iri.clone())
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        for iri in to_process {
-            let open_before = {
-                let window = self
-                    .sliding_windows
-                    .get_mut(&iri)
-                    .expect("IRI disappeared from sliding_windows");
-
-                let open = window.active_bounds.open;
-                window.slide(event.ts);
-                open
-            };
-
-            let earliest_open_time = compute_earliest_open_time(self.sliding_windows.values());
-
-            if earliest_open_time > open_before {
-                self.strategy
-                    .window_closed(&iri, &Cutoff(earliest_open_time), tick_flag);
-            } else {
-                self.strategy.window_closed(&iri, &Open(open_before), tick_flag);
+        for (iri, window) in self.sliding_windows.iter_mut() {
+            let open = window.active_bounds.open;
+            if window.slides_at(event.ts) {
+                self.strategy.report_window(iri, open);
+                window.slide(event.ts)
             }
         }
 
-
-        // for (iri, window) in &mut self.sliding_windows {
-        //     if window.slides_at(event.ts) {
-        //         let open = window.active_bounds.open;
-        //         window.slide(event.ts);
-        //         let earliest_open_time = compute_earliest_open_time(self.sliding_windows.values());
-        //
-        //         if earliest_open_time > open {
-        //             // The earliest open time has changed. This means that the open time of the window that has closed
-        //             // Was the earliest before. All events before the current earliest open time can be removed.
-        //             self.strategy.window_closed(iri, &Cutoff(earliest_open_time), tick_flag);
-        //         } else {
-        //
-        //             // No events should be deleted from memory. The earliest open time has not shifted
-        //             self.strategy.window_closed(iri, &Open(open), tick_flag);
-        //         }
-        //     }
-        // }
-
+        let earliest_open_time = compute_earliest_open_time(self.sliding_windows.values());
+        self.strategy.drop_expired_events(earliest_open_time);
         self.strategy.add_event(event);
     }
 
