@@ -48,7 +48,6 @@ def load_results(path: Path) -> dict:
     )
 
     for workload_name in workload_names:
-        print(f"Loading results work workload: {workload_name}")
         missing_from = []
 
         if workload_name not in strats:
