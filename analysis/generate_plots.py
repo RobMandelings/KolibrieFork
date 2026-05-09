@@ -3,7 +3,8 @@ from pathlib import Path
 import pandas as pd
 
 from arg_parser import parse_args
-from overview_plotters import make_default_overview_plotters, PlotVariant, Y_THR_MEAN, Y_THR_MEAN_REL, Y_MEM
+from overview_plotters import make_default_overview_plotters, make_strategy_windows_overview_plotters
+import plot_configs
 
 
 def add_relative_metric(
@@ -42,7 +43,7 @@ def add_relative_metric(
     return df
 
 
-def decorate_df(df: pd.DataFrame, x_variant: PlotVariant, descending=False):
+def decorate_df(df: pd.DataFrame, x_variant: plot_configs.PlotVariant, descending=False):
     df = add_relative_metric(df,
                              strategy_col="strategy",
                              sort_key_col=x_variant.workload_index_col,
@@ -62,7 +63,7 @@ def decorate_df(df: pd.DataFrame, x_variant: PlotVariant, descending=False):
 
 
 def generate_plots(csv_path: Path):
-    x_variant = PlotVariant.PERC_OVERLAP
+    x_variant = plot_configs.PlotVariant.PERC_OVERLAP
     descending = False
     folder_path = csv_path.parent
 
@@ -70,9 +71,29 @@ def generate_plots(csv_path: Path):
     df = decorate_df(df, x_variant, descending)
 
     plotters = make_default_overview_plotters(
-        PlotVariant.PERC_OVERLAP,
-        Y_MEM,
+        plot_configs.PlotVariant.PERC_OVERLAP,
+        plot_configs.Y_THR_MEAN,
         descending,
+    )
+
+    for plotter in plotters:
+        plotter(df, folder_path)
+
+
+def generate_strategy_window_plots(csv_path: Path):
+    x_variant = plot_configs.PlotVariant.PERC_OVERLAP
+    descending = False
+    folder_path = csv_path.parent
+
+    df = pd.read_csv(csv_path)
+    df = decorate_df(df, x_variant, descending)
+
+    plotters = make_strategy_windows_overview_plotters(
+        x_variant=x_variant,
+        y_config=plot_configs.Y_THR_MEAN,
+        descending=descending,
+        strategies=["slice"],
+        windows=[1, 2, 5, 10],
     )
 
     for plotter in plotters:
@@ -83,7 +104,7 @@ def main() -> None:
     args = parse_args()
     analysis_path = Path(args.target).resolve()
     print(f"Using analysis path: {analysis_path}")
-    generate_plots(analysis_path)
+    generate_strategy_window_plots(analysis_path)
 
 
 if __name__ == "__main__":
