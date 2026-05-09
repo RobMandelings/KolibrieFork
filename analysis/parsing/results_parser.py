@@ -75,6 +75,12 @@ def load_results(path: Path) -> dict:
         }
 
         for strat_name, mem_result in strat_results.items():
+            if strat_name not in workload_thr_results:
+                print(
+                    f"WARN: workload '{workload_name}' missing strategy '{strat_name}' "
+                    f"in throughput results. Skipping strategy."
+                )
+                continue
             thr_result = workload_thr_results[strat_name]
 
             results[workload_name]["strategies"][strat_name] = {
