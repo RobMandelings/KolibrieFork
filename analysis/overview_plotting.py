@@ -148,16 +148,15 @@ def plot_overview_from_df(
             if row_df.empty:
                 continue
 
-            row = row_df.iloc[0]
+            for _, row in row_df.iterrows():
+                cur_x_pos.append(workload_index_to_x[workload_idx])
+                y_values.append(row[y_col])
 
-            cur_x_pos.append(workload_index_to_x[workload_idx])
-            y_values.append(row[y_col])
-
-            if yerr_col is not None and yerr_col in row_df.columns and pd.notna(row[yerr_col]):
-                y_errors.append(row[yerr_col])
-                has_any_error = True
-            else:
-                y_errors.append(None)
+                if yerr_col is not None and yerr_col in row_df.columns and pd.notna(row[yerr_col]):
+                    y_errors.append(row[yerr_col])
+                    has_any_error = True
+                else:
+                    y_errors.append(None)
 
         if not cur_x_pos:
             continue
