@@ -145,7 +145,7 @@ def generate_plots(csv_path: Path):
 
     plotters = make_default_overview_plotters(
         plot_configs.PlotVariant.PERC_OVERLAP,
-        plot_configs.Y_THR_MEAN,
+        plot_configs.Y_THR_MEDIAN,
         descending,
     )
 
@@ -177,7 +177,7 @@ def main() -> None:
     args = parse_args()
     analysis_path = Path(args.target).resolve()
     print(f"Using analysis path: {analysis_path}")
-    generate_strategy_window_plots(analysis_path)
+    generate_plots(analysis_path)
 
 
 if __name__ == "__main__":

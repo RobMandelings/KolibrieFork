@@ -29,7 +29,7 @@ pub fn make_copy_event(ts: Time) -> Event<u64> {
 
 impl<I> Event<I> {
 
-    pub fn new(ts: Time, payload: I) -> Event<I> {
+    pub fn new(ts: Time, payload: I) -> Event<I>  {
         Event {
             ts,
             payload

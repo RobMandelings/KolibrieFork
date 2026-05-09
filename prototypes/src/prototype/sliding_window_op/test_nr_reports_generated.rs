@@ -17,6 +17,14 @@ mod tests {
         })
     }
 
+    fn make_report_len_consumer(
+        sink: Rc<RefCell<Vec<usize>>>,
+    ) -> SliceConsumer<String> {
+        Box::new(move |events| {
+            sink.borrow_mut().push(events.0.len());
+        })
+    }
+
     // Factory for events with given timestamp and some dummy payload.
     fn mk_string_event(ts: Time) -> Event<String> {
         Event {
@@ -79,14 +87,14 @@ mod tests {
     }
 
     #[test]
-    fn window_size_5_slide_5_spread_5_reports_for_each_event() {
+    fn window_size_5_slide_5_spread_5_reports_with_single_event_each() {
         let w = wc_by_params(5, 5);
 
         let strat: SliceStrategy<String> = SliceStrategy::new();
         let mut op = SlidingWindowOperator::new_default_iri(vec![w.clone()], strat);
 
-        let report_count = Rc::new(RefCell::new(0usize));
-        let consumer = make_counting_consumer(Rc::clone(&report_count));
+        let report_sizes = Rc::new(RefCell::new(Vec::<usize>::new()));
+        let consumer = make_report_len_consumer(Rc::clone(&report_sizes));
         op.add_consumer(&w.window_iri, consumer);
 
         // Use spread=5 so timestamps = 6,11,16,21,26
@@ -97,10 +105,17 @@ mod tests {
             op.event_arrives(e);
         }
 
-        let count = *report_count.borrow();
+        let report_sizes = report_sizes.borrow();
+        assert_eq!(report_sizes.len(), 5, "expected 5 reports");
+
+        // First report should contain zero events
+        let expected = [0usize, 1, 1, 1, 1];
+
         assert_eq!(
-            count, 5,
-            "expected 5 reports"
+            report_sizes.as_slice(),
+            &expected,
+            "unexpected event counts per report, got {:?}",
+            *report_sizes
         );
     }
 }

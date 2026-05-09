@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use crate::debug_helper::push_tracking;
 use crate::Event;
 use crate::prototype::event::Time;
 use crate::prototype::slide_strategy::{CutoffOrOpen, ItemsReport, WindowSnapshotStrategy};
@@ -77,11 +78,13 @@ impl<I: Clone + 'static> WindowSnapshotStrategy<I> for SliceStrategy<I> {
     }
 
     fn drop_expired_events(&mut self, open_time: Time) {
+        // println!("Before expired: {}", self.content.capacity());
         self.content.retain(|e| after_open(&open_time, &e.ts));
+        // println!("After expired: {}", self.content.capacity());
     }
 
     fn add_event(&mut self, event: Event<I>) {
-        self.content.push(event);
+        push_tracking(&mut self.content, event, "Slice");
     }
 
     fn consume_fns(&self) -> &HashMap<String, Vec<RefCell<Box<dyn for<'a> FnMut(Self::ReportType<'a>)>>>> {
