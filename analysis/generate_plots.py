@@ -43,6 +43,79 @@ def add_relative_metric(
     return df
 
 
+def add_relative_metric_vs_windows_baseline(
+        df: pd.DataFrame,
+        *,
+        metric_col: str,
+        relative_col: str,
+        nr_windows_col: str = "nr_windows",
+        baseline_windows_value: int = 1,
+        group_cols: list[str] | None = None,
+) -> pd.DataFrame:
+    """
+    Add a relative metric column by comparing each row against the row with
+    nr_windows == baseline_windows_value for the same configuration.
+
+    The baseline match is done on group_cols, which should contain all columns
+    that define the same configuration apart from nr_windows.
+    """
+    df = df.copy()
+
+    if group_cols is None:
+        raise ValueError("group_cols must be provided")
+
+    baseline_df = (
+        df[df[nr_windows_col] == baseline_windows_value][group_cols + [metric_col]]
+            .copy()
+            .rename(columns={metric_col: f"baseline_{metric_col}"})
+    )
+
+    df = df.merge(
+        baseline_df,
+        on=group_cols,
+        how="left",
+    )
+
+    df[relative_col] = df[metric_col] / df[f"baseline_{metric_col}"]
+
+    return df
+
+
+def decorate_df_with_window_relative_metrics(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+
+    group_cols = [
+        "strategy",
+        "nr_events",
+        "stream_config.spread",
+        "stream_config.offset",
+        "bytes",
+        "window.size",
+        "window.slide",
+        "window.offset",
+    ]
+
+    df = add_relative_metric_vs_windows_baseline(
+        df,
+        metric_col="thr_mean",
+        relative_col="thr_mean_rel_window",
+        nr_windows_col="nr_windows",
+        baseline_windows_value=1,
+        group_cols=group_cols,
+    )
+
+    df = add_relative_metric_vs_windows_baseline(
+        df,
+        metric_col="thr_median",
+        relative_col="thr_median_rel_window",
+        nr_windows_col="nr_windows",
+        baseline_windows_value=1,
+        group_cols=group_cols,
+    )
+
+    return df
+
+
 def decorate_df(df: pd.DataFrame, x_variant: plot_configs.PlotVariant, descending=False):
     df = add_relative_metric(df,
                              strategy_col="strategy",
@@ -86,13 +159,13 @@ def generate_strategy_window_plots(csv_path: Path):
     folder_path = csv_path.parent
 
     df = pd.read_csv(csv_path)
-    df = decorate_df(df, x_variant, descending)
+    df = decorate_df_with_window_relative_metrics(df)
 
     plotters = make_strategy_windows_overview_plotters(
         x_variant=x_variant,
-        y_config=plot_configs.Y_THR_MEAN,
+        y_config=plot_configs.Y_THR_MEAN_REL_WINDOW,
         descending=descending,
-        strategies=["slice"],
+        strategies=["legacy"],
         windows=[1, 2, 5, 10],
     )
 

@@ -88,3 +88,21 @@ Y_THR_MEDIAN_REL = YConfig(
     subdir=Path("overviews") / "throughput" / "relative" / "median",
     filename="median_throughput",
 )
+
+Y_THR_MEAN_REL_WINDOW = YConfig(
+    y_col="thr_mean_rel_window",
+    yerr_col=None,
+    default_title="Mean throughput (relative to windows=1)",
+    ylabel="Factor",
+    subdir=Path("overviews") / "throughput" / "relative_window" / "mean",
+    filename="mean_throughput_rel_window",
+)
+
+Y_THR_MEDIAN_REL_WINDOW = YConfig(
+    y_col="thr_mean_rel_window",
+    yerr_col=None,
+    default_title="Median throughput (relative to windows=1)",
+    ylabel="Factor",
+    subdir=Path("overviews") / "throughput" / "relative_window" / "median",
+    filename="median_throughput_rel_window",
+)
