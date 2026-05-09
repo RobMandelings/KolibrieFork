@@ -163,9 +163,9 @@ def generate_strategy_window_plots(csv_path: Path):
 
     plotters = make_strategy_windows_overview_plotters(
         x_variant=x_variant,
-        y_config=plot_configs.Y_THR_MEAN_REL_WINDOW,
+        y_config=plot_configs.Y_MEM,
         descending=descending,
-        strategies=["legacy"],
+        strategies=["clone"],
         windows=[1, 2, 5, 10],
     )
 
