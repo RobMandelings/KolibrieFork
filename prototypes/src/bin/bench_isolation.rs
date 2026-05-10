@@ -91,7 +91,7 @@ fn write_flamegraph_for_strategy<F>(
 
 fn print_running_benchmark(strategy: &str, workload: &Workload) {
     println!(
-        "[BENCH] strategy={strategy} | windows={} | events={} | size={} | slide={} | spread={} | event_offset={} | bytes={}",
+        "[BENCH] strategy={strategy} | windows={} | events={} | size={} | slide={} | spread={} | event_offset={} | bytes={} | reserve={}",
         workload.nr_windows,
         workload.nr_events,
         workload.window.size,
@@ -99,6 +99,7 @@ fn print_running_benchmark(strategy: &str, workload: &Workload) {
         workload.stream_config.spread,
         workload.stream_config.offset,
         workload.bytes,
+        workload.reserve
     );
 }
 

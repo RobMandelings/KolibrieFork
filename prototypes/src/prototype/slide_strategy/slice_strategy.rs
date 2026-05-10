@@ -74,7 +74,7 @@ impl<I: Clone + 'static> WindowSnapshotStrategy<I> for SliceStrategy<I> {
     }
 
     fn add_event(&mut self, event: Event<I>) {
-        push_tracking(&mut self.content, event, "Slice");
+        self.content.push(event);
     }
 
     fn consume_fns(&self) -> &HashMap<String, Vec<RefCell<Box<dyn for<'a> FnMut(Self::ReportType<'a>)>>>> {
