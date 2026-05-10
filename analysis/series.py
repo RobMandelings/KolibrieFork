@@ -127,6 +127,7 @@ def workloads_to_dataframe(workloads: dict) -> pd.DataFrame:
         win_offset = window_cfg.get("offset")
 
         nr_windows = workload.get("nr_windows")
+        reserve = workload.get("reserve")
 
         for strat_name, strat_data in strategies.items():
             # ---- Hardcoded retrieval of result metrics ----
@@ -152,6 +153,7 @@ def workloads_to_dataframe(workloads: dict) -> pd.DataFrame:
                 "thr_median": thr_median,
                 "thr_std_dev": thr_std_dev,
                 "mem_total": mem_total,
+                "reserve": reserve
             }
 
             rows.append(row)
