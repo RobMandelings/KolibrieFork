@@ -13,7 +13,7 @@ def main() -> None:
     # Read the CSV once
     df = pd.read_csv(analysis_path)
     df = df[df["reserve"] == 0]
-    df["ns_per_event"] = df["sec_mean"] / df["nr_events"]
+    df["ns_per_event"] = df["ns_mean"] / df["nr_events"]
 
     df = df.sort_values("ns_per_event")
     # Print ns_per_event for each strategy
