@@ -10,17 +10,11 @@ pub fn build_q1_query(params: &WindowParams) -> String {
     REGISTER RSTREAM <http://out/stream> AS
     SELECT ?obId1 ?v1
     FROM NAMED WINDOW :w1 ON :AarhusTrafficData158505 [RANGE {size} STEP {slide}]
-    FROM NAMED WINDOW :w2 ON :AarhusTrafficData182955 [RANGE {size} STEP {slide}]
     WHERE {{
       WINDOW :w1 {{
         ?obId1 ssn:observedProperty ?p1 ;
                sao:hasValue ?v1 ;
                ssn:observedBy <AarhusTrafficData158505> .
-      }}
-      WINDOW :w2 {{
-        ?obId2 ssn:observedProperty ?p2 ;
-               sao:hasValue ?v2 ;
-               ssn:observedBy <AarhusTrafficData182955> .
       }}
     }}"#,
         size = params.size,

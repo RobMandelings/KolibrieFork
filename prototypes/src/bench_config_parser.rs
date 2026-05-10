@@ -1,5 +1,8 @@
 use serde::Deserialize;
-use std::{env, fs, path::{Path, PathBuf}};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+};
 
 #[derive(Debug, Deserialize)]
 struct BenchConfig {
@@ -10,6 +13,7 @@ struct BenchConfig {
 pub struct OutputConfig {
     pub dst: PathBuf,
     pub criterion_src: PathBuf,
+    pub streams: PathBuf,
 }
 
 fn repo_root() -> PathBuf {
@@ -37,7 +41,6 @@ fn load_bench_config() -> BenchConfig {
         .unwrap_or_else(|e| panic!("failed to parse TOML config {:?}: {e}", path))
 }
 
-
 pub fn resolve_output_config() -> OutputConfig {
     let output = load_bench_config().output.unwrap();
 
@@ -52,6 +55,13 @@ pub fn resolve_output_config() -> OutputConfig {
         panic!(
             "configured output.criterion_src must be an absolute path, got {:?}",
             output.criterion_src
+        );
+    }
+
+    if !output.streams.is_absolute() {
+        panic!(
+            "configured output.streams must be an absolute path, got {:?}",
+            output.streams
         );
     }
 

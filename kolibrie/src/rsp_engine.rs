@@ -30,10 +30,6 @@ use datalog::reasoning::Reasoner;
 #[cfg(not(test))]
 use log::{debug, error}; // Use log crate when building application
 use prototypes::prototype::event::Time;
-// use prototypes::prototype::slide_strategy::slice_expire_strategy::{SliceExpireStrategy, ContReport};
-use prototypes::prototype::slide_strategy::iter_expire_strategy::{
-    IterConsumer, IterExpireContainer, IterExpireStrategy, IterReport,
-};
 use prototypes::prototype::slide_strategy::ItemsReport;
 use prototypes::prototype::window_params::S2RWindowConfig;
 use prototypes::{

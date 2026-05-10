@@ -1,7 +1,10 @@
+use std::path::{Path, PathBuf};
 use crate::rsp_engine::csv_graph_iter2::build_stream_iter;
 use crate::rsp_engine::parking_mapper::traffic_mapper;
 use crate::rsp_engine::{OperationMode, QueryExecutionMode, RSPBuilder, RSPEngine, SimpleR2R};
 use prototypes::{SliceStrategy, WindowSnapshotStrategy};
+use prototypes::prototype::event::Time;
+use prototypes::workloads::Workload;
 use shared::triple::Triple;
 
 pub type CachedGraphs = Vec<(String, Vec<String>, u64)>;
@@ -37,17 +40,17 @@ where
         .expect("Failed to build RSTREAM engine")
 }
 
-pub fn preload_city_q1_two_window_graphs(limit_per_stream: usize) -> CachedGraphs {
+pub fn preload_city_q1(workload: &Workload, stream_path: &PathBuf) -> CachedGraphs {
     let mut streams = vec![
-        build_stream_iter("AarhusTrafficData158505", traffic_mapper)
-            .expect("failed to build first stream"),
-        build_stream_iter("AarhusTrafficData182955", traffic_mapper)
-            .expect("failed to build second stream"),
+        build_stream_iter(stream_path, traffic_mapper)
+            .expect("failed to build first stream")
     ];
 
     let mut cached: CachedGraphs = Vec::new();
 
-    for ts in 0..limit_per_stream as u64 {
+    for i in 0..workload.nr_events {
+        let ts = (i as Time) * workload.stream_config.spread + workload.stream_config.offset;
+
         for stream in &mut streams {
             let batch = stream
                 .iter
@@ -63,33 +66,7 @@ pub fn preload_city_q1_two_window_graphs(limit_per_stream: usize) -> CachedGraph
     cached
 }
 
-pub fn preload_city_q2_graphs(limit_per_stream: usize) -> CachedGraphs {
-    let mut streams = vec![
-        build_stream_iter("AarhusTrafficData158505", traffic_mapper)
-            .expect("failed to build first stream"),
-        build_stream_iter("AarhusTrafficData182955", traffic_mapper)
-            .expect("failed to build second stream"),
-    ];
-
-    let mut cached: CachedGraphs = Vec::new();
-
-    for ts in 0..limit_per_stream as u64 {
-        for stream in &mut streams {
-            let batch = stream
-                .iter
-                .next()
-                .expect("Expected non-exhausted stream");
-
-            let graphs: Vec<String> = batch.into_iter().collect();
-
-            cached.push((stream.stream_iri.clone(), graphs, ts));
-        }
-    }
-
-    cached
-}
-
-pub fn run_legacy_pipeline_bench(cached_graphs: &CachedGraphs, query: &str)
+pub fn run_full_pipeline_legacy(cached_graphs: &CachedGraphs, query: &str)
 {
     let mut engine: RSPEngine<Triple, Vec<(String, String)>, SliceStrategy<Triple>> = make_legacy_q1_engine(query);
     for (stream_iri, graphs, ts) in cached_graphs {
@@ -99,7 +76,7 @@ pub fn run_legacy_pipeline_bench(cached_graphs: &CachedGraphs, query: &str)
     }
 }
 
-pub fn run_full_pipeline_bench<S>(cached_graphs: &CachedGraphs, query: &str)
+pub fn run_full_pipeline<S>(cached_graphs: &CachedGraphs, query: &str)
 where
     S: WindowSnapshotStrategy<Triple> + 'static,
 {

@@ -86,12 +86,17 @@ pub struct BuiltStreamIter {
 }
 
 pub fn build_stream_iter(
-    stream_name: &str,
+    stream_path: &PathBuf,
     mapper_factory: MapperFactory,
 ) -> Result<BuiltStreamIter, csv::Error> {
-    let stream_iri = format!(":{}", stream_name.to_string());
-    let path = format!("streams/{name}.stream", name = stream_name);
-    let mapper: RecordMapper = mapper_factory(&stream_name);
-    let iter = CsvGraphIter::from_path(path, mapper)?;
+    let stream_name = stream_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .expect("stream path must have a valid UTF-8 file stem");
+
+    let stream_iri = format!(":{}", stream_name);
+    let mapper: RecordMapper = mapper_factory(&stream_iri);
+    let iter = CsvGraphIter::from_path(stream_path, mapper)?;
+
     Ok(BuiltStreamIter { stream_iri, iter })
 }

@@ -98,7 +98,7 @@ pub enum Strategy {
 }
 
 impl Strategy {
-    fn parse(s: &str) -> Option<Self> {
+    pub fn parse(s: &str) -> Option<Self> {
         match s {
             "clone" => Some(Self::Clone),
             "slice" => Some(Self::Slice),

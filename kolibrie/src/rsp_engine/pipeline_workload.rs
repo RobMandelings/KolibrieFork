@@ -11,14 +11,6 @@ pub struct PipelineWorkload {
     pub nr_events: usize,
     pub window: WindowParams,
 }
-
-pub fn write_workload_to_file(workload: &PipelineWorkload, path: &str) -> anyhow::Result<()> {
-    let json = serde_json::to_string_pretty(workload)?; // or to_string for compact [web:379][web:381]
-    let mut file = File::create(path)?;
-    file.write_all(json.as_bytes())?;
-    Ok(())
-}
-
 fn create_workload(nr_events: usize, size: Time, slide: Time) -> PipelineWorkload {
     let window_config = WindowParams {
         size,
