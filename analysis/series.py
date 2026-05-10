@@ -202,6 +202,8 @@ def workloads_samples_to_dataframe(workloads: dict) -> pd.DataFrame:
 
         nr_windows = workload.get("nr_windows")
 
+        reserve = workload.get("reserve")
+
         for strategy_name, strat_data in strategies.items():
             # Get the throughput samples for this (workload, strategy)
             samples = strat_data.get("throughput", {}).get("sample", [])
@@ -219,6 +221,7 @@ def workloads_samples_to_dataframe(workloads: dict) -> pd.DataFrame:
                     "window.offset": win_offset,
                     "nr_windows": nr_windows,
                     "thr_sample": sample,
+                    "reserve": reserve
                 })
 
     if not rows:

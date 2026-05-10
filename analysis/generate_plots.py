@@ -135,12 +135,10 @@ def decorate_df(df: pd.DataFrame, x_variant: plot_configs.PlotVariant, descendin
     return df
 
 
-def generate_plots(csv_path: Path):
+def generate_plots(df: pd.DataFrame, folder_path: Path):
     x_variant = plot_configs.PlotVariant.PERC_OVERLAP
     descending = True
-    folder_path = csv_path.parent
 
-    df = pd.read_csv(csv_path)
     df = decorate_df(df, x_variant, descending)
 
     plotters = make_default_overview_plotters(
@@ -153,12 +151,10 @@ def generate_plots(csv_path: Path):
         plotter(df, folder_path)
 
 
-def generate_strategy_window_plots(csv_path: Path):
+def generate_strategy_window_plots(df: pd.DataFrame, folder_path: Path):
     x_variant = plot_configs.PlotVariant.PERC_OVERLAP
     descending = False
-    folder_path = csv_path.parent
 
-    df = pd.read_csv(csv_path)
     df = decorate_df_with_window_relative_metrics(df)
 
     plotters = make_strategy_windows_overview_plotters(
@@ -177,7 +173,14 @@ def main() -> None:
     args = parse_args()
     analysis_path = Path(args.target).resolve()
     print(f"Using analysis path: {analysis_path}")
-    generate_plots(analysis_path)
+
+    # Read the CSV once
+    df = pd.read_csv(analysis_path)
+    folder_path = analysis_path.parent
+
+    # Call both plot generation functions
+    generate_plots(df, folder_path)
+    generate_strategy_window_plots(df, folder_path)
 
 
 if __name__ == "__main__":
