@@ -130,9 +130,13 @@ def add_sample_information(result: Dict[str, Dict[str, Dict[str, Any]]]) -> None
             if len(times) != len(iters) or not times:
                 raise Exception("Sample sizes do not match!")
 
+            # Total elements processed per sample
+            total_elems_per_sample = [nr_elements * it for it in iters]
+
+            # Throughput based on total elements per sample (elements per second)
             throughputs = [
-                nr_elements * it / t
-                for t, it in zip(times_sec, iters)
+                total_elems / t
+                for total_elems, t in zip(total_elems_per_sample, times_sec)
             ]
 
             thr["sample_thr_no_outlier"] = remove_outliers_tukey(throughputs)
