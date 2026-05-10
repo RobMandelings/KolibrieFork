@@ -127,13 +127,6 @@ def add_sample_information(result: Dict[str, Dict[str, Dict[str, Any]]]) -> None
             if len(times) != len(iters) or not times:
                 raise Exception("Sample sizes do not match!")
 
-            # Time per iteration (ns) for each sample
-            # times_per_iter = [
-            #     t / it for t, it in zip(times, iters)
-            # ]
-
-            # elements per second for each sample:
-            # E * iters[i] / (times[i] ns) * 1e9
             throughputs = [
                 nr_elements * it / t * 1e9
                 for t, it in zip(times, iters)
