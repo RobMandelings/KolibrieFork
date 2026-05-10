@@ -161,8 +161,8 @@ def workloads_to_dataframe(workloads: dict) -> pd.DataFrame:
                 "nr_windows": nr_windows,
                 "thr_mean": thr_mean,
                 "thr_median": thr_median,
-                "sec_mean": ns_mean,
-                "sec_median": ns_median,
+                "ns_mean": ns_mean,
+                "ns_median": ns_median,
                 "thr_std_dev": thr_std_dev,
                 "mem_total": mem_total,
                 "reserve": reserve
