@@ -137,9 +137,15 @@ pub(crate) enum EventSpreadSpec {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) enum NrEventsSpec {
+    Values(Vec<usize>),
+    Expr(String),
+}
+
+#[derive(Clone, Debug)]
 pub(crate) enum WorkloadDim {
     NrWindows(Vec<usize>),
-    NrEvents(Vec<usize>),
+    NrEvents(NrEventsSpec),
     EventSpread(EventSpreadSpec),
     EventOffset(Vec<usize>),
     Bytes(Vec<usize>),
@@ -218,7 +224,19 @@ fn parse_time_list(spec: &str) -> Result<Vec<Time>, String> {
 fn parse_workload_dim(flag: &str, spec: &str) -> Result<WorkloadDim, String> {
     match flag {
         "--nr-windows" => Ok(WorkloadDim::NrWindows(parse_number_list(spec)?)),
-        "--nr-events" => Ok(WorkloadDim::NrEvents(parse_number_list(spec)?)),
+        "--nr-events" => {
+            let trimmed = spec.trim();
+            // digits/commas → list; otherwise treat as expression
+            if trimmed.chars().all(|c| c.is_ascii_digit() || c == ',' || c.is_whitespace()) {
+                Ok(WorkloadDim::NrEvents(NrEventsSpec::Values(
+                    parse_number_list(trimmed)?,
+                )))
+            } else {
+                Ok(WorkloadDim::NrEvents(NrEventsSpec::Expr(
+                    trimmed.to_string(),
+                )))
+            }
+        }
         "--event-spread" => {
             if spec.trim() == "size" {
                 panic!("Not implemented yet");
@@ -238,88 +256,98 @@ fn parse_workload_dim(flag: &str, spec: &str) -> Result<WorkloadDim, String> {
     }
 }
 
+#[derive(Clone, Debug)]
+struct Partial {
+    nr_windows: Option<usize>,
+    nr_events: Option<usize>,
+    event_spread: Option<usize>,
+    event_spread_follows_slide: bool,
+    event_offset: Option<usize>,
+    bytes: Option<usize>,
+    size: Option<usize>,
+    slide: Option<usize>,
+    reserve: Option<usize>,
+}
+
+impl Partial {
+    fn new() -> Self {
+        Self {
+            nr_windows: None,
+            nr_events: None,
+            event_spread: None,
+            event_spread_follows_slide: false,
+            event_offset: None,
+            bytes: None,
+            size: None,
+            slide: None,
+            reserve: Some(0),
+        }
+    }
+
+    fn with_event_spread_follow_slide(&self) -> Self {
+        let mut next = self.clone();
+        next.event_spread_follows_slide = true;
+        next
+    }
+
+    fn with_nr_events(&self, value: usize) -> Self {
+        let mut next = self.clone();
+        next.nr_events = Some(value);
+        next
+    }
+
+    fn with_dim(&self, dim: &WorkloadDim, value: usize) -> Self {
+        let mut next = self.clone();
+        match dim {
+            WorkloadDim::NrWindows(_) => next.nr_windows = Some(value),
+            WorkloadDim::NrEvents(NrEventsSpec::Values(_)) => next.nr_events = Some(value),
+            WorkloadDim::NrEvents(NrEventsSpec::Expr(_)) => {
+                panic!("internal error: with_dim called for NrEventsExpr")
+            }
+            WorkloadDim::EventSpread(_) => next.event_spread = Some(value),
+            WorkloadDim::EventOffset(_) => next.event_offset = Some(value),
+            WorkloadDim::Bytes(_) => next.bytes = Some(value),
+            WorkloadDim::Size(_) => next.size = Some(value),
+            WorkloadDim::Slide(_) => next.slide = Some(value),
+            WorkloadDim::Reserve(_) => next.reserve = Some(value),
+        }
+        next
+    }
+
+    fn finalize(self) -> Result<Workload, String> {
+        let nr_windows = self.nr_windows.ok_or("missing workload dimension: nr_windows")?;
+        let nr_events  = self.nr_events.ok_or("missing workload dimension: nr_events")?;
+        let offset_u   = self.event_offset.ok_or("missing workload dimension: event_offset")?;
+        let bytes      = self.bytes.ok_or("missing workload dimension: bytes")?;
+        let size_u     = self.size.ok_or("missing workload dimension: size")?;
+        let slide_u    = self.slide.ok_or("missing workload dimension: slide")?;
+        let reserve    = self.reserve.unwrap_or(0);
+
+        let spread_u = if self.event_spread_follows_slide {
+            slide_u
+        } else {
+            self.event_spread.ok_or("missing workload dimension: event_spread")?
+        };
+
+        let spread: Time = spread_u as Time;
+        let offset: Time = offset_u as Time;
+        let size: Time   = size_u as Time;
+        let slide: Time  = slide_u as Time;
+
+        Ok(create_workload(
+            nr_windows,
+            nr_events,
+            spread,
+            offset,
+            bytes,
+            size,
+            slide,
+            reserve,
+        ))
+    }
+}
+
 fn build_workloads_from_dims(dims: &[WorkloadDim]) -> Result<Vec<Workload>, String> {
-    #[derive(Clone, Debug)]
-    struct Partial {
-        nr_windows: Option<usize>,
-        nr_events: Option<usize>,
-        event_spread: Option<usize>,
-        event_spread_follows_slide: bool,
-        event_offset: Option<usize>,
-        bytes: Option<usize>,
-        size: Option<usize>,
-        slide: Option<usize>,
-        reserve: Option<usize>,
-    }
-
-    impl Partial {
-        fn new() -> Self {
-            Self {
-                nr_windows: None,
-                nr_events: None,
-                event_spread: None,
-                event_spread_follows_slide: false,
-                event_offset: None,
-                bytes: None,
-                size: None,
-                slide: None,
-                reserve: Some(0),
-            }
-        }
-
-        fn with_event_spread_follow_slide(&self) -> Self {
-            let mut next = self.clone();
-            next.event_spread_follows_slide = true;
-            next
-        }
-
-        fn with_dim(&self, dim: &WorkloadDim, value: usize) -> Self {
-            let mut next = self.clone();
-            match dim {
-                WorkloadDim::NrWindows(_) => next.nr_windows = Some(value),
-                WorkloadDim::NrEvents(_) => next.nr_events = Some(value),
-                WorkloadDim::EventSpread(_) => next.event_spread = Some(value),
-                WorkloadDim::EventOffset(_) => next.event_offset = Some(value),
-                WorkloadDim::Bytes(_) => next.bytes = Some(value),
-                WorkloadDim::Size(_) => next.size = Some(value),
-                WorkloadDim::Slide(_) => next.slide = Some(value),
-                WorkloadDim::Reserve(_) => next.reserve = Some(value),
-            }
-            next
-        }
-
-        fn finalize(self) -> Result<Workload, String> {
-            let nr_windows = self.nr_windows.ok_or("missing workload dimension: nr_windows")?;
-            let nr_events  = self.nr_events.ok_or("missing workload dimension: nr_events")?;
-            let offset_u   = self.event_offset.ok_or("missing workload dimension: event_offset")?;
-            let bytes      = self.bytes.ok_or("missing workload dimension: bytes")?;
-            let size_u     = self.size.ok_or("missing workload dimension: size")?;
-            let slide_u    = self.slide.ok_or("missing workload dimension: slide")?;
-            let reserve    = self.reserve.unwrap_or(0);
-
-            let spread_u = if self.event_spread_follows_slide {
-                slide_u
-            } else {
-                self.event_spread.ok_or("missing workload dimension: event_spread")?
-            };
-
-            let spread: Time = spread_u as Time;
-            let offset: Time = offset_u as Time;
-            let size: Time   = size_u as Time;
-            let slide: Time  = slide_u as Time;
-
-            Ok(create_workload(
-                nr_windows,
-                nr_events,
-                spread,
-                offset,
-                bytes,
-                size,
-                slide,
-                reserve,
-            ))
-        }
-    }
 
     let mut seen = std::collections::HashSet::new();
     for dim in dims {
@@ -334,7 +362,6 @@ fn build_workloads_from_dims(dims: &[WorkloadDim]) -> Result<Vec<Workload>, Stri
     for dim in dims {
         match dim {
             WorkloadDim::NrWindows(values)
-            | WorkloadDim::NrEvents(values)
             | WorkloadDim::EventOffset(values)
             | WorkloadDim::Bytes(values)
             | WorkloadDim::Size(values)
@@ -345,6 +372,23 @@ fn build_workloads_from_dims(dims: &[WorkloadDim]) -> Result<Vec<Workload>, Stri
                     for &value in values {
                         next_partials.push(partial.with_dim(dim, value));
                     }
+                }
+                partials = next_partials;
+            }
+            WorkloadDim::NrEvents(NrEventsSpec::Values(values)) => {
+                let mut next_partials = Vec::with_capacity(partials.len() * values.len());
+                for partial in &partials {
+                    for &value in values {
+                        next_partials.push(partial.with_dim(dim, value));
+                    }
+                }
+                partials = next_partials;
+            }
+            WorkloadDim::NrEvents(NrEventsSpec::Expr(expr)) => {
+                let mut next_partials = Vec::with_capacity(partials.len());
+                for partial in partials {
+                    let value = eval_nr_events_expr(expr, &partial)?;
+                    next_partials.push(partial.with_nr_events(value));
                 }
                 partials = next_partials;
             }
@@ -484,4 +528,190 @@ pub fn should_run(only: &Option<Vec<Strategy>>, strategy: Strategy) -> bool {
         None => true,
         Some(list) => list.contains(&strategy),
     }
+}
+
+fn eval_nr_events_expr(expr: &str, partial: &Partial) -> Result<usize, String> {
+    struct Parser<'a> {
+        s: &'a [u8],
+        i: usize,
+    }
+
+    impl<'a> Parser<'a> {
+        fn new(input: &'a str) -> Self {
+            Self {
+                s: input.as_bytes(),
+                i: 0,
+            }
+        }
+
+        fn peek(&self) -> Option<u8> {
+            self.s.get(self.i).copied()
+        }
+
+        fn bump(&mut self) {
+            self.i += 1;
+        }
+
+        fn skip_ws(&mut self) {
+            while matches!(self.peek(), Some(b' ' | b'\t' | b'\n' | b'\r')) {
+                self.bump();
+            }
+        }
+
+        fn eat(&mut self, ch: u8) -> bool {
+            self.skip_ws();
+            if self.peek() == Some(ch) {
+                self.bump();
+                true
+            } else {
+                false
+            }
+        }
+
+        fn parse_expr(
+            &mut self,
+            partial: &Partial,
+        ) -> Result<i64, String> {
+            let mut lhs = self.parse_term(partial)?;
+            loop {
+                self.skip_ws();
+                match self.peek() {
+                    Some(b'+') => {
+                        self.bump();
+                        lhs += self.parse_term(partial)?;
+                    }
+                    Some(b'-') => {
+                        self.bump();
+                        lhs -= self.parse_term(partial)?;
+                    }
+                    _ => break,
+                }
+            }
+            Ok(lhs)
+        }
+
+        fn parse_term(
+            &mut self,
+            partial: &Partial,
+        ) -> Result<i64, String> {
+            let mut lhs = self.parse_factor(partial)?;
+            loop {
+                self.skip_ws();
+                match self.peek() {
+                    Some(b'*') => {
+                        self.bump();
+                        lhs *= self.parse_factor(partial)?;
+                    }
+                    Some(b'/') => {
+                        self.bump();
+                        let rhs = self.parse_factor(partial)?;
+                        if rhs == 0 {
+                            return Err("division by zero in nr_events expression".to_string());
+                        }
+                        lhs /= rhs;
+                    }
+                    _ => break,
+                }
+            }
+            Ok(lhs)
+        }
+
+        fn parse_factor(
+            &mut self,
+            partial: &Partial,
+        ) -> Result<i64, String> {
+            self.skip_ws();
+
+            if self.eat(b'(') {
+                let value = self.parse_expr(partial)?;
+                if !self.eat(b')') {
+                    return Err("missing closing ')' in nr_events expression".to_string());
+                }
+                return Ok(value);
+            }
+
+            if self.eat(b'-') {
+                return Ok(-self.parse_factor(partial)?);
+            }
+
+            match self.peek() {
+                Some(c) if c.is_ascii_digit() => self.parse_number(),
+                Some(c) if c.is_ascii_alphabetic() || c == b'_' => self.parse_ident(partial),
+                Some(c) => Err(format!(
+                    "unexpected character '{}' in nr_events expression",
+                    c as char
+                )),
+                None => Err("unexpected end of nr_events expression".to_string()),
+            }
+        }
+
+        fn parse_number(&mut self) -> Result<i64, String> {
+            self.skip_ws();
+            let start = self.i;
+            while matches!(self.peek(), Some(c) if c.is_ascii_digit()) {
+                self.bump();
+            }
+            let text = std::str::from_utf8(&self.s[start..self.i]).unwrap();
+            text.parse::<i64>()
+                .map_err(|_| format!("invalid integer literal `{text}` in nr_events expression"))
+        }
+
+        fn parse_ident(
+            &mut self,
+            partial: &Partial,
+        ) -> Result<i64, String> {
+            self.skip_ws();
+            let start = self.i;
+            while matches!(self.peek(), Some(c) if c.is_ascii_alphanumeric() || c == b'_') {
+                self.bump();
+            }
+
+            let ident = std::str::from_utf8(&self.s[start..self.i]).unwrap();
+
+            let value = match ident {
+                "slide" => partial
+                    .slide
+                    .ok_or_else(|| "nr_events expression uses `slide` before it is set".to_string())?,
+                "offset" | "event_offset" => partial
+                    .event_offset
+                    .ok_or_else(|| "nr_events expression uses `offset` before it is set".to_string())?,
+                "size" => partial
+                    .size
+                    .ok_or_else(|| "nr_events expression uses `size` before it is set".to_string())?,
+                "bytes" => partial
+                    .bytes
+                    .ok_or_else(|| "nr_events expression uses `bytes` before it is set".to_string())?,
+                "nr_windows" => partial
+                    .nr_windows
+                    .ok_or_else(|| "nr_events expression uses `nr_windows` before it is set".to_string())?,
+                "reserve" => partial
+                    .reserve
+                    .ok_or_else(|| "nr_events expression uses `reserve` before it is set".to_string())?,
+                other => {
+                    return Err(format!(
+                        "unknown variable `{other}` in nr_events expression"
+                    ))
+                }
+            };
+
+            Ok(value as i64)
+        }
+    }
+
+    let mut p = Parser::new(expr);
+    let value = p.parse_expr(partial)?;
+    p.skip_ws();
+
+    if p.i != p.s.len() {
+        return Err("trailing input in nr_events expression".to_string());
+    }
+
+    if value < 0 {
+        return Err(format!(
+            "nr_events expression evaluated to negative value {value}"
+        ));
+    }
+
+    usize::try_from(value)
+        .map_err(|_| format!("nr_events expression result out of range: {value}"))
 }

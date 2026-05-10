@@ -8,6 +8,7 @@ pub mod s2r;
 pub mod bench_common;
 pub mod bench_config_parser;
 mod debug_helper;
+mod nr_events_expr;
 
 pub type IRI = String;
 
