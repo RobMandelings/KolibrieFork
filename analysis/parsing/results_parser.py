@@ -138,6 +138,7 @@ def add_sample_information(result: Dict[str, Dict[str, Dict[str, Any]]]) -> None
                 total_elems / t
                 for total_elems, t in zip(total_elems_per_sample, times_sec)
             ]
+            print("Computing throughputs!")
 
             thr["sample_thr_no_outlier"] = remove_outliers_tukey(throughputs)
             thr["sample_thr"] = throughputs
