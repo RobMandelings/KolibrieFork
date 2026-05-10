@@ -1,11 +1,8 @@
 use crate::prototype::event::Time;
-use crate::prototype::helpers::wc_struct;
-use crate::prototype::window_params::S2RWindowConfig;
 use crate::{Event, WindowParams};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use serde_json;
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 
@@ -23,19 +20,21 @@ pub struct Workload {
     pub bytes: usize,
     pub window: WindowParams,
     pub nr_windows: usize,
+    pub reserve: usize,
 }
 
 impl Workload {
     pub fn get_short_name(&self) -> String {
         format!(
-            "{},{},{},{},{},{},{}",
+            "{},{},{},{},{},{},{},{}",
             self.nr_windows,
             self.window.size,
             self.window.slide,
             self.nr_events,
             self.stream_config.spread,
             self.stream_config.offset,
-            self.bytes
+            self.bytes,
+            self.reserve
         )
     }
 }
@@ -71,9 +70,11 @@ pub fn create_workload(
         offset: 0,
     };
 
+    let reserve = 0;
+
     Workload {
         name: format!(
-            "windows={nr_windows},size={size},slide={slide},events={nr_events},spread={spread},event_offset={event_ts_offset},bytes={bytes}"
+            "windows={nr_windows},size={size},slide={slide},events={nr_events},spread={spread},event_offset={event_ts_offset},bytes={bytes},reserve={reserve}"
         ),
         nr_events,
         stream_config: EventStreamConfig {
@@ -83,24 +84,8 @@ pub fn create_workload(
         bytes,
         window: window_config,
         nr_windows,
+        reserve,
     }
-}
-
-fn single_window_workloads() -> Vec<Workload> {
-    let mut workloads = Vec::new();
-
-    // event counts: 1_000, 10_000, 100_000
-    for nr_windows in [1] {
-        for &nr_events in &[1000, 10_000, 100_000] {
-            for size in [1, 2, 4, 8, 16, 32, 64, 128] {
-                for slide in [1, 5, 10, 20] {
-                    workloads.push(create_workload(nr_windows, nr_events, 1, 0, 0, size, slide));
-                }
-            }
-        }
-    }
-
-    workloads
 }
 
 pub fn test_workloads() -> IndexMap<String, Vec<Workload>> {
@@ -253,6 +238,7 @@ pub fn mk_workload(nr_events: usize, spread: Time, event_ts_offset: Time) -> Wor
             offset: 0,
         },
         nr_windows: 0,
+        reserve: 0,
     }
 }
 

@@ -43,14 +43,14 @@ fn legacy_window_reports_on_window_close() {
     add(&mut window, 7);
 
     // Event at ts = 11 closes (0,10] and should report [1,3,7].
-    add(&mut window, 10);
+    add(&mut window, 11);
 
     // Second window (10,20]: events at 13, 19.
-    // add(&mut window, 13);
-    // add(&mut window, 19);
+    add(&mut window, 13);
+    add(&mut window, 19);
 
     // Event at ts = 21 closes (10,20] and should report [11, 13, 19].
-    // add(&mut window, 21);
+    add(&mut window, 21);
 
     let reports = reported.borrow();
     assert_eq!(reports.len(), 2);

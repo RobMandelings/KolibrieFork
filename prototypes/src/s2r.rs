@@ -124,6 +124,21 @@ where
             origin: origin.to_string()
         }
     }
+
+    /// Not only creates the new HashSet but also reserves given number of elements
+    /// Such that this overhead will not be measured when measuring throughput and memory consumption
+    pub fn new_with_origin_and_reserve(origin: &str, reserve: usize) -> Self {
+        if reserve > 0 {
+            ContentContainer {
+                elements: HashSet::with_capacity(reserve),
+                last_timestamp_changed: 0,
+                origin: origin.to_string()
+            }
+        } else  {
+            Self::new_with_origin(origin)
+        }
+    }
+
     pub fn len(&self) -> usize {
         self.elements.len()
     }
@@ -171,7 +186,8 @@ where
     consumer: Option<Sender<ContentContainer<I>>>,
     // Make callbacks Send so they can be safely transferred to worker threads
     callback: Option<CallbackFn<I>>,
-    uri: String
+    uri: String,
+    reserve: usize,
 }
 
 impl<I> LegacyWindow<I>
@@ -189,8 +205,13 @@ where
             active_windows: HashMap::new(),
             tick,
             callback: None,
-            uri
+            uri,
+            reserve: 0
         }
+    }
+
+    pub fn set_reserve(&mut self, reserve: usize) {
+        self.reserve = reserve;
     }
 
     /// Adds an event to the window
@@ -268,8 +289,6 @@ where
             "Calculating the Windows to Open. First one opens at [{:?}] and closes at [{:?}]",
             o_i, c_sup
         );
-        // log.debug("Calculating the Windows to Open. First one opens at [" + o_i + "] and closes at [" + c_sup + "]");
-        //
         loop {
             // Only from that starting offset, windowing can begin
             if o_i >= self.t_0 as f64 {
@@ -283,7 +302,8 @@ where
                     close: (o_i + self.width as f64) as usize,
                 };
                 if let None = self.active_windows.get(&window) {
-                    self.active_windows.insert(window, ContentContainer::new_with_origin(&self.uri));
+                    let container = ContentContainer::new_with_origin_and_reserve(&self.uri, self.reserve);
+                    self.active_windows.insert(window, container);
                 }
             }
             o_i += self.slide as f64;
@@ -398,7 +418,8 @@ mod tests {
             tick: Tick::TimeDriven,
             consumer: None,
             callback: None,
-            uri: "test_window".to_string()
+            uri: "test_window".to_string(),
+            reserve: 0,
         };
         let receiver = window.register_channel();
         let consumer = Consumer::new();
@@ -431,7 +452,8 @@ mod tests {
             tick: Tick::TimeDriven,
             consumer: None,
             callback: None,
-            uri: "test_window".to_string()
+            uri: "test_window".to_string(),
+            reserve: 0,
         };
         let recieved_data = Arc::new(Mutex::new(Vec::new()));
         let data_clone = Arc::clone(&recieved_data);

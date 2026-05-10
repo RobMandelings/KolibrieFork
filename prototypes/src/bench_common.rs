@@ -127,7 +127,8 @@ pub struct Args {
     pub no_bench: Option<Strategy>,
     pub raw_command: String,
     pub workloads: Vec<Workload>,
-    pub sample_size: usize,
+    pub sample_size: Option<usize>,
+    pub reserve: Option<usize>,
 }
 
 #[derive(Clone, Debug)]
@@ -218,6 +219,9 @@ fn parse_workload_dim(flag: &str, spec: &str) -> Result<WorkloadDim, String> {
         "--nr-windows" => Ok(WorkloadDim::NrWindows(parse_number_list(spec)?)),
         "--nr-events" => Ok(WorkloadDim::NrEvents(parse_number_list(spec)?)),
         "--event-spread" => {
+            if spec.trim() == "size" {
+                panic!("Not implemented yet");
+            }
             if spec.trim() == "slide" {
                 Ok(WorkloadDim::EventSpread(EventSpreadSpec::FollowSlide))
             } else {
@@ -372,6 +376,7 @@ pub fn parse_args() -> Args {
     let mut in_workloads = false;
 
     let mut sample_size: Option<usize> = None;
+    let mut reserve: Option<usize> = None;
 
     while i < all_args.len() {
         match all_args[i].as_str() {
@@ -438,6 +443,17 @@ pub fn parse_args() -> Args {
 
                 sample_size = Some(parsed);
             }
+            "--reserve" => {
+                i += 1;
+                let value = all_args
+                    .get(i)
+                    .unwrap_or_else(|| panic!("expected a number after --reserve"));
+                let parsed: usize = value
+                    .parse()
+                    .unwrap_or_else(|_| panic!("invalid usize for --reserve: {value}"));
+
+                reserve = Some(parsed);
+            }
             other => {
                 panic!("unknown argument: {other}");
             }
@@ -463,7 +479,8 @@ pub fn parse_args() -> Args {
         no_bench,
         raw_command,
         workloads,
-        sample_size: sample_size.expect("No sample size was parsed; Provide sample size."),
+        sample_size,
+        reserve,
     }
 }
 

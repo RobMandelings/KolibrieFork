@@ -226,7 +226,10 @@ fn main() {
             }
         }
         None => {
-            let sample_size = args.sample_size;
+            let sample_size = args
+                .sample_size
+                .expect("No sample size was parsed; Provide sample size.");
+
             let mut c: Criterion = Criterion::default()
                 .sample_size(sample_size)
                 .with_profiler(PProfProfiler::new(
@@ -264,5 +267,4 @@ fn main() {
             c.final_summary();
         }
     }
-
 }
