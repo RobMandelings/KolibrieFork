@@ -109,7 +109,7 @@ impl Strategy {
         }
     }
 
-    fn as_str(&self) -> &'static str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             Self::Clone => "clone",
             Self::Slice => "slice",
@@ -124,6 +124,7 @@ impl Strategy {
 pub struct Args {
     pub folder_name: String,
     pub only: Option<Vec<Strategy>>,
+    pub no_bench: Option<Strategy>,
     pub raw_command: String,
     pub workloads: Vec<Workload>,
     pub sample_size: usize,
@@ -366,6 +367,7 @@ pub fn parse_args() -> Args {
 
     let mut folder_name = String::new();
     let mut only: Vec<Strategy> = Vec::new();
+    let mut no_bench: Option<Strategy> = None;
     let mut workload_dims: Vec<WorkloadDim> = Vec::new();
     let mut in_workloads = false;
 
@@ -389,6 +391,15 @@ pub fn parse_args() -> Args {
                     i += 1;
                 }
                 continue;
+            }
+            "--no-bench" => {
+                i += 1;
+                let value = all_args
+                    .get(i)
+                    .unwrap_or_else(|| panic!("expected a strategy after --no-bench"));
+                let strategy = Strategy::parse(value)
+                    .unwrap_or_else(|| panic!("unknown strategy for --no-bench: {}", value));
+                no_bench = Some(strategy);
             }
             "--workloads" => {
                 in_workloads = true;
@@ -439,12 +450,17 @@ pub fn parse_args() -> Args {
         panic!("no workloads provided; use --workloads followed by at least one workload dimension");
     }
 
+    if no_bench.is_some() && !only.is_empty() {
+        panic!("--only and --no-bench cannot be used together");
+    }
+
     let workloads = build_workloads_from_dims(&workload_dims)
         .unwrap_or_else(|e| panic!("could not build workloads: {e}"));
 
     Args {
         folder_name,
         only: if only.is_empty() { None } else { Some(only) },
+        no_bench,
         raw_command,
         workloads,
         sample_size: sample_size.expect("No sample size was parsed; Provide sample size."),

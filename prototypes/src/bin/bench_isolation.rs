@@ -102,6 +102,25 @@ fn print_running_benchmark(strategy: &str, workload: &Workload) {
     );
 }
 
+fn make_factory<I, E>(
+    strategy: Strategy,
+    workload: &Workload,
+    make_event: E,
+) -> RunnerFactory
+where
+    I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
+    E: Fn(Time) -> Event<I> + Copy + 'static,
+{
+    use Strategy::*;
+    match strategy {
+        Slice => create_slice_factory(workload, make_event),
+        Rc => create_rc_factory(workload, make_event),
+        Arc => create_arc_factory(workload, make_event),
+        Clone => create_clone_factory(workload, make_event),
+        Legacy => create_legacy_factory(workload, make_event),
+    }
+}
+
 fn run_bench_and_profile(
     group: &mut BenchmarkGroup<'_, WallTime>,
     workload: &Workload,
@@ -133,59 +152,35 @@ fn run_benches<I, E>(
             continue;
         }
 
-        let label = match strategy {
-            Slice => "slice",
-            Rc     => "rc",
-            Arc    => "arc",
-            Clone  => "clone",
-            Legacy => "legacy",
-        };
-
-        let factory = match strategy {
-            Slice => create_slice_factory(workload, make_event),
-            Rc     => create_rc_factory(workload, make_event),
-            Arc    => create_arc_factory(workload, make_event),
-            Clone  => create_clone_factory(workload, make_event),
-            Legacy => create_legacy_factory(workload, make_event),
-        };
-
+        let label = strategy.as_str();
+        let factory = make_factory(strategy, workload, make_event);
         run_bench_and_profile(group, workload, label, dst_group_path, factory);
     }
 }
 
-fn warmup_first_workload<I, E>(
+fn run_single_strategy<I, E>(
     workload: &Workload,
-    only: &Option<Vec<Strategy>>,
+    strategy: Strategy,
+    dst_group_path: &Path,
     make_event: E,
 )
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
     E: Fn(Time) -> Event<I> + Copy + 'static,
 {
-    use Strategy::*;
 
-    // Use the same fixed order; pick the first strategy that should run.
-    for strategy in [Slice, Rc, Arc, Clone, Legacy] {
-        if !should_run(only, strategy) {
-            continue;
-        }
+    fs::create_dir_all(dst_group_path)
+        .expect("failed to create workload output directory");
 
-        // Build the same factory as in run_benches.
-        let factory = match strategy {
-            Slice => create_slice_factory(workload, make_event),
-            Rc     => create_rc_factory(workload, make_event),
-            Arc    => create_arc_factory(workload, make_event),
-            Clone  => create_clone_factory(workload, make_event),
-            Legacy => create_legacy_factory(workload, make_event),
-        };
+    let label = strategy.as_str();
+    println!(
+        "Running strategy '{}' once for workload '{}'",
+        label, workload.name
+    );
 
-        // Warmup: run the runner 10 times, not measured by Criterion.
-        const WARMUP_ITERS: usize = 10;
-        for _ in 0..WARMUP_ITERS {
-            let runner = factory();
-            runner();
-        }
-    }
+    let factory = make_factory(strategy, workload, make_event);
+    let runner = factory();
+    runner();
 }
 
 fn main() {
@@ -200,6 +195,7 @@ fn main() {
 
     let args = parse_args();
     let only = args.only;
+    let no_bench = args.no_bench;
 
     let output_cfg = resolve_output_config();
     let dst_root = output_cfg.dst.join(&args.folder_name);
@@ -214,44 +210,59 @@ fn main() {
     fs::write(&command_file, format!("{}\n", args.raw_command))
         .expect("failed to write command.txt");
 
-    let mut c: Criterion = Criterion::default()
-        .sample_size(args.sample_size)
-        .with_profiler(PProfProfiler::new(
-            100, // sampling frequency (Hz)
-            Output::Flamegraph(None),
-        ))
-        .with_output_color(true);
+    match no_bench {
+        Some(strategy) => {
+            for workload in &args.workloads {
+                let dst_group_path = dst_root_path.join(&workload.name);
 
-    for workload in &args.workloads {
-            // One group per workload
+                match workload.bytes {
+                    0 => run_single_strategy(workload, strategy, &dst_group_path, make_copy_event),
+                    bytes => run_single_strategy(workload, strategy, &dst_group_path, move |ts| make_byte_event(ts, bytes)),
+                }
 
-            // use SHORT name for the criterion benchmark thing because for some reason it has a max filename length
-            let mut group = c.benchmark_group(&workload.get_short_name());
-            let dst_group_path = dst_root_path.join(&workload.name);
-            let criterion_dst_path = dst_group_path.join("throughput");
+                let workload_path = format!("{}/workload.json", dst_group_path.to_str().unwrap());
+                write_workload_to_file(workload, &workload_path)
+                    .expect(&format!("Could not write workload: {}", workload_path));
+            }
+        }
+        None => {
+            let sample_size = args.sample_size;
+            let mut c: Criterion = Criterion::default()
+                .sample_size(sample_size)
+                .with_profiler(PProfProfiler::new(
+                    100,
+                    Output::Flamegraph(None),
+                ))
+                .with_output_color(true);
 
-            // Not just the criterion source but appended with the workload name to copy that file exactly
-            let criterion_workload_src = criterion_src.join(&workload.get_short_name()); // Where to take the data from
+            for workload in &args.workloads {
+                let mut group = c.benchmark_group(&workload.get_short_name());
+                let dst_group_path = dst_root_path.join(&workload.name);
+                let criterion_dst_path = dst_group_path.join("throughput");
+                let criterion_workload_src = criterion_src.join(&workload.get_short_name());
 
-            match workload.bytes {
-                0 => run_benches(&mut group, workload, &only, &dst_group_path, make_copy_event),
-                bytes => run_benches(&mut group, workload, &only, &dst_group_path, move |ts| make_byte_event(ts, bytes)),
+                match workload.bytes {
+                    0 => run_benches(&mut group, workload, &only, &dst_group_path, make_copy_event),
+                    bytes => run_benches(&mut group, workload, &only, &dst_group_path, move |ts| make_byte_event(ts, bytes)),
+                }
+
+                group.finish();
+                copy_group_dir_with_catch(&criterion_workload_src, &criterion_dst_path);
+
+                let workload_path = format!("{}/workload.json", dst_group_path.to_str().unwrap());
+                write_workload_to_file(workload, &workload_path)
+                    .expect(&format!("Could not write workload: {}", workload_path));
+
+                println!(
+                    "Successfully copied criterion group '{}' from '{}' to '{}'",
+                    workload.name,
+                    criterion_workload_src.display(),
+                    criterion_dst_path.display(),
+                );
             }
 
-            group.finish();
-
-            copy_group_dir_with_catch(&criterion_workload_src, &criterion_dst_path);
-
-            let workload_path = format!("{}/workload.json", dst_group_path.to_str().unwrap());
-            write_workload_to_file(workload, &workload_path)
-                .expect(&format!("Could not write workload: {}", workload_path));
-            println!(
-                "Successfully copied criterion group '{}' from '{}' to '{}'",
-                workload.name,
-                criterion_workload_src.display(),
-                criterion_dst_path.display(),
-            );
+            c.final_summary();
+        }
     }
 
-    c.final_summary();
 }

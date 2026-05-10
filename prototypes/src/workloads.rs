@@ -51,7 +51,6 @@ pub fn create_events_for_workload<I, F>(workload: &Workload, mut event_factory: 
 where
     F: FnMut(Time) -> Event<I>,
 {
-    println!("Offset: {}", workload.stream_config.offset);
     (0..workload.nr_events as Time)
         .map(|i| event_factory(i * workload.stream_config.spread + workload.stream_config.offset))
         .collect()
