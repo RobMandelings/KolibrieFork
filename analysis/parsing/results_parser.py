@@ -121,32 +121,29 @@ def add_sample_information(result: Dict[str, Dict[str, Dict[str, Any]]]) -> None
             if nr_elements is None or sample is None:
                 raise Exception("nr elements and sample is not found")
 
-            times: Sequence[float] = sample.get("times", [])
+            times_ns: Sequence[float] = sample.get("times", [])
             iters: Sequence[float] = sample.get("iters", [])
 
-            # From nanoseconds to seconds
-            times_sec = [t * 1e-9 for t in times]
-
             # Average time per iteration for each sample
-            times_sec_per_iter = [
+            times_ns_per_iter = [
                 t / it
-                for t, it in zip(times_sec, iters)
+                for t, it in zip(times_ns, iters)
             ]
 
-            if len(times) != len(iters) or not times:
+            if len(times_ns) != len(iters) or not times_ns:
                 raise Exception("Sample sizes do not match!")
 
             # Throughput (elements per second) using time per iter and nr_elements
             throughputs = [
-                nr_elements / t_iter
-                for t_iter in times_sec_per_iter
+                nr_elements / (t_ns_iter * 1e-9)
+                for t_ns_iter in times_ns_per_iter
             ]
 
             print("Computing throughputs!")
 
             thr["sample_thr_no_outlier"] = remove_outliers_tukey(throughputs)
             thr["sample_thr"] = throughputs
-            thr["sample_sec"] = times_sec_per_iter
+            thr["sample_ns"] = times_ns_per_iter
 
 
 def standard_error(values):
