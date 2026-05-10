@@ -55,26 +55,16 @@ impl<I: Clone + 'static> WindowSnapshotStrategy<I> for SliceStrategy<I> {
         }
     }
 
+    fn with_capacity(reserve: usize) -> Self {
+        Self {
+            consume_fns: HashMap::new(),
+            content: Vec::with_capacity(reserve)
+        }
+    }
+
     fn report_window<'a>(&mut self, window_iri: &str, open_time: Time) {
         let slice = self.slice_by_ts(open_time);
         self.consume_window(window_iri, SliceContainer(slice));
-
-        // match cutoff_or_open {
-        //     CutoffOrOpen::Cutoff(cutoff) => {
-        //         if report {
-        //             self.consume_window(window_iri, SliceContainer(&self.content));
-        //         }
-        //         // Remove all content before cutoff
-        //         self.content.retain(|e| after_open(cutoff, &e.ts));
-        //     }
-        //     CutoffOrOpen::Open(open) => {
-        //
-        //
-        //         if report {
-        //
-        //         }
-        //     }
-        // };
     }
 
     fn drop_expired_events(&mut self, open_time: Time) {

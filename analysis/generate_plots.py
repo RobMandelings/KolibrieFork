@@ -137,7 +137,7 @@ def decorate_df(df: pd.DataFrame, x_variant: plot_configs.PlotVariant, descendin
 
 def generate_plots(csv_path: Path):
     x_variant = plot_configs.PlotVariant.PERC_OVERLAP
-    descending = False
+    descending = True
     folder_path = csv_path.parent
 
     df = pd.read_csv(csv_path)
@@ -145,7 +145,7 @@ def generate_plots(csv_path: Path):
 
     plotters = make_default_overview_plotters(
         plot_configs.PlotVariant.PERC_OVERLAP,
-        plot_configs.Y_THR_MEDIAN,
+        plot_configs.Y_THR_MEAN_REL,
         descending,
     )
 

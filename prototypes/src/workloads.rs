@@ -63,14 +63,13 @@ pub fn create_workload(
     bytes: usize,
     size: Time,
     slide: Time,
+    reserve: usize,
 ) -> Workload {
     let window_config = WindowParams {
         size,
         slide,
         offset: 0,
     };
-
-    let reserve = 0;
 
     Workload {
         name: format!(
@@ -86,141 +85,6 @@ pub fn create_workload(
         nr_windows,
         reserve,
     }
-}
-
-pub fn test_workloads() -> IndexMap<String, Vec<Workload>> {
-    let mut map: IndexMap<String, Vec<Workload>> = IndexMap::new();
-
-    let mut warmup = Vec::new();
-    for i in 0..10 {
-        warmup.push(create_workload(1, 10_000, 1, 100 + 1, 0, 50, 1));
-    }
-    map.insert("warmup".to_string(), warmup);
-
-    let nr_events = 10_000;
-    for bytes in [0, 32] {
-        for nr_windows in [1, 2, 5, 10] {
-            {
-                let size = 50;
-                let mut spread_slide = Vec::new();
-                let mut spread_constant = Vec::new();
-                for slide in 1..=55 {
-                    spread_slide.push(create_workload(
-                        nr_windows,
-                        nr_events,
-                        slide,
-                        size + 1,
-                        bytes,
-                        size,
-                        slide,
-                    ));
-
-                    // Spread is kept constant
-                    spread_constant.push(create_workload(
-                        nr_windows,
-                        nr_events,
-                        1,
-                        size + 1,
-                        bytes,
-                        size,
-                        slide,
-                    ))
-                }
-                map.insert(
-                    format!("windows_{nr_windows}_bytes_{bytes}_size_{size}_spread_slide"),
-                    spread_slide,
-                );
-                map.insert(
-                    format!("windows_{nr_windows}_bytes_{bytes}_size{size}_spread_constant"),
-                    spread_constant,
-                );
-            }
-
-            {
-                for slide in [1, 10, 50] {
-                    let mut size_change = Vec::new();
-                    for size in 1..=50 {
-                        size_change.push(create_workload(
-                            nr_windows,
-                            nr_events,
-                            1,
-                            size + 1,
-                            bytes,
-                            size,
-                            slide,
-                        ))
-                    }
-                    map.insert(
-                        format!("windows_{nr_windows}_bytes_{bytes}_slide_{slide}"),
-                        size_change,
-                    );
-                }
-            }
-        }
-    }
-    map
-}
-
-pub fn vary_size() -> Vec<Workload> {
-    let mut workloads = Vec::new();
-
-    for bytes in [0, 32] {
-        for size in [1, 2, 4, 8, 16, 32, 64, 128] {
-            workloads.push(create_workload(1, 50_000, 1, 0, bytes, size, 1))
-        }
-    }
-
-    workloads
-}
-
-pub fn vary_slide() -> Vec<Workload> {
-    let mut workloads = Vec::new();
-
-    for bytes in [0] {
-        for slide in [1, 2, 4, 8, 16, 32, 64] {
-            workloads.push(create_workload(1, 50_000, 1, 0, bytes, 64, slide))
-        }
-    }
-
-    workloads
-}
-
-pub fn test_workload() -> IndexMap<String, Vec<Workload>> {
-    let mut workloads = Vec::new();
-
-    let size = 64;
-    for slide in [1, 49] {
-        for extra_events in 1..50 {
-            workloads.push(create_workload(
-                1,
-                10_000 + extra_events,
-                slide,
-                size + 1,
-                0,
-                size,
-                slide,
-            ))
-        }
-    }
-
-    let mut map = IndexMap::new();
-    map.insert("setup".to_string(), workloads);
-    map
-}
-
-pub fn my_workloads() -> IndexMap<String, Vec<Workload>> {
-    let mut map = IndexMap::new();
-    let mut vec = Vec::new();
-
-    for i in 0..10 {
-        vec.push(create_workload(1, 50_000, 1, 100 + 1, 0, 100, 1));
-    }
-    map.insert("same".to_string(), vec);
-    map
-}
-
-pub fn default_workloads() -> IndexMap<String, Vec<Workload>> {
-    test_workload()
 }
 
 pub fn mk_workload(nr_events: usize, spread: Time, event_ts_offset: Time) -> Workload {

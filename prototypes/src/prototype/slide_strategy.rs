@@ -32,6 +32,8 @@ where
 
     fn new() -> Self;
 
+    fn with_capacity(reserve: usize) -> Self;
+
     /// Slides the given sliding window to match the timestamp
     /// Report: whether to report the window content at closing time
     /// (in the semantics 'right before the slide happens')

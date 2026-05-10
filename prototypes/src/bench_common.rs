@@ -128,7 +128,6 @@ pub struct Args {
     pub raw_command: String,
     pub workloads: Vec<Workload>,
     pub sample_size: Option<usize>,
-    pub reserve: Option<usize>,
 }
 
 #[derive(Clone, Debug)]
@@ -146,6 +145,7 @@ pub(crate) enum WorkloadDim {
     Bytes(Vec<usize>),
     Size(Vec<usize>),
     Slide(Vec<usize>),
+    Reserve(Vec<usize>),
 }
 
 impl WorkloadDim {
@@ -158,6 +158,7 @@ impl WorkloadDim {
             WorkloadDim::Bytes(_) => "bytes",
             WorkloadDim::Size(_) => "size",
             WorkloadDim::Slide(_) => "slide",
+            WorkloadDim::Reserve(_) => "reserve",
         }
     }
 }
@@ -232,6 +233,7 @@ fn parse_workload_dim(flag: &str, spec: &str) -> Result<WorkloadDim, String> {
         "--bytes" => Ok(WorkloadDim::Bytes(parse_number_list(spec)?)),
         "--size" => Ok(WorkloadDim::Size(parse_number_list(spec)?)),
         "--slide" => Ok(WorkloadDim::Slide(parse_number_list(spec)?)),
+        "--reserve" => Ok(WorkloadDim::Reserve(parse_number_list(spec)?)),
         _ => Err(format!("unknown workload dimension flag: {flag}")),
     }
 }
@@ -247,6 +249,7 @@ fn build_workloads_from_dims(dims: &[WorkloadDim]) -> Result<Vec<Workload>, Stri
         bytes: Option<usize>,
         size: Option<usize>,
         slide: Option<usize>,
+        reserve: Option<usize>,
     }
 
     impl Partial {
@@ -260,6 +263,7 @@ fn build_workloads_from_dims(dims: &[WorkloadDim]) -> Result<Vec<Workload>, Stri
                 bytes: None,
                 size: None,
                 slide: None,
+                reserve: Some(0),
             }
         }
 
@@ -268,7 +272,6 @@ fn build_workloads_from_dims(dims: &[WorkloadDim]) -> Result<Vec<Workload>, Stri
             next.event_spread_follows_slide = true;
             next
         }
-
 
         fn with_dim(&self, dim: &WorkloadDim, value: usize) -> Self {
             let mut next = self.clone();
@@ -280,6 +283,7 @@ fn build_workloads_from_dims(dims: &[WorkloadDim]) -> Result<Vec<Workload>, Stri
                 WorkloadDim::Bytes(_) => next.bytes = Some(value),
                 WorkloadDim::Size(_) => next.size = Some(value),
                 WorkloadDim::Slide(_) => next.slide = Some(value),
+                WorkloadDim::Reserve(_) => next.reserve = Some(value),
             }
             next
         }
@@ -291,6 +295,7 @@ fn build_workloads_from_dims(dims: &[WorkloadDim]) -> Result<Vec<Workload>, Stri
             let bytes      = self.bytes.ok_or("missing workload dimension: bytes")?;
             let size_u     = self.size.ok_or("missing workload dimension: size")?;
             let slide_u    = self.slide.ok_or("missing workload dimension: slide")?;
+            let reserve    = self.reserve.unwrap_or(0);
 
             let spread_u = if self.event_spread_follows_slide {
                 slide_u
@@ -311,6 +316,7 @@ fn build_workloads_from_dims(dims: &[WorkloadDim]) -> Result<Vec<Workload>, Stri
                 bytes,
                 size,
                 slide,
+                reserve,
             ))
         }
     }
@@ -332,7 +338,8 @@ fn build_workloads_from_dims(dims: &[WorkloadDim]) -> Result<Vec<Workload>, Stri
             | WorkloadDim::EventOffset(values)
             | WorkloadDim::Bytes(values)
             | WorkloadDim::Size(values)
-            | WorkloadDim::Slide(values) => {
+            | WorkloadDim::Slide(values)
+            | WorkloadDim::Reserve(values) => {
                 let mut next_partials = Vec::with_capacity(partials.len() * values.len());
                 for partial in &partials {
                     for &value in values {
@@ -376,7 +383,6 @@ pub fn parse_args() -> Args {
     let mut in_workloads = false;
 
     let mut sample_size: Option<usize> = None;
-    let mut reserve: Option<usize> = None;
 
     while i < all_args.len() {
         match all_args[i].as_str() {
@@ -415,7 +421,8 @@ pub fn parse_args() -> Args {
             | "--event-offset"
             | "--bytes"
             | "--size"
-            | "--slide") => {
+            | "--slide"
+            | "--reserve") => {
                 if !in_workloads {
                     panic!("{flag} may only be used after --workloads");
                 }
@@ -443,17 +450,6 @@ pub fn parse_args() -> Args {
 
                 sample_size = Some(parsed);
             }
-            "--reserve" => {
-                i += 1;
-                let value = all_args
-                    .get(i)
-                    .unwrap_or_else(|| panic!("expected a number after --reserve"));
-                let parsed: usize = value
-                    .parse()
-                    .unwrap_or_else(|_| panic!("invalid usize for --reserve: {value}"));
-
-                reserve = Some(parsed);
-            }
             other => {
                 panic!("unknown argument: {other}");
             }
@@ -480,7 +476,6 @@ pub fn parse_args() -> Args {
         raw_command,
         workloads,
         sample_size,
-        reserve,
     }
 }
 

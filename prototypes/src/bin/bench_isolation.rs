@@ -7,7 +7,7 @@ use pprof::ProfilerGuardBuilder;
 use prototypes::bench_common::{copy_group_dir_with_catch, move_profile_file, parse_args, should_run, Strategy};
 use prototypes::bench_helpers::{create_clone_factory, create_legacy_factory, RunnerFactory};
 use prototypes::prototype::event::{make_byte_event, make_copy_event, Time};
-use prototypes::workloads::{default_workloads, write_workload_to_file, Workload};
+use prototypes::workloads::{write_workload_to_file, Workload};
 use prototypes::{run_mem_profile, create_arc_factory, create_slice_factory, create_rc_factory, Event};
 use std::fs::File;
 use std::path::{Path, PathBuf};

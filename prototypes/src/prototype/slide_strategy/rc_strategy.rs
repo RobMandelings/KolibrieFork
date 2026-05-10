@@ -43,6 +43,13 @@ impl<I: 'static> WindowSnapshotStrategy<I> for RcStrategy<I> {
         }
     }
 
+    fn with_capacity(reserve: usize) -> Self {
+        Self {
+            consume_fns: HashMap::new(),
+            content: Vec::with_capacity(reserve)
+        }
+    }
+
     fn report_window<'a>(&mut self, window_index: &str, open_time: Time) {
         let snapshot = self.content.iter().filter(|e| after_open(&open_time, &e.ts)).cloned().collect();
         self.consume_window(window_index, RcContainer(snapshot));

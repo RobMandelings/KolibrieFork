@@ -64,6 +64,7 @@ where
         );
 
         window.register_callback(consume.clone());
+        window.set_reserve(workload.reserve);
         windows.push(window);
     }
 
@@ -75,7 +76,7 @@ where
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
 {
     let consume = Box::new(|_events: SliceContainer<I>| {});
-    let strat = SliceStrategy::new();
+    let strat = SliceStrategy::with_capacity(workload.reserve);
 
     let window_configs = construct_window_configs(workload);
     let mut op = SlidingWindowOperator::new_default_iri(window_configs.clone(), strat);
@@ -93,7 +94,7 @@ where
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
 {
     let consume = Box::new(|_events: CloneContainer<I>| {});
-    let strat = CloneStrategy::new();
+    let strat = CloneStrategy::with_capacity(workload.reserve);
 
     let window_configs = construct_window_configs(workload);
     let mut op = SlidingWindowOperator::new_default_iri(window_configs.clone(), strat);
@@ -111,7 +112,7 @@ where
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
 {
     let consume = Box::new(|_events: ArcContainer<I>| {});
-    let strat = ArcStrategy::new();
+    let strat = ArcStrategy::with_capacity(workload.reserve);
 
     let window_configs = construct_window_configs(workload);
     let mut op = SlidingWindowOperator::new_default_iri(window_configs.clone(), strat);
@@ -129,7 +130,7 @@ where
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
 {
     let consume = Box::new(|_events: RcContainer<I>| {});
-    let strat = RcStrategy::new();
+    let strat = RcStrategy::with_capacity(workload.reserve);
 
     let window_configs = construct_window_configs(workload);
     let mut op = SlidingWindowOperator::new_default_iri(window_configs.clone(), strat);
