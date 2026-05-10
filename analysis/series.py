@@ -66,6 +66,11 @@ def slide_label(row: pd.Series) -> str:
     return f"{slide}"
 
 
+def size_label(row: pd.Series) -> str:
+    size = row.get("window.size")
+    return f"{size}"
+
+
 def workloads_to_dataframe(workloads: dict) -> pd.DataFrame:
     """
     Transform workloads dict into a flat DataFrame with one row per (workload, strategy).

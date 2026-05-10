@@ -5,7 +5,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Callable, Any
 
-from series import slide_label, perc_overlap_label
+from series import slide_label, perc_overlap_label, size_label
 
 
 class PlotVariant(Enum):
@@ -18,6 +18,11 @@ class PlotVariant(Enum):
         "Slide",
         slide_label,
         "window.slide",
+    )
+    SIZE = (
+        "Size",
+        size_label,
+        "window.size",
     )
     PERC_OVERLAP = (
         "% Overlap",

@@ -137,41 +137,11 @@ def decorate_df(df: pd.DataFrame, x_variant: plot_configs.PlotVariant, descendin
     return df
 
 
-def adjust_to_reports(df: pd.DataFrame):
-    # Per-strategy time per event (nanoseconds)
-    ns_per_event = {
-        "legacy": 196.05,
-        "slice": 2292.58,
-        "clone": 2309.59,
-        "rc": 7742.75,
-        "arc": 7828.95,
-    }
-
-    # Map per-row ns_per_event based on 'strategy'
-    df["ns_per_event"] = df["strategy"].map(ns_per_event)
-
-    # Total time spent on all events that did NOT trigger a report
-    # (your model: every event costs ns_per_event, and we subtract that out)
-    df["ns_total_report"] = df["ns_mean"] - df["ns_per_event"] * df["nr_events"]
-
-    # New mean/median time columns for "only reporting work"
-    df["ns_mean_report"] = df["ns_total_report"]
-    df["ns_median_report"] = df["ns_median"] - df["ns_per_event"] * df["nr_events"]
-
-    # Compute number of reports per row (you provide this function elsewhere)
-    df["nr_reports"] = 10
-
-    # Overwrite throughput as reports per second
-    df["thr_mean"] = df["nr_reports"] / (df["ns_mean_report"] * 1e-9)
-    df["thr_median"] = df["nr_reports"] / (df["ns_median_report"] * 1e-9)
-
-
 def generate_plots(df: pd.DataFrame, folder_path: Path):
     df["thr_mean"] = df["nr_events"] / (df["ns_mean"] * 1e-9)
     df["thr_median"] = df["nr_events"] / (df["ns_median"] * 1e-9)
-    adjust_to_reports(df)
 
-    x_variant = plot_configs.PlotVariant.SLIDE
+    x_variant = plot_configs.PlotVariant.SIZE
     descending = False
 
     df = decorate_df(df, x_variant, descending)
