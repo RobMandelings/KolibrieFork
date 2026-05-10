@@ -127,22 +127,26 @@ def add_sample_information(result: Dict[str, Dict[str, Dict[str, Any]]]) -> None
             # From nanoseconds to seconds
             times_sec = [t * 1e-9 for t in times]
 
+            # Average time per iteration for each sample
+            times_sec_per_iter = [
+                t / it
+                for t, it in zip(times_sec, iters)
+            ]
+
             if len(times) != len(iters) or not times:
                 raise Exception("Sample sizes do not match!")
 
-            # Total elements processed per sample
-            total_elems_per_sample = [nr_elements * it for it in iters]
-
-            # Throughput based on total elements per sample (elements per second)
+            # Throughput (elements per second) using time per iter and nr_elements
             throughputs = [
-                total_elems / t
-                for total_elems, t in zip(total_elems_per_sample, times_sec)
+                nr_elements / t_iter
+                for t_iter in times_sec_per_iter
             ]
+
             print("Computing throughputs!")
 
             thr["sample_thr_no_outlier"] = remove_outliers_tukey(throughputs)
             thr["sample_thr"] = throughputs
-            thr["sample_sec"] = times_sec
+            thr["sample_sec"] = times_sec_per_iter
 
 
 def standard_error(values):
