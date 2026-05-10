@@ -139,10 +139,9 @@ def add_sample_information(result: Dict[str, Dict[str, Dict[str, Any]]]) -> None
                 for t, it in zip(times, iters)
             ]
 
-            thr["sample_no_outlier"] = remove_outliers_tukey(throughputs)
-
-            # sample["times_per_iter"] = times_per_iter
-            thr["sample"] = throughputs
+            thr["sample_thr_no_outlier"] = remove_outliers_tukey(throughputs)
+            thr["sample_thr"] = throughputs
+            thr["sample_ns"] = times
 
 
 def standard_error(values):

@@ -27,15 +27,23 @@ def get_total_bytes_for_strat(strat_data):
 
 
 def get_thr_mean_from_strat(strat_data):
-    return statistics.mean((strat_data["throughput"]["sample"]))
+    return statistics.mean((strat_data["throughput"]["sample_thr"]))
 
 
 def get_thr_med_from_strat(strat_data):
-    return statistics.median((strat_data["throughput"]["sample"]))
+    return statistics.median((strat_data["throughput"]["sample_thr"]))
+
+
+def get_mean_ns_from_strat(strat_data):
+    return statistics.mean((strat_data["throughput"]["sample_ns"]))
+
+
+def get_med_ns_from_strat(strat_data):
+    return statistics.median((strat_data["throughput"]["sample_ns"]))
 
 
 def get_thr_std_dev_from_strat(strat_data):
-    sample = strat_data["throughput"]["sample"]
+    sample = strat_data["throughput"]["sample_thr"]
     return statistics.stdev(sample)
 
 
@@ -136,6 +144,8 @@ def workloads_to_dataframe(workloads: dict) -> pd.DataFrame:
             # Example placeholders – replace with your actual implementations.
             thr_mean = get_thr_mean_from_strat(strat_data)
             thr_median = get_thr_med_from_strat(strat_data)
+            ns_mean = get_mean_ns_from_strat(strat_data)
+            ns_median = get_med_ns_from_strat(strat_data)
             thr_std_dev = get_thr_std_dev_from_strat(strat_data)
             mem_total = get_total_bytes_for_strat(strat_data)
 
@@ -151,6 +161,8 @@ def workloads_to_dataframe(workloads: dict) -> pd.DataFrame:
                 "nr_windows": nr_windows,
                 "thr_mean": thr_mean,
                 "thr_median": thr_median,
+                "ns_mean": ns_mean,
+                "ns_median": ns_median,
                 "thr_std_dev": thr_std_dev,
                 "mem_total": mem_total,
                 "reserve": reserve

@@ -143,7 +143,7 @@ def generate_plots(df: pd.DataFrame, folder_path: Path):
 
     plotters = make_default_overview_plotters(
         plot_configs.PlotVariant.PERC_OVERLAP,
-        plot_configs.Y_THR_MEAN_REL,
+        plot_configs.Y_MEM,
         descending,
     )
 
@@ -176,6 +176,7 @@ def main() -> None:
 
     # Read the CSV once
     df = pd.read_csv(analysis_path)
+    df = df[df["reserve"] == 10000]
     folder_path = analysis_path.parent
 
     # Call both plot generation functions
