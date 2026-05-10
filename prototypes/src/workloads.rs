@@ -157,4 +157,13 @@ mod tests {
         let ts: Vec<Time> = events.iter().map(|e| e.ts).collect();
         assert_eq!(ts, vec![0, 2, 4]);
     }
+
+    #[test]
+    fn timestamps_test_offset_1_ends_at_10() {
+        let workload = mk_workload(10, 1, 1);
+        let events = create_events_for_workload(&workload, mk_event);
+
+        let ts: Vec<Time> = events.iter().map(|e| e.ts).collect();
+        assert_eq!(ts, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    }
 }

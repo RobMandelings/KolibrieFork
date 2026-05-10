@@ -5,7 +5,7 @@ use crate::debug_helper::push_tracking;
 use crate::Event;
 use crate::prototype::event::Time;
 use crate::prototype::slide_strategy::{CutoffOrOpen, ItemsReport, WindowSnapshotStrategy};
-use crate::prototype::window_bounds::after_open;
+use crate::prototype::window_bounds::{after_open, before_open};
 
 /// Concrete slide_strategy: expire old events, report them as owned Events.
 pub struct SliceStrategy<I: Clone> {
@@ -68,9 +68,17 @@ impl<I: Clone + 'static> WindowSnapshotStrategy<I> for SliceStrategy<I> {
     }
 
     fn drop_expired_events(&mut self, open_time: Time) {
-        // println!("Before expired: {}", self.content.capacity());
-        self.content.retain(|e| after_open(&open_time, &e.ts));
-        // println!("After expired: {}", self.content.capacity());
+        let mut cutoff = self.content.len();
+        for i in 0..self.content.len() {
+
+            // First time we encounter event after the open time, that is where we 'stop'
+            if after_open(&open_time, &self.content[i].ts) {
+                cutoff = i;
+                break; // Break because this does not work
+            }
+        }
+
+        self.content.drain(0..cutoff);
     }
 
     fn add_event(&mut self, event: Event<I>) {
@@ -96,14 +104,18 @@ mod tests {
     }
 
     #[test]
+
+    #[test]
     fn expire_events_none_expired() {
         let mut wc: SliceStrategy<String> = SliceStrategy::new();
 
         wc.content = vec![make_string_event(10), make_string_event(20), make_string_event(30)];
         wc.add_consumer("0", consume_fn());
         let slice = wc.slice_by_ts(5); // cutoff before all
-
         assert_eq!(slice.len(), 3);
+
+        wc.drop_expired_events(5);
+        assert_eq!(wc.content.len(), 3);
     }
 
     #[test]
@@ -115,6 +127,10 @@ mod tests {
 
         assert_eq!(slice.len(), 1);
         assert_eq!(slice[0].ts, 30);
+
+        wc.drop_expired_events(25);
+        assert_eq!(wc.content.len(), 1);
+        assert_eq!(wc.content[0].ts, 30);
     }
 
     #[test]
@@ -124,5 +140,8 @@ mod tests {
         wc.add_consumer("0", consume_fn());
         let slice = wc.slice_by_ts(100);
         assert_eq!(slice.len(), 0);
+
+        wc.drop_expired_events(100);
+        assert_eq!(wc.content.len(), 0);
     }
 }

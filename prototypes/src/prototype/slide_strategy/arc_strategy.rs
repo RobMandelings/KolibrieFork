@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use crate::Event;
 use crate::prototype::event::Time;
-use crate::prototype::slide_strategy::{CutoffOrOpen, ItemsReport, WindowSnapshotStrategy};
+use crate::prototype::slide_strategy::{ItemsReport, WindowSnapshotStrategy};
 use crate::prototype::window_bounds::after_open;
 
 /// Concrete slide_strategy: expire old events, report them as owned Events.
@@ -53,7 +53,17 @@ impl<I: 'static> WindowSnapshotStrategy<I> for ArcStrategy<I> {
     }
 
     fn drop_expired_events(&mut self, open_time: Time) {
-        self.content.retain(|e| after_open(&open_time, &e.ts));
+        let mut cutoff = self.content.len();
+        for i in 0..self.content.len() {
+
+            // First time we encounter event after the open time, that is where we 'stop'
+            if after_open(&open_time, &self.content[i].ts) {
+                cutoff = i;
+                break; // Break because this does not work
+            }
+        }
+
+        self.content.drain(0..cutoff);
     }
 
     fn add_event(&mut self, event: Event<I>) {
