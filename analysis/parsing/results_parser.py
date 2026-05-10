@@ -124,17 +124,20 @@ def add_sample_information(result: Dict[str, Dict[str, Dict[str, Any]]]) -> None
             times: Sequence[float] = sample.get("times", [])
             iters: Sequence[float] = sample.get("iters", [])
 
+            # From nanoseconds to seconds
+            times_sec = [t * 1e-9 for t in times]
+
             if len(times) != len(iters) or not times:
                 raise Exception("Sample sizes do not match!")
 
             throughputs = [
-                nr_elements * it / t * 1e9
-                for t, it in zip(times, iters)
+                nr_elements * it / t
+                for t, it in zip(times_sec, iters)
             ]
 
             thr["sample_thr_no_outlier"] = remove_outliers_tukey(throughputs)
             thr["sample_thr"] = throughputs
-            thr["sample_ns"] = times
+            thr["sample_sec"] = times_sec
 
 
 def standard_error(values):

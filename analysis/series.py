@@ -35,11 +35,11 @@ def get_thr_med_from_strat(strat_data):
 
 
 def get_mean_sec_from_strat(strat_data):
-    return statistics.mean((strat_data["throughput"]["sample_ns"])) * 1e-9
+    return statistics.mean((strat_data["throughput"]["sample_sec"]))
 
 
 def get_med_sec_from_strat(strat_data):
-    return statistics.median((strat_data["throughput"]["sample_ns"])) * 1e-9
+    return statistics.median((strat_data["throughput"]["sample_sec"]))
 
 
 def get_thr_std_dev_from_strat(strat_data):
