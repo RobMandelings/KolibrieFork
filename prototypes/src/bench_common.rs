@@ -227,7 +227,11 @@ fn parse_workload_dim(flag: &str, spec: &str) -> Result<WorkloadDim, String> {
         "--nr-events" => {
             let trimmed = spec.trim();
             // digits/commas → list; otherwise treat as expression
-            if trimmed.chars().all(|c| c.is_ascii_digit() || c == ',' || c.is_whitespace()) {
+            if trimmed.chars().all(|c| {
+                c.is_ascii_digit()
+                    || c.is_whitespace()
+                    || matches!(c, ',' | ';' | '.' | '=')
+            }) {
                 Ok(WorkloadDim::NrEvents(NrEventsSpec::Values(
                     parse_number_list(trimmed)?,
                 )))
