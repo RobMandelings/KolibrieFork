@@ -141,14 +141,14 @@ def generate_plots(df: pd.DataFrame, folder_path: Path):
     df["thr_mean"] = df["nr_events"] / (df["ns_mean"] * 1e-9)
     df["thr_median"] = df["nr_events"] / (df["ns_median"] * 1e-9)
 
-    x_variant = plot_configs.PlotVariant.SIZE
+    x_variant = plot_configs.PlotVariant.NR_WINDOWS
     descending = False
 
     df = decorate_df(df, x_variant, descending)
 
     plotters = make_default_overview_plotters(
         x_variant,
-        plot_configs.Y_THR_MEAN,
+        plot_configs.Y_MEM,
         descending,
     )
 

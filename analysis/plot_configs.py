@@ -14,6 +14,11 @@ class PlotVariant(Enum):
         lambda row: row.get("nr_events"),
         "nr_events",
     )
+    NR_WINDOWS = (
+        "Nr windows",
+        lambda row: row.get("nr_windows"),
+        "nr_windows",
+    )
     SLIDE = (
         "Slide",
         slide_label,
