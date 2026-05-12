@@ -143,6 +143,9 @@ where
     op
 }
 
+/// Parameter to configure whether the .scope() is called in the setup for the legacy window
+/// Might be fair to do so, but not sure yet.
+const INCLUDE_SCOPE_CALL_IN_SETUP: bool = true;
 
 pub type RunnerFactory = Box<dyn Fn() -> Box<dyn FnOnce()>>;
 
@@ -159,6 +162,12 @@ where
     Box::new(move || {
         let events = create_events_for_workload(&workload, &event_factory);
         let mut windows = build_legacy_windows(&workload);
+
+        if INCLUDE_SCOPE_CALL_IN_SETUP {
+            for w in &mut windows {
+                w.scope(&(events[0].ts as usize))
+            }
+        }
 
         Box::new(move || {
             run_legacy(&mut windows, events);

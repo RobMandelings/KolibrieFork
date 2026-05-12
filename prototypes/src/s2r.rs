@@ -277,7 +277,7 @@ where
     }
 
     /// (SECRET) Scope maps an application time value t to an interval over which q should be evaluated
-    fn scope(&mut self, event_time: &usize) {
+    pub fn scope(&mut self, event_time: &usize) {
         // long c_sup = (long) Math.ceil(((double) Math.abs(t_e - t0) / (double) slide)) * slide;
         let _temp = (*event_time as f64 - self.t_0 as f64).abs();
         let _temp = ((*event_time as f64 - self.t_0 as f64).abs() / (self.slide as f64)).ceil();
