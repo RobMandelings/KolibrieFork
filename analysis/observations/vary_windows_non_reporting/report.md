@@ -17,3 +17,5 @@ This one declines a bit more slowly. You can observe however that the standard d
 
 But that might also just be because when throughput is higher, variability gets much higher as well, and vice versa. So I could try to see how nr_windows = 1 with exact same configuration gives in variability in tersm of throughput here.
 ![](mean_throughput_slice.png)
+
+- Okay so even if we have that initial scope excluded and the plots might show low memory usage overall, legacy will still be less efficient here when you actually report because it will create new vectors on reporting to keep scope. Whereas the other strategies do not need to create new vectors.
