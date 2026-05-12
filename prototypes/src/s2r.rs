@@ -219,7 +219,7 @@ where
         let event_time = ts;
         self.scope(&event_time);
 
-        let test = self
+        let new_active_windows = self
             .active_windows
             .clone()
             .into_iter()
@@ -273,7 +273,7 @@ where
             };
         }
 
-        self.active_windows = test;
+        self.active_windows = new_active_windows;
     }
 
     /// (SECRET) Scope maps an application time value t to an interval over which q should be evaluated

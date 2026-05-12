@@ -148,7 +148,7 @@ def generate_plots(df: pd.DataFrame, folder_path: Path):
 
     plotters = make_default_overview_plotters(
         x_variant,
-        plot_configs.Y_MEM,
+        plot_configs.Y_THR_MEAN_REL,
         descending,
     )
 
