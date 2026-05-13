@@ -5,6 +5,7 @@ mod tests {
     use std::cell::RefCell;
     use std::rc::Rc;
     use crate::prototype::helpers::{wc_by_params};
+    use crate::prototype::slide_strategy::event_arrives::EventArrives;
     use crate::prototype::slide_strategy::slice_strategy::{SliceConsumer, SliceContainer};
     use crate::workloads::{create_events_for_workload, mk_workload};
 

@@ -4,6 +4,7 @@ use crate::prototype::slide_strategy::slice_strategy::SliceContainer;
 use crate::{make_string_event, SliceStrategy, SlidingWindowOperator, WindowSnapshotStrategy};
 use std::cell::RefCell;
 use std::rc::Rc;
+use crate::prototype::slide_strategy::event_arrives::EventArrives;
 
 fn make_consumer_for_window(
     reported: Rc<RefCell<Vec<Vec<Vec<Time>>>>>,

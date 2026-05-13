@@ -14,6 +14,7 @@ use crate::prototype::slide_strategy::CutoffOrOpen::{Cutoff, Open};
 use std::marker::PhantomData;
 use std::rc::Rc;
 use uuid::Uuid;
+use crate::prototype::slide_strategy::event_arrives::EventArrives;
 use crate::prototype::window_params::S2RWindowConfig;
 
 pub struct SlidingWindowOperator<I, S>
@@ -68,7 +69,21 @@ where
         self.event_arrives(Event::new(ts, item));
     }
 
-    pub fn event_arrives(&mut self, event: Event<I>) {
+
+
+    pub fn add_consumer(&mut self, window_iri: &str, consumer: Box<dyn for<'a> FnMut(S::ReportType<'a>)>) {
+        if !self.sliding_windows.contains_key(window_iri) {
+            panic!("Attempted to add consumer to non-existent window: {}", window_iri);
+        }
+
+        self.strategy.add_consumer(window_iri, consumer);
+    }
+}
+
+impl<I, S> EventArrives<I> for SlidingWindowOperator<I, S>
+where S: WindowSnapshotStrategy<I>
+{
+    fn event_arrives(&mut self, event: Event<I>) {
         assert!(event.ts >= self.app_time); // Timestamps increase monotonically
 
         let mut tick_flag = false;
@@ -89,13 +104,5 @@ where
         let earliest_open_time = compute_earliest_open_time(self.sliding_windows.values());
         self.strategy.drop_expired_events(earliest_open_time);
         self.strategy.add_event(event);
-    }
-
-    pub fn add_consumer(&mut self, window_iri: &str, consumer: Box<dyn for<'a> FnMut(S::ReportType<'a>)>) {
-        if !self.sliding_windows.contains_key(window_iri) {
-            panic!("Attempted to add consumer to non-existent window: {}", window_iri);
-        }
-
-        self.strategy.add_consumer(window_iri, consumer);
     }
 }

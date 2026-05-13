@@ -8,6 +8,7 @@ mod perf_tests {
     use crate::prototype::slide_strategy::WindowSnapshotStrategy;
     use crate::{make_string_event, CloneStrategy, SliceStrategy, RcStrategy, SlidingWindowOperator};
     use std::time::Instant;
+    use crate::prototype::slide_strategy::event_arrives::EventArrives;
 
     fn run_throughput_test<S>(name: &str, mut op: SlidingWindowOperator<String, S>)
     where

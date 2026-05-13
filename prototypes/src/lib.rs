@@ -25,11 +25,5 @@ pub use prototype::{
     window_params::WindowParams
 };
 
-pub use bench_helpers::{
-    create_arc_factory,
-    create_slice_factory,
-    create_rc_factory,
-};
-
 pub use profile_helper::run_mem_profile;
 pub use experiment_helpers::WINDOW_CONFIGS;

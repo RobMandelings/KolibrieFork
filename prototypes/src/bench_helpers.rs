@@ -12,6 +12,7 @@ use crate::{ArcStrategy, CloneStrategy, Event, SliceStrategy, RcStrategy
 use criterion::black_box;
 use std::fmt::Debug;
 use std::hash::Hash;
+use crate::prototype::slide_strategy::event_arrives::EventArrives;
 
 pub type Time = u64;
 
@@ -71,7 +72,7 @@ where
     windows
 }
 
-fn build_operator_slice<I>(workload: &Workload) -> SlidingWindowOperator<I, SliceStrategy<I>>
+pub fn build_operator_slice<I>(workload: &Workload) -> SlidingWindowOperator<I, SliceStrategy<I>>
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
 {
@@ -89,7 +90,7 @@ where
     op
 }
 
-fn build_operator_clone<I>(workload: &Workload) -> SlidingWindowOperator<I, CloneStrategy<I>>
+pub fn build_operator_clone<I>(workload: &Workload) -> SlidingWindowOperator<I, CloneStrategy<I>>
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
 {
@@ -107,7 +108,7 @@ where
     op
 }
 
-fn build_operator_arc<I>(workload: &Workload) -> SlidingWindowOperator<I, ArcStrategy<I>>
+pub fn build_operator_arc<I>(workload: &Workload) -> SlidingWindowOperator<I, ArcStrategy<I>>
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
 {
@@ -125,7 +126,7 @@ where
     op
 }
 
-fn build_operator_rc<I>(workload: &Workload) -> SlidingWindowOperator<I, RcStrategy<I>>
+pub fn build_operator_rc<I>(workload: &Workload) -> SlidingWindowOperator<I, RcStrategy<I>>
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
 {
@@ -175,83 +176,107 @@ where
     })
 }
 
-pub fn create_slice_factory<I, F>(
-    workload: &Workload,
-    event_factory: F,
-) -> RunnerFactory
-where
-    I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
-    F: Fn(Time) -> Event<I> + Clone + 'static,
-{
-    let workload = workload.clone();
-
-    Box::new(move || {
-        let events = create_events_for_workload(&workload, &event_factory);
-        let mut op = build_operator_slice(&workload);
-
-        Box::new(move || {
-            run_new(&mut op, events);
-        })
-    })
-}
-
 pub type EventFactory<I> = Box<dyn Fn(Time) -> Event<I>>;
 
-pub fn create_clone_factory<I, F>(
+/// For the NEW architecture
+pub fn create_factory_new<I, F, S, B>(
     workload: &Workload,
     event_factory: F,
+    build_operator: B,
 ) -> RunnerFactory
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
     F: Fn(Time) -> Event<I> + Clone + 'static,
+    S: WindowSnapshotStrategy<I> + 'static,
+    B: Fn(&Workload) -> SlidingWindowOperator<I, S> + Clone + 'static,
 {
     let workload = workload.clone();
 
     Box::new(move || {
         let events = create_events_for_workload(&workload, &event_factory);
-        let mut op = build_operator_clone(&workload);
+        let mut op = build_operator(&workload);
 
         Box::new(move || {
             run_new(&mut op, events);
         })
     })
 }
-
-pub fn create_arc_factory<I, F>(
-    workload: &Workload,
-    event_factory: F,
-) -> RunnerFactory
-where
-    I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
-    F: Fn(Time) -> Event<I> + Clone + 'static,
-{
-    let workload = workload.clone();
-
-    Box::new(move || {
-        let events = create_events_for_workload(&workload, &event_factory);
-        let mut op = build_operator_arc(&workload);
-
-        Box::new(move || {
-            run_new(&mut op, events);
-        })
-    })
-}
-
-pub fn create_rc_factory<I, F>(
-    workload: &Workload,
-    event_factory: F,
-) -> RunnerFactory
-where
-    I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
-    F: Fn(Time) -> Event<I> + Clone + 'static,
-{
-    let workload = workload.clone();
-
-    Box::new(move || {
-        let events = create_events_for_workload(&workload, &event_factory);
-        let mut op = build_operator_rc(&workload);
-        Box::new(move || {
-            run_new(&mut op, events);
-        })
-    })
-}
+//
+// pub fn create_slice_factory<I, F>(
+//     workload: &Workload,
+//     event_factory: F,
+// ) -> RunnerFactory
+// where
+//     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
+//     F: Fn(Time) -> Event<I> + Clone + 'static,
+// {
+//     let workload = workload.clone();
+//
+//     Box::new(move || {
+//         let events = create_events_for_workload(&workload, &event_factory);
+//         let mut op = build_operator_slice(&workload);
+//
+//         Box::new(move || {
+//             run_new(&mut op, events);
+//         })
+//     })
+// }
+//
+// pub fn create_clone_factory<I, F>(
+//     workload: &Workload,
+//     event_factory: F,
+// ) -> RunnerFactory
+// where
+//     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
+//     F: Fn(Time) -> Event<I> + Clone + 'static,
+// {
+//     let workload = workload.clone();
+//
+//     Box::new(move || {
+//         let events = create_events_for_workload(&workload, &event_factory);
+//         let mut op = build_operator_clone(&workload);
+//
+//         Box::new(move || {
+//             run_new(&mut op, events);
+//         })
+//     })
+// }
+//
+// pub fn create_arc_factory<I, F>(
+//     workload: &Workload,
+//     event_factory: F,
+// ) -> RunnerFactory
+// where
+//     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
+//     F: Fn(Time) -> Event<I> + Clone + 'static,
+// {
+//     let workload = workload.clone();
+//
+//     Box::new(move || {
+//         let events = create_events_for_workload(&workload, &event_factory);
+//         let mut op = build_operator_arc(&workload);
+//
+//         Box::new(move || {
+//             run_new(&mut op, events);
+//         })
+//     })
+// }
+//
+// pub fn create_rc_factory<I, F>(
+//     workload: &Workload,
+//     event_factory: F,
+// ) -> RunnerFactory
+// where
+//     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
+//     F: Fn(Time) -> Event<I> + Clone + 'static,
+// {
+//     let workload = workload.clone();
+//
+//     Box::new(move || {
+//         let events = create_events_for_workload(&workload, &event_factory);
+//         let mut op = build_operator_rc(&workload);
+//         Box::new(move || {
+//             run_new(&mut op, events);
+//         })
+//     })
+// }

@@ -3,6 +3,7 @@ use crate::prototype::helpers::{wc};
 use crate::prototype::slide_strategy::WindowSnapshotStrategy;
 use crate::prototype::sliding_window_bounds::compute_earliest_open_time;
 use crate::{make_string_event, CloneStrategy, Event, SliceStrategy, RcStrategy, SlidingWindowOperator, WindowParams};
+use crate::prototype::slide_strategy::event_arrives::EventArrives;
 
 /// Invariant here: events should be removed from content once all sliding window bounds' open times
 /// are higher than the events' timestamp.
