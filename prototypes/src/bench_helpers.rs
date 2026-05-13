@@ -71,67 +71,87 @@ where
 
     windows
 }
+//
+// pub fn build_operator_slice<I>(workload: &Workload) -> SlidingWindowOperator<I, SliceStrategy<I>>
+// where
+//     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
+// {
+//     let consume = Box::new(|_events: SliceContainer<I>| {});
+//     let strat = SliceStrategy::with_capacity(workload.reserve);
+//
+//     let window_configs = construct_window_configs(workload);
+//     let mut op = SlidingWindowOperator::new_default_iri(window_configs.clone(), strat);
+//
+//     for window_config in &window_configs {
+//         let window_iri = &window_config.window_iri;
+//         op.add_consumer(window_iri, consume.clone());
+//     }
+//
+//     op
+// }
+//
+// pub fn build_operator_clone<I>(workload: &Workload) -> SlidingWindowOperator<I, CloneStrategy<I>>
+// where
+//     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
+// {
+//     let consume = Box::new(|_events: CloneContainer<I>| {});
+//     let strat = CloneStrategy::with_capacity(workload.reserve);
+//
+//     let window_configs = construct_window_configs(workload);
+//     let mut op = SlidingWindowOperator::new_default_iri(window_configs.clone(), strat);
+//
+//     for window_config in &window_configs {
+//         let window_iri = &window_config.window_iri;
+//         op.add_consumer(window_iri, consume.clone());
+//     }
+//
+//     op
+// }
+//
+// pub fn build_operator_arc<I>(workload: &Workload) -> SlidingWindowOperator<I, ArcStrategy<I>>
+// where
+//     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
+// {
+//     let consume = Box::new(|_events: ArcContainer<I>| {});
+//     let strat = ArcStrategy::with_capacity(workload.reserve);
+//
+//     let window_configs = construct_window_configs(workload);
+//     let mut op = SlidingWindowOperator::new_default_iri(window_configs.clone(), strat);
+//
+//     for window_config in &window_configs {
+//         let window_iri = &window_config.window_iri;
+//         op.add_consumer(window_iri, consume.clone());
+//     }
+//
+//     op
+// }
+//
+// pub fn build_operator_rc<I>(workload: &Workload) -> SlidingWindowOperator<I, RcStrategy<I>>
+// where
+//     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
+// {
+//     let consume = Box::new(|_events: RcContainer<I>| {});
+//     let strat = RcStrategy::with_capacity(workload.reserve);
+//
+//     let window_configs = construct_window_configs(workload);
+//     let mut op = SlidingWindowOperator::new_default_iri(window_configs.clone(), strat);
+//
+//     for window_config in &window_configs {
+//         let window_iri = &window_config.window_iri;
+//         op.add_consumer(window_iri, consume.clone());
+//     }
+//
+//     op
+// }
 
-pub fn build_operator_slice<I>(workload: &Workload) -> SlidingWindowOperator<I, SliceStrategy<I>>
+
+pub fn build_operator<I, S>(workload: &Workload) -> SlidingWindowOperator<I, S>
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
+    S: WindowSnapshotStrategy<I>,
 {
-    let consume = Box::new(|_events: SliceContainer<I>| {});
-    let strat = SliceStrategy::with_capacity(workload.reserve);
-
-    let window_configs = construct_window_configs(workload);
-    let mut op = SlidingWindowOperator::new_default_iri(window_configs.clone(), strat);
-
-    for window_config in &window_configs {
-        let window_iri = &window_config.window_iri;
-        op.add_consumer(window_iri, consume.clone());
-    }
-
-    op
-}
-
-pub fn build_operator_clone<I>(workload: &Workload) -> SlidingWindowOperator<I, CloneStrategy<I>>
-where
-    I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
-{
-    let consume = Box::new(|_events: CloneContainer<I>| {});
-    let strat = CloneStrategy::with_capacity(workload.reserve);
-
-    let window_configs = construct_window_configs(workload);
-    let mut op = SlidingWindowOperator::new_default_iri(window_configs.clone(), strat);
-
-    for window_config in &window_configs {
-        let window_iri = &window_config.window_iri;
-        op.add_consumer(window_iri, consume.clone());
-    }
-
-    op
-}
-
-pub fn build_operator_arc<I>(workload: &Workload) -> SlidingWindowOperator<I, ArcStrategy<I>>
-where
-    I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
-{
-    let consume = Box::new(|_events: ArcContainer<I>| {});
-    let strat = ArcStrategy::with_capacity(workload.reserve);
-
-    let window_configs = construct_window_configs(workload);
-    let mut op = SlidingWindowOperator::new_default_iri(window_configs.clone(), strat);
-
-    for window_config in &window_configs {
-        let window_iri = &window_config.window_iri;
-        op.add_consumer(window_iri, consume.clone());
-    }
-
-    op
-}
-
-pub fn build_operator_rc<I>(workload: &Workload) -> SlidingWindowOperator<I, RcStrategy<I>>
-where
-    I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
-{
-    let consume = Box::new(|_events: RcContainer<I>| {});
-    let strat = RcStrategy::with_capacity(workload.reserve);
+    let consume = Box::new(|_events: S::ReportType<'_>| {});
+    let strat = S::with_capacity(workload.reserve);
 
     let window_configs = construct_window_configs(workload);
     let mut op = SlidingWindowOperator::new_default_iri(window_configs.clone(), strat);

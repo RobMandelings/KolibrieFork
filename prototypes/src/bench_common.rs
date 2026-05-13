@@ -1,9 +1,13 @@
 use std::{env, fs, io};
-use std::fmt::format;
+use std::fmt::{format, Debug};
+use std::hash::Hash;
 use std::path::Path;
 use log::{debug, info};
+use crate::bench_helpers::{build_operator, create_factory_new, create_legacy_factory, RunnerFactory};
+use crate::{ArcStrategy, CloneStrategy, Event, RcStrategy, SliceStrategy};
 use crate::prototype::event::Time;
 use crate::workloads::{create_workload, Workload};
+use strum_macros::EnumIter;
 
 pub fn move_profile_file(strat: &str, group_path: &Path) {
     let dir = group_path.join("memory");
@@ -88,7 +92,7 @@ pub fn parse_folder_name() -> String {
     "".to_string()
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter)]
 pub enum Strategy {
     Clone,
     Slice,
@@ -98,6 +102,7 @@ pub enum Strategy {
 }
 
 impl Strategy {
+
     pub fn parse(s: &str) -> Option<Self> {
         match s {
             "clone" => Some(Self::Clone),
@@ -116,6 +121,24 @@ impl Strategy {
             Self::Rc => "rc",
             Self::Legacy => "legacy",
             Self::Arc => "arc",
+        }
+    }
+
+    pub fn make_factory<I, E>(
+        self,
+        workload: &Workload,
+        make_event: E,
+    ) -> RunnerFactory
+    where
+        I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
+        E: Fn(Time) -> Event<I> + Copy + 'static,
+    {
+        match self {
+            Self::Slice => create_factory_new(workload, make_event, build_operator::<I, SliceStrategy<I>>),
+            Self::Rc => create_factory_new(workload, make_event, build_operator::<I, RcStrategy<I>>),
+            Self::Arc => create_factory_new(workload, make_event, build_operator::<I, ArcStrategy<I>>),
+            Self::Clone => create_factory_new(workload, make_event, build_operator::<I, CloneStrategy<I>>),
+            Self::Legacy => create_legacy_factory(workload, make_event),
         }
     }
 }

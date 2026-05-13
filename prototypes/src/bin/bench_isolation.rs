@@ -5,7 +5,7 @@ use pprof::criterion::{Output, PProfProfiler};
 use pprof::flamegraph::Options;
 use pprof::ProfilerGuardBuilder;
 use prototypes::bench_common::{copy_group_dir_with_catch, move_profile_file, parse_args, should_run, Strategy};
-use prototypes::bench_helpers::{build_operator_arc, build_operator_clone, build_operator_rc, build_operator_slice, create_factory_new, create_legacy_factory, RunnerFactory};
+use prototypes::bench_helpers::{RunnerFactory};
 use prototypes::prototype::event::{make_byte_event, make_copy_event, Time};
 use prototypes::workloads::{write_workload_to_file, Workload};
 use prototypes::{run_mem_profile, Event};
@@ -15,6 +15,7 @@ use std::{env, fs, io};
 use std::fmt::Debug;
 use std::hash::Hash;
 use prototypes::bench_config_parser::{resolve_output_config};
+use strum::IntoEnumIterator;
 
 #[global_allocator]
 static ALLOC: dhat::Alloc = dhat::Alloc;
@@ -103,25 +104,6 @@ fn print_running_benchmark(strategy: &str, workload: &Workload) {
     );
 }
 
-fn make_factory<I, E>(
-    strategy: Strategy,
-    workload: &Workload,
-    make_event: E,
-) -> RunnerFactory
-where
-    I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
-    E: Fn(Time) -> Event<I> + Copy + 'static,
-{
-    use Strategy::*;
-    match strategy {
-        Slice => create_factory_new(workload, make_event, build_operator_slice),
-        Rc => create_factory_new(workload, make_event, build_operator_rc),
-        Arc => create_factory_new(workload, make_event, build_operator_arc),
-        Clone => create_factory_new(workload, make_event, build_operator_clone),
-        Legacy => create_legacy_factory(workload, make_event),
-    }
-}
-
 fn run_bench_and_profile(
     group: &mut BenchmarkGroup<'_, WallTime>,
     workload: &Workload,
@@ -146,15 +128,13 @@ fn run_benches<I, E>(
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
     E: Fn(Time) -> Event<I> + Copy + 'static,
 {
-    use Strategy::*;
-
-    for strategy in [Slice, Rc, Arc, Clone, Legacy] {
+    for strategy in Strategy::iter() {
         if !should_run(only, strategy) {
             continue;
         }
 
         let label = strategy.as_str();
-        let factory = make_factory(strategy, workload, make_event);
+        let factory = strategy.make_factory(workload, make_event);
         run_bench_and_profile(group, workload, label, dst_group_path, factory);
     }
 }
@@ -179,7 +159,7 @@ where
         label, workload.name
     );
 
-    let factory = make_factory(strategy, workload, make_event);
+    let factory = strategy.make_factory(workload, make_event);
     let runner = factory();
     runner();
 }

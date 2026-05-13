@@ -14,3 +14,5 @@ log = "0.4.29"
 uuid = { version = "1.23.0", features = ["v4"] }
 indexmap = "2"
 toml = "1.1.2+spec-1.1.0"
+strum = "0.28.0"
+strum_macros = "0.28.0"
