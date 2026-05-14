@@ -148,8 +148,8 @@ def generate_plots(df: pd.DataFrame, folder_path: Path):
 
     plotter = overview_plotters.make_strategy_comparison_plotter(
         x_variant,
-        plot_configs.Y_NS_MEAN,
-        strategies=["clone", "slice"]
+        plot_configs.Y_THR_MEAN,
+        strategies=["clone", "rc"]
     )
     plotter(df, folder_path)
 
