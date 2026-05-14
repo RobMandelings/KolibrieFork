@@ -182,8 +182,15 @@ where
     let workload = workload.clone();
 
     Box::new(move || {
-        let events = create_events_for_workload(&workload, &event_factory);
         let mut windows = build_legacy_windows(&workload);
+
+        let initial_window_offset = if fill_initial_window {
+            windows.first().expect("Should have a window!").width
+        } else {
+            0
+        };
+
+        let events = create_events_for_workload(&workload, initial_window_offset as Time, &event_factory);
 
         if INCLUDE_SCOPE_CALL_IN_SETUP {
             for w in &mut windows {
@@ -191,11 +198,12 @@ where
             }
         }
 
-        let w = windows.first().expect("Should have a window!");
-        let initial_events: Vec<_> = (1..=w.width)
-            .map(|ts| event_factory(ts as Time))
-            .collect();
-        run_legacy(&mut windows, initial_events);
+        if fill_initial_window && initial_window_offset > 0 {
+            let initial_events: Vec<_> = (1..=initial_window_offset)
+                .map(|ts| event_factory(ts as Time))
+                .collect();
+            run_legacy(&mut windows, initial_events);
+        }
 
         Box::new(move || {
             run_legacy(&mut windows, events);
@@ -221,20 +229,25 @@ where
     let workload = workload.clone();
 
     Box::new(move || {
-        let events = create_events_for_workload(&workload, &event_factory);
         let mut op = build_operator(&workload);
+        let initial_window_offset = if fill_initial_window {
+            op.sliding_windows
+                .values()
+                .next()
+                .map(|bounds| bounds.active_bounds.close)
+                .unwrap_or(0)
+        } else {
+            0
+        };
 
-        if fill_initial_window {
-            if let Some(bounds) = op.sliding_windows.values().next() {
-                let open = bounds.active_bounds.open;
-                let close = bounds.active_bounds.close;
+        let events = create_events_for_workload(&workload, initial_window_offset, &event_factory);
 
-                let initial_events: Vec<_> = ((open + 1)..=close)
-                    .map(&event_factory)
-                    .collect();
+        if fill_initial_window && initial_window_offset > 0 {
+            let initial_events: Vec<_> = (1..=initial_window_offset)
+                .map(&event_factory)
+                .collect();
 
-                run_new(&mut op, initial_events);
-            }
+            run_new(&mut op, initial_events);
         }
 
         Box::new(move || {

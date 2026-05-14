@@ -46,12 +46,12 @@ pub fn write_workload_to_file(workload: &Workload, path: &str) -> anyhow::Result
     Ok(())
 }
 
-pub fn create_events_for_workload<I, F>(workload: &Workload, mut event_factory: F) -> Vec<Event<I>>
+pub fn create_events_for_workload<I, F>(workload: &Workload, initial_window_offset: Time, mut event_factory: F) -> Vec<Event<I>>
 where
     F: FnMut(Time) -> Event<I>,
 {
     (0..workload.nr_events as Time)
-        .map(|i| event_factory(i * workload.stream_config.spread + workload.stream_config.offset))
+        .map(|i| event_factory(i * workload.stream_config.spread + workload.stream_config.offset + initial_window_offset))
         .collect()
 }
 
@@ -118,7 +118,7 @@ mod tests {
     #[test]
     fn timestamps_with_spread_one() {
         let workload = mk_workload(5, 1, 0);
-        let events = create_events_for_workload(&workload, mk_event);
+        let events = create_events_for_workload(&workload, 0, mk_event);
         let ts: Vec<Time> = events.iter().map(|e| e.ts).collect();
         assert_eq!(ts, vec![0, 1, 2, 3, 4]);
     }
@@ -126,7 +126,7 @@ mod tests {
     #[test]
     fn timestamps_with_spread_five() {
         let workload = mk_workload(5, 5, 0);
-        let events = create_events_for_workload(&workload, mk_event);
+        let events = create_events_for_workload(&workload, 0, mk_event);
 
         let ts: Vec<Time> = events.iter().map(|e| e.ts).collect();
         assert_eq!(ts, vec![0, 5, 10, 15, 20]);
@@ -135,7 +135,7 @@ mod tests {
     #[test]
     fn timestamps_with_spread_five_offset_3() {
         let workload = mk_workload(5, 5, 3);
-        let events = create_events_for_workload(&workload, mk_event);
+        let events = create_events_for_workload(&workload, 0, mk_event);
 
         let ts: Vec<Time> = events.iter().map(|e| e.ts).collect();
         assert_eq!(ts, vec![3, 8, 13, 18, 23]);
@@ -144,7 +144,7 @@ mod tests {
     #[test]
     fn zero_events_produces_empty_vec() {
         let workload = mk_workload(0, 5, 0);
-        let events = create_events_for_workload(&workload, mk_event);
+        let events = create_events_for_workload(&workload, 0, mk_event);
 
         assert!(events.is_empty());
     }
@@ -152,7 +152,7 @@ mod tests {
     #[test]
     fn timestamps_with_spread_two() {
         let workload = mk_workload(3, 2, 0);
-        let events = create_events_for_workload(&workload, mk_event);
+        let events = create_events_for_workload(&workload, 0, mk_event);
 
         let ts: Vec<Time> = events.iter().map(|e| e.ts).collect();
         assert_eq!(ts, vec![0, 2, 4]);
@@ -161,7 +161,7 @@ mod tests {
     #[test]
     fn timestamps_test_offset_1_ends_at_10() {
         let workload = mk_workload(10, 1, 1);
-        let events = create_events_for_workload(&workload, mk_event);
+        let events = create_events_for_workload(&workload, 0, mk_event);
 
         let ts: Vec<Time> = events.iter().map(|e| e.ts).collect();
         assert_eq!(ts, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);

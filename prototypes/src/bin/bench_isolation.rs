@@ -135,7 +135,7 @@ fn run_benches<I, E>(
         }
 
         let label = strategy.as_str();
-        let factory = strategy.make_factory(workload, make_event);
+        let factory = strategy.make_factory(workload, fill_initial_window, make_event);
         run_bench_and_profile(group, workload, label, dst_group_path, factory);
     }
 }
@@ -195,8 +195,8 @@ fn main() {
                 let dst_group_path = dst_root_path.join(&workload.name);
 
                 let factory = match workload.bytes {
-                    0 => strategy.make_factory(workload, make_copy_event),
-                    bytes => strategy.make_factory(workload, move |ts| make_byte_event(ts, bytes))
+                    0 => strategy.make_factory(workload, args.fill_initial_window, make_copy_event),
+                    bytes => strategy.make_factory(workload, args.fill_initial_window, move |ts| make_byte_event(ts, bytes))
                 };
 
                 run_single_strategy(workload, strategy, factory, &dst_group_path);
