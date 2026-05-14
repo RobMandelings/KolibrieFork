@@ -4,9 +4,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from arg_parser import parse_args
+from filters import apply_filters
 from overview_plotters import make_default_overview_plotters, make_strategy_windows_overview_plotters
 import plot_configs
+from plots_arg_parsing import parse_args
 
 
 def add_relative_metric(
@@ -118,21 +119,21 @@ def decorate_df_with_window_relative_metrics(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def decorate_df(df: pd.DataFrame, x_variant: plot_configs.PlotVariant, descending=False):
+def decorate_df(df: pd.DataFrame, x_config: plot_configs.XConfig):
     df = add_relative_metric(df,
                              strategy_col="strategy",
-                             sort_key_col=x_variant.workload_index_col,
+                             sort_key_col=x_config.workload_index_col,
                              metric_col="thr_mean",
                              relative_col="thr_mean_rel",
-                             ascending=not descending
+                             ascending=not x_config.descending
                              )
 
     df = add_relative_metric(df,
                              strategy_col="strategy",
-                             sort_key_col=x_variant.workload_index_col,
+                             sort_key_col=x_config.workload_index_col,
                              metric_col="thr_median",
                              relative_col="thr_median_rel",
-                             ascending=not descending
+                             ascending=not x_config.descending
                              )
     return df
 
@@ -141,15 +142,13 @@ def generate_plots(df: pd.DataFrame, folder_path: Path):
     df["thr_mean"] = df["nr_events"] / (df["ns_mean"] * 1e-9)
     df["thr_median"] = df["nr_events"] / (df["ns_median"] * 1e-9)
 
-    x_variant = plot_configs.PlotVariant.NR_WINDOWS
-    descending = False
+    x_variant = plot_configs.x_size(False)
 
-    df = decorate_df(df, x_variant, descending)
+    df = decorate_df(df, x_variant)
 
     plotters = make_default_overview_plotters(
         x_variant,
-        plot_configs.Y_THR_MEAN_REL,
-        descending,
+        plot_configs.Y_THR_MEAN,
     )
 
     for plotter in plotters:
@@ -157,15 +156,13 @@ def generate_plots(df: pd.DataFrame, folder_path: Path):
 
 
 def generate_strategy_window_plots(df: pd.DataFrame, folder_path: Path):
-    x_variant = plot_configs.PlotVariant.PERC_OVERLAP
-    descending = False
+    x_variant = plot_configs.x_perc_overlap(False)
 
     df = decorate_df_with_window_relative_metrics(df)
 
     plotters = make_strategy_windows_overview_plotters(
         x_variant=x_variant,
         y_config=plot_configs.Y_MEM,
-        descending=descending,
         strategies=["clone"],
         windows=[1, 2, 5, 10],
     )
@@ -181,6 +178,10 @@ def main() -> None:
 
     # Read the CSV once
     df = pd.read_csv(analysis_path)
+
+    if "filters" in args:
+        df = apply_filters(df, args.filters)
+
     folder_path = analysis_path.parent
 
     # Call both plot generation functions

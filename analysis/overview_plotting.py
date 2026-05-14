@@ -7,42 +7,39 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 from constants import STRATEGY_COLORS, STRATEGY_MARKERS
-from plot_configs import PlotVariant, YConfig
+from plot_configs import XConfig, YConfig
 from series import linear_trend_per_strategy_df, add_regression_overlay
 
 
 def make_overview_plotter(
         *,
-        y_col: str,
-        title: str,
-        xlabel: str,
-        ylabel: str,
-        workload_index_col: str,
+        x_variant: XConfig,
+        y_config: YConfig,
         output_file,
-        label_fn,
         strategies=None,
-        descending: bool = False,
+        title: str | None = None,
         x_label_col: str = "x_label",
         strategy_col: str = "strategy",
-        yerr_col=None,
 ):
+    resolved_title = title or y_config.default_title
+
     def plotter(df: pd.DataFrame, analysis_path):
         print(f"Plotting to output: {output_file}")
         plot_overview_from_df(
             df=df,
             analysis_path=analysis_path,
-            y_col=y_col,
-            title=title,
-            xlabel=xlabel,
-            ylabel=ylabel,
-            workload_index_col=workload_index_col,
+            y_col=y_config.y_col,
+            yerr_col=y_config.yerr_col,
+            title=resolved_title,
+            xlabel=x_variant.x_label,
+            ylabel=y_config.ylabel,
+            workload_index_col=x_variant.workload_index_col,
             output_file=output_file,
-            label_fn=label_fn,
+            label_fn=x_variant.label_fn,
             strategies=strategies,
-            descending=descending,
+            descending=x_variant.descending,
             x_label_col=x_label_col,
             strategy_col=strategy_col,
-            yerr_col=yerr_col,
         )
 
     return plotter
@@ -50,11 +47,10 @@ def make_overview_plotter(
 
 def make_strategy_windows_overview_plotter(
         *,
-        x_variant: PlotVariant,
+        x_config: XConfig,
         y_config: YConfig,
         strategy: str,
         windows: list[int] | None = None,
-        descending: bool = False,
         title: str | None = None,
         nr_windows_col: str = "nr_windows",
         x_label_col: str = "x_label",
@@ -70,11 +66,11 @@ def make_strategy_windows_overview_plotter(
         plot_single_strategy_windows_overview_from_df(
             df=df,
             analysis_path=analysis_path,
-            label_fn=x_variant.label_fn,
+            label_fn=x_config.label_fn,
             y_col=y_config.y_col,
-            xlabel=x_variant.x_label,
+            xlabel=x_config.x_label,
             ylabel=y_config.ylabel,
-            workload_index_col=x_variant.workload_index_col,
+            workload_index_col=x_config.workload_index_col,
             strategy=strategy,
             nr_windows_col=nr_windows_col,
             windows=windows,
@@ -83,7 +79,7 @@ def make_strategy_windows_overview_plotter(
             x_label_col=x_label_col,
             strategy_col=strategy_col,
             yerr_col=y_config.yerr_col,
-            descending=descending,
+            descending=x_config.descending,
         )
 
     return plotter

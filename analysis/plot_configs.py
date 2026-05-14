@@ -1,49 +1,63 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
 from typing import Callable, Any
 
 from series import slide_label, perc_overlap_label, size_label
 
 
-class PlotVariant(Enum):
-    NR_EVENTS = (
-        "Nr events",
-        lambda row: row.get("nr_events"),
-        "nr_events",
-    )
-    NR_WINDOWS = (
-        "Nr windows",
-        lambda row: row.get("nr_windows"),
-        "nr_windows",
-    )
-    SLIDE = (
-        "Slide",
-        slide_label,
-        "window.slide",
-    )
-    SIZE = (
-        "Size",
-        size_label,
-        "window.size",
-    )
-    PERC_OVERLAP = (
-        "% Overlap",
-        perc_overlap_label,
-        "window.slide",
+@dataclass(frozen=True)
+class XConfig:
+    x_label: str
+    label_fn: Callable[[Any], str]
+    workload_index_col: str
+    descending: bool
+
+
+def x_nr_events(descending: bool = False) -> XConfig:
+    return XConfig(
+        x_label="Nr events",
+        label_fn=lambda row: row.get("nr_events"),
+        workload_index_col="nr_events",
+        descending=descending,
     )
 
-    def __init__(
-            self,
-            x_label: str,
-            label_fn: Callable[[Any], str],
-            workload_index_col: str,
-    ):
-        self.x_label = x_label
-        self.label_fn = label_fn
-        self.workload_index_col = workload_index_col
+
+def x_nr_windows(descending: bool = False) -> XConfig:
+    return XConfig(
+        x_label="Nr windows",
+        label_fn=lambda row: row.get("nr_windows"),
+        workload_index_col="nr_windows",
+        descending=descending,
+    )
+
+
+def x_slide(descending: bool = False) -> XConfig:
+    return XConfig(
+        x_label="Slide",
+        label_fn=slide_label,
+        workload_index_col="window.slide",
+        descending=descending,
+    )
+
+
+def x_size(descending: bool = False) -> XConfig:
+    return XConfig(
+        x_label="Size",
+        label_fn=size_label,
+        workload_index_col="window.size",
+        descending=descending,
+    )
+
+
+def x_perc_overlap(descending: bool = False) -> XConfig:
+    return XConfig(
+        x_label="% Overlap",
+        label_fn=perc_overlap_label,
+        workload_index_col="window.slide",
+        descending=descending,
+    )
 
 
 @dataclass(frozen=True)
