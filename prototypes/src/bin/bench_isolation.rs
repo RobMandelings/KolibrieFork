@@ -121,6 +121,7 @@ fn run_bench_and_profile(
 fn run_benches<I, E>(
     group: &mut BenchmarkGroup<WallTime>,
     workload: &Workload,
+    fill_initial_window: bool,
     only: &Option<Vec<Strategy>>,
     dst_group_path: &Path,
     make_event: E,
@@ -139,15 +140,13 @@ fn run_benches<I, E>(
     }
 }
 
-fn run_single_strategy<I, E>(
+fn run_single_strategy(
     workload: &Workload,
     strategy: Strategy,
+    factory: RunnerFactory,
     dst_group_path: &Path,
-    make_event: E,
 )
 where
-    I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
-    E: Fn(Time) -> Event<I> + Copy + 'static,
 {
 
     fs::create_dir_all(dst_group_path)
@@ -159,7 +158,6 @@ where
         label, workload.name
     );
 
-    let factory = strategy.make_factory(workload, make_event);
     let runner = factory();
     runner();
 }
@@ -196,11 +194,12 @@ fn main() {
             for workload in &args.workloads {
                 let dst_group_path = dst_root_path.join(&workload.name);
 
-                match workload.bytes {
-                    0 => run_single_strategy(workload, strategy, &dst_group_path, make_copy_event),
-                    bytes => run_single_strategy(workload, strategy, &dst_group_path, move |ts| make_byte_event(ts, bytes)),
-                }
+                let factory = match workload.bytes {
+                    0 => strategy.make_factory(workload, make_copy_event),
+                    bytes => strategy.make_factory(workload, move |ts| make_byte_event(ts, bytes))
+                };
 
+                run_single_strategy(workload, strategy, factory, &dst_group_path);
                 let workload_path = format!("{}/workload.json", dst_group_path.to_str().unwrap());
                 write_workload_to_file(workload, &workload_path)
                     .expect(&format!("Could not write workload: {}", workload_path));
@@ -226,8 +225,8 @@ fn main() {
                 let criterion_workload_src = criterion_src.join(&workload.get_short_name());
 
                 match workload.bytes {
-                    0 => run_benches(&mut group, workload, &only, &dst_group_path, make_copy_event),
-                    bytes => run_benches(&mut group, workload, &only, &dst_group_path, move |ts| make_byte_event(ts, bytes)),
+                    0 => run_benches(&mut group, workload, args.fill_initial_window, &only, &dst_group_path, make_copy_event),
+                    bytes => run_benches(&mut group, workload, args.fill_initial_window, &only, &dst_group_path, move |ts| make_byte_event(ts, bytes)),
                 }
 
                 group.finish();

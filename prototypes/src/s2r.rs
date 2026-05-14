@@ -176,7 +176,7 @@ pub struct LegacyWindow<I>
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send,
 {
-    width: usize,
+    pub width: usize,
     slide: usize,
     t_0: usize,
     active_windows: HashMap<Window, ContentContainer<I>>,

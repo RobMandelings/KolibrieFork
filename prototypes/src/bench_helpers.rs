@@ -173,6 +173,7 @@ pub type RunnerFactory = Box<dyn Fn() -> Box<dyn FnOnce()>>;
 pub fn create_legacy_factory<I, F>(
     workload: &Workload,
     event_factory: F,
+    fill_initial_window: bool,
 ) -> RunnerFactory
 where
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
@@ -190,6 +191,12 @@ where
             }
         }
 
+        let w = windows.first().expect("Should have a window!");
+        let initial_events: Vec<_> = (1..=w.width)
+            .map(|ts| event_factory(ts as Time))
+            .collect();
+        run_legacy(&mut windows, initial_events);
+
         Box::new(move || {
             run_legacy(&mut windows, events);
         })
@@ -202,6 +209,7 @@ pub type EventFactory<I> = Box<dyn Fn(Time) -> Event<I>>;
 pub fn create_factory_new<I, F, S, B>(
     workload: &Workload,
     event_factory: F,
+    fill_initial_window: bool,
     build_operator: B,
 ) -> RunnerFactory
 where
@@ -215,6 +223,19 @@ where
     Box::new(move || {
         let events = create_events_for_workload(&workload, &event_factory);
         let mut op = build_operator(&workload);
+
+        if fill_initial_window {
+            if let Some(bounds) = op.sliding_windows.values().next() {
+                let open = bounds.active_bounds.open;
+                let close = bounds.active_bounds.close;
+
+                let initial_events: Vec<_> = ((open + 1)..=close)
+                    .map(&event_factory)
+                    .collect();
+
+                run_new(&mut op, initial_events);
+            }
+        }
 
         Box::new(move || {
             run_new(&mut op, events);

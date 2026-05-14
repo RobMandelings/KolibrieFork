@@ -127,6 +127,7 @@ impl Strategy {
     pub fn make_factory<I, E>(
         self,
         workload: &Workload,
+        fill_initial_window: bool,
         make_event: E,
     ) -> RunnerFactory
     where
@@ -134,11 +135,11 @@ impl Strategy {
         E: Fn(Time) -> Event<I> + Copy + 'static,
     {
         match self {
-            Self::Slice => create_factory_new(workload, make_event, build_operator::<I, SliceStrategy<I>>),
-            Self::Rc => create_factory_new(workload, make_event, build_operator::<I, RcStrategy<I>>),
-            Self::Arc => create_factory_new(workload, make_event, build_operator::<I, ArcStrategy<I>>),
-            Self::Clone => create_factory_new(workload, make_event, build_operator::<I, CloneStrategy<I>>),
-            Self::Legacy => create_legacy_factory(workload, make_event),
+            Self::Slice => create_factory_new(workload, make_event, fill_initial_window, build_operator::<I, SliceStrategy<I>>),
+            Self::Rc => create_factory_new(workload, make_event, fill_initial_window, build_operator::<I, RcStrategy<I>>),
+            Self::Arc => create_factory_new(workload, make_event, fill_initial_window, build_operator::<I, ArcStrategy<I>>),
+            Self::Clone => create_factory_new(workload, make_event, fill_initial_window, build_operator::<I, CloneStrategy<I>>),
+            Self::Legacy => create_legacy_factory(workload, make_event, fill_initial_window),
         }
     }
 }
@@ -151,6 +152,7 @@ pub struct Args {
     pub raw_command: String,
     pub workloads: Vec<Workload>,
     pub sample_size: Option<usize>,
+    pub fill_initial_window: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -454,6 +456,7 @@ pub fn parse_args() -> Args {
     let mut in_workloads = false;
 
     let mut sample_size: Option<usize> = None;
+    let mut fill_initial_window = false;
 
     while i < all_args.len() {
         match all_args[i].as_str() {
@@ -521,6 +524,9 @@ pub fn parse_args() -> Args {
 
                 sample_size = Some(parsed);
             }
+            "--fill-initial-window" => {
+                fill_initial_window = true;
+            }
             other => {
                 panic!("unknown argument: {other}");
             }
@@ -547,6 +553,7 @@ pub fn parse_args() -> Args {
         raw_command,
         workloads,
         sample_size,
+        fill_initial_window,
     }
 }
 
