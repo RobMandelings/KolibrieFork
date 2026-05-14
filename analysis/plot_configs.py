@@ -70,6 +70,15 @@ class YConfig:
     filename: str
 
 
+Y_NS_MEAN = YConfig(
+    y_col="ns_mean",
+    yerr_col=None,
+    default_title="Nanoseconds (mean)",
+    ylabel="Nanoseconds",
+    subdir=Path("overviews") / "nanoseconds" / "mean",
+    filename="mean_ns",
+)
+
 Y_THR_MEAN = YConfig(
     y_col="thr_mean",
     yerr_col="thr_std_dev",
@@ -88,15 +97,6 @@ Y_THR_MEDIAN = YConfig(
     filename="median_throughput",
 )
 
-Y_MEM = YConfig(
-    y_col="mem_total",
-    yerr_col=None,
-    default_title="Memory usage",
-    ylabel="Bytes",
-    subdir=Path("overviews") / "memory",
-    filename="total_bytes",
-)
-
 Y_THR_MEAN_REL = YConfig(
     y_col="thr_mean_rel",
     yerr_col=None,
@@ -113,6 +113,15 @@ Y_THR_MEDIAN_REL = YConfig(
     ylabel="Factor",
     subdir=Path("overviews") / "throughput" / "relative" / "median",
     filename="median_throughput",
+)
+
+Y_MEM = YConfig(
+    y_col="mem_total",
+    yerr_col=None,
+    default_title="Memory usage",
+    ylabel="Bytes",
+    subdir=Path("overviews") / "memory",
+    filename="total_bytes",
 )
 
 Y_THR_MEAN_REL_WINDOW = YConfig(

@@ -13,7 +13,7 @@ from series import linear_trend_per_strategy_df, add_regression_overlay
 
 def make_overview_plotter(
         *,
-        x_variant: XConfig,
+        x_config: XConfig,
         y_config: YConfig,
         output_file,
         strategies=None,
@@ -31,13 +31,13 @@ def make_overview_plotter(
             y_col=y_config.y_col,
             yerr_col=y_config.yerr_col,
             title=resolved_title,
-            xlabel=x_variant.x_label,
+            xlabel=x_config.x_label,
             ylabel=y_config.ylabel,
-            workload_index_col=x_variant.workload_index_col,
+            workload_index_col=x_config.workload_index_col,
             output_file=output_file,
-            label_fn=x_variant.label_fn,
+            label_fn=x_config.label_fn,
             strategies=strategies,
-            descending=x_variant.descending,
+            descending=x_config.descending,
             x_label_col=x_label_col,
             strategy_col=strategy_col,
         )

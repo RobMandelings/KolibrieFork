@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 
 from filters import apply_filters
-from overview_plotters import make_default_overview_plotters, make_strategy_windows_overview_plotters
+import overview_plotters
 import plot_configs
 from plots_arg_parsing import parse_args
 
@@ -146,29 +146,25 @@ def generate_plots(df: pd.DataFrame, folder_path: Path):
 
     df = decorate_df(df, x_variant)
 
-    plotters = make_default_overview_plotters(
+    plotter = overview_plotters.make_strategy_comparison_plotter(
         x_variant,
-        plot_configs.Y_THR_MEAN,
+        plot_configs.Y_NS_MEAN,
+        strategies=["clone", "slice"]
     )
+    plotter(df, folder_path)
 
-    for plotter in plotters:
-        plotter(df, folder_path)
-
-
-def generate_strategy_window_plots(df: pd.DataFrame, folder_path: Path):
-    x_variant = plot_configs.x_perc_overlap(False)
-
-    df = decorate_df_with_window_relative_metrics(df)
-
-    plotters = make_strategy_windows_overview_plotters(
-        x_variant=x_variant,
-        y_config=plot_configs.Y_MEM,
-        strategies=["clone"],
-        windows=[1, 2, 5, 10],
-    )
-
-    for plotter in plotters:
-        plotter(df, folder_path)
+# def generate_strategy_window_plots(df: pd.DataFrame, folder_path: Path):
+#     x_variant = plot_configs.x_perc_overlap(False)
+#
+#     df = decorate_df_with_window_relative_metrics(df)
+#
+#     plotters = overview_plotters.make_all_strategy_comparison_plotter(
+#         x_config=x_variant,
+#         y_config=plot_configs.Y_MEM,
+#     )
+#
+#     for plotter in plotters:
+#         plotter(df, folder_path)
 
 
 def main() -> None:
