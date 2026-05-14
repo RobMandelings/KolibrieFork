@@ -90,9 +90,9 @@ fn write_flamegraph_for_strategy<F>(
         .expect("failed to write flamegraph");
 }
 
-fn print_running_benchmark(strategy: &str, workload: &Workload) {
+fn print_running_benchmark(strategy: &str, workload: &Workload, fill_initial_window: bool) {
     println!(
-        "[BENCH] strategy={strategy} | windows={} | events={} | size={} | slide={} | spread={} | event_offset={} | bytes={} | reserve={}",
+        "[BENCH] strategy={strategy} | windows={} | events={} | size={} | slide={} | spread={} | event_offset={} | bytes={} | reserve={} | fill_init={}",
         workload.nr_windows,
         workload.nr_events,
         workload.window.size,
@@ -100,7 +100,8 @@ fn print_running_benchmark(strategy: &str, workload: &Workload) {
         workload.stream_config.spread,
         workload.stream_config.offset,
         workload.bytes,
-        workload.reserve
+        workload.reserve,
+        fill_initial_window
     );
 }
 
@@ -110,9 +111,10 @@ fn run_bench_and_profile(
     label: &str, // "clone"
     group_path: &Path,
     runner_factory: RunnerFactory,
+    fill_initial_window: bool,
 )
 {
-    print_running_benchmark(label, workload);
+    print_running_benchmark(label, workload, fill_initial_window);
     bench_strategy(group, label, workload.nr_events, &runner_factory);
     run_mem_profile(label, &runner_factory);
     move_profile_file(label, group_path);
@@ -136,7 +138,7 @@ fn run_benches<I, E>(
 
         let label = strategy.as_str();
         let factory = strategy.make_factory(workload, fill_initial_window, make_event);
-        run_bench_and_profile(group, workload, label, dst_group_path, factory);
+        run_bench_and_profile(group, workload, label, dst_group_path, factory, fill_initial_window);
     }
 }
 
