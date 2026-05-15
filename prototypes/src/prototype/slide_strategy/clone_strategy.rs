@@ -51,7 +51,7 @@ impl<I: Clone + 'static> WindowSnapshotStrategy<I> for CloneStrategy<I> {
 
     fn report_window<'a>(&mut self, window_iri: &str, open_time: Time) {
         let start = self.content.partition_point(|e| e.ts < open_time);
-        let snapshot: Vec<_> = self.content[start..].to_vec();
+        let snapshot: Vec<_> = self.content[start..].to_owned();
         self.consume_window(window_iri, CloneContainer(snapshot));
     }
 

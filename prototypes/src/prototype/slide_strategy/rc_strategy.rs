@@ -52,7 +52,7 @@ impl<I: 'static> WindowSnapshotStrategy<I> for RcStrategy<I> {
 
     fn report_window<'a>(&mut self, window_index: &str, open_time: Time) {
         let start = self.content.partition_point(|e| e.ts < open_time);
-        let snapshot: Vec<_> = self.content[start..].to_vec();
+        let snapshot: Vec<_> = self.content[start..].to_owned();
         self.consume_window(window_index, RcContainer(snapshot));
     }
 
