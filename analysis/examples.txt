@@ -1,0 +1,1 @@
+python generate_plots.py -t evaluation/size_change_bytes_01/summary.csv --filter bytes = 1

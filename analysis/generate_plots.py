@@ -142,14 +142,13 @@ def generate_plots(df: pd.DataFrame, folder_path: Path):
     df["thr_mean"] = df["nr_events"] / (df["ns_mean"] * 1e-9)
     df["thr_median"] = df["nr_events"] / (df["ns_median"] * 1e-9)
 
-    x_variant = plot_configs.x_size(False)
-
+    x_variant = plot_configs.x_nr_windows(False)
     df = decorate_df(df, x_variant)
 
     plotter = overview_plotters.make_strategy_comparison_plotter(
         x_variant,
-        plot_configs.Y_MEM,
-        strategies=["clone", "slice", "rc", "arc"]
+        plot_configs.Y_THR_MEAN,
+        strategies=["clone", "slice", "rc", "arc", "legacy"]
     )
     plotter(df, folder_path)
 
