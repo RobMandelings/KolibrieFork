@@ -131,6 +131,9 @@ fn run_benches<I, E>(
     I: Eq + PartialEq + Clone + Debug + Hash + Send + 'static,
     E: Fn(Time) -> Event<I> + Copy + 'static,
 {
+    let event_size_ty = size_of::<Event<I>>();
+    println!("The size of the event: {}", event_size_ty);
+
     for strategy in Strategy::iter() {
         if !should_run(&args.only, strategy) {
             continue;
