@@ -1,6 +1,6 @@
 use std::env;
+use std::path::PathBuf;
 use log::{debug, LevelFilter};
-use prototypes::bench_helpers::Time;
 use prototypes::SliceStrategy;
 use shared::triple::Triple;
 use crate::rsp_engine::{OperationMode, QueryExecutionMode, RSPBuilder, RSPEngine, SimpleR2R};
@@ -159,9 +159,12 @@ fn city_bench_q1_two_window() {
     let path = env::current_dir().expect("Expected path");
     println!("cwd: {}", path.display());
 
+    let path1 = PathBuf::from("AarhusTrafficData158505");
+    let path2 = PathBuf::from("AarhusTrafficData182955");
+
     let mut streams = vec![
-        build_stream_iter("AarhusTrafficData158505", traffic_mapper).unwrap(),
-        build_stream_iter("AarhusTrafficData182955", traffic_mapper).unwrap(),
+        build_stream_iter(&path1, traffic_mapper).unwrap(),
+        build_stream_iter(&path2, traffic_mapper).unwrap(),
     ];
 
     let mut ts = 0;
