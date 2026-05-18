@@ -28,16 +28,11 @@ def make_overview_plotter(
         plot_overview_from_df(
             df=df,
             analysis_path=analysis_path,
-            y_col=y_config.y_col,
-            yerr_col=y_config.yerr_col,
+            x_config=x_config,
+            y_config=y_config,
             title=resolved_title,
-            xlabel=x_config.x_label,
-            ylabel=y_config.ylabel,
-            workload_index_col=x_config.workload_index_col,
             output_file=output_file,
-            label_fn=x_config.label_fn,
             strategies=strategies,
-            descending=x_config.descending,
             x_label_col=x_label_col,
             strategy_col=strategy_col,
         )
@@ -287,19 +282,22 @@ def _style_and_finalize_plot(
 def plot_overview_from_df(
         df,
         analysis_path: Path,
-        label_fn: Callable[[pd.Series], Any],
-        y_col: str,
-        xlabel: str,
-        ylabel: str,
-        workload_index_col,
+        x_config: XConfig,
+        y_config: YConfig,
         strategies=None,
         title=None,
         output_file=None,
         x_label_col="x_label",
         strategy_col="strategy",
-        yerr_col=None,
-        descending: bool = False,
 ):
+    label_fn = x_config.label_fn
+    y_col = y_config.y_col
+    yerr_col = y_config.yerr_col
+    xlabel = x_config.x_label
+    ylabel = y_config.ylabel
+    workload_index_col = x_config.workload_index_col
+    descending = x_config.descending
+
     df = add_label_column(df, label_fn=label_fn, out_col=x_label_col)
     df = df.copy()
 
@@ -362,6 +360,9 @@ def plot_overview_from_df(
             marker=marker,
             linestyle="-",
         )
+
+    if y_config.y_log:
+        ax1.set_yscale("log", base=y_config.y_log_base)
 
     _style_and_finalize_plot(
         fig,
