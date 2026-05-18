@@ -80,6 +80,15 @@ Y_LAT_MEAN = YConfig(
 )
 
 Y_LAT_MEAN_REL = YConfig(
+    y_col="ns_mean_rel",
+    yerr_col=None,
+    default_title="Mean latency (relative)",
+    ylabel="Factor",
+    subdir=Path("overviews") / "latency" / "relative" / "mean",
+    filename="mean_latency_rel",
+)
+
+Y_LAT_REL_TO_SLICE = YConfig(
     y_col="ns_mean_rel_slice",
     yerr_col=None,
     default_title="Relative latency (compared to slice)",

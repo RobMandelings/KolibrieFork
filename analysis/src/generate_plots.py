@@ -45,16 +45,18 @@ def add_relative_metric(
         df: pd.DataFrame,
         *,
         strategy_col: str,
-        sort_key_col: str,
         metric_col: str,
-        relative_col: str,
-        ascending: bool = True,
+        x_config: plot_configs.XConfig
 ) -> pd.DataFrame:
     """
     For each strategy, pick the first row by sort_key_col (after sorting),
     use its metric_col as baseline, and add relative_col = metric_col / baseline
     within that strategy group.
     """
+
+    sort_key_col = x_config.workload_index_col
+    ascending = not x_config.descending
+
     df = df.copy()
 
     # Sort so that "first" is well-defined
@@ -72,7 +74,7 @@ def add_relative_metric(
     df = df.merge(baselines, on=strategy_col, how="left")
 
     # Compute relative metric
-    df[relative_col] = df[metric_col] / df[f"baseline_{metric_col}"]
+    df[f"{metric_col}_rel"] = df[metric_col] / df[f"baseline_{metric_col}"]
 
     return df
 
@@ -138,9 +140,9 @@ def offset_metric_from_first(
 
     baselines = (
         df
-        .groupby("strategy", as_index=False)
-        .agg({metric_col: "first"})
-        .rename(columns={metric_col: f"baseline_{metric_col}"})
+            .groupby("strategy", as_index=False)
+            .agg({metric_col: "first"})
+            .rename(columns={metric_col: f"baseline_{metric_col}"})
     )
 
     df = df.merge(baselines, on="strategy", how="left")
@@ -188,18 +190,14 @@ def decorate_df_with_window_relative_metrics(df: pd.DataFrame) -> pd.DataFrame:
 def decorate_df(df: pd.DataFrame, x_config: plot_configs.XConfig):
     df = add_relative_metric(df,
                              strategy_col="strategy",
-                             sort_key_col=x_config.workload_index_col,
                              metric_col="thr_mean",
-                             relative_col="thr_mean_rel",
-                             ascending=not x_config.descending
+                             x_config=x_config
                              )
 
     df = add_relative_metric(df,
                              strategy_col="strategy",
-                             sort_key_col=x_config.workload_index_col,
                              metric_col="thr_median",
-                             relative_col="thr_median_rel",
-                             ascending=not x_config.descending
+                             x_config=x_config
                              )
 
     df = add_relative_to_slice(df,
@@ -215,10 +213,14 @@ def decorate_df(df: pd.DataFrame, x_config: plot_configs.XConfig):
     return df
 
 
-def generate_plots(df: pd.DataFrame, folder_path: Path):
+def add_throughputs(df: pd.DataFrame):
     df["thr_mean"] = df["nr_events"] / (df["ns_mean"] * 1e-9)
     df["thr_median"] = df["nr_events"] / (df["ns_median"] * 1e-9)
+    return df
 
+
+def generate_plots(df: pd.DataFrame, folder_path: Path):
+    add_throughputs(df)
     x_config = plot_configs.x_nr_windows(False)
     df = decorate_df(df, x_config)
     # df = offset_metric_from_first(df, metric_col="ns_mean", x_config=x_config)
