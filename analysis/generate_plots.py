@@ -4,10 +4,41 @@ from pathlib import Path
 
 import pandas as pd
 
-from filters import apply_filters
 import overview_plotters
 import plot_configs
+from filters import apply_filters
 from plots_arg_parsing import parse_args
+
+
+def add_relative_to_slice(
+        df: pd.DataFrame,
+        *,
+        strategy_col: str,
+        slice_name: str,
+        metric_col: str,
+        relative_col: str,
+) -> pd.DataFrame:
+    workload_cols = [
+                        "nr_events",
+                        "stream_config.spread",
+                        "stream_config.offset",
+                        "bytes",
+                        "window.size",
+                        "window.slide",
+                        "window.offset",
+                        "nr_windows",
+                    ]
+    baseline = (
+        df[df[strategy_col] == slice_name]
+            .groupby(workload_cols, as_index=False)[[metric_col]]
+            .agg({metric_col: "first"})  # or "mean", etc.
+            .rename(columns={metric_col: f"{metric_col}_slice"})
+    )
+
+    df = df.merge(baseline, on=workload_cols, how="left")
+    df[relative_col] = df[metric_col] / df[f"{metric_col}_slice"]
+
+    return df
 
 
 def add_relative_metric(
@@ -135,6 +166,13 @@ def decorate_df(df: pd.DataFrame, x_config: plot_configs.XConfig):
                              relative_col="thr_median_rel",
                              ascending=not x_config.descending
                              )
+
+    df = add_relative_to_slice(df,
+                          strategy_col="strategy",
+                          slice_name="slice",
+                          metric_col="thr_mean",
+                          relative_col="thr_mean_rel_slice")
+
     return df
 
 
@@ -147,10 +185,11 @@ def generate_plots(df: pd.DataFrame, folder_path: Path):
 
     plotter = overview_plotters.make_strategy_comparison_plotter(
         x_variant,
-        plot_configs.Y_THR_MEAN,
+        plot_configs.Y_THR_SLICE,
         strategies=["clone", "slice", "rc", "arc", "legacy"]
     )
     plotter(df, folder_path)
+
 
 # def generate_strategy_window_plots(df: pd.DataFrame, folder_path: Path):
 #     x_variant = plot_configs.x_perc_overlap(False)

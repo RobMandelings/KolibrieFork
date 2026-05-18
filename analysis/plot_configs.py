@@ -79,6 +79,15 @@ Y_NS_MEAN = YConfig(
     filename="mean_ns",
 )
 
+Y_THR_SLICE = YConfig(
+    y_col="thr_mean_rel_slice",
+    yerr_col=None,
+    default_title="Throughput (relative to slice)",
+    ylabel="Relative throughput",
+    subdir=Path("overviews") / "throughput" / "relative",
+    filename="thr_slice_rel",
+)
+
 Y_THR_MEAN = YConfig(
     y_col="thr_mean",
     yerr_col="thr_std_dev",
