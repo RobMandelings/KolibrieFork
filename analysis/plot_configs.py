@@ -97,13 +97,13 @@ Y_LAT_MEAN_DIFF = YConfig(
     filename="latency_slice_diff",
 )
 
-Y_THR_SLICE = YConfig(
+Y_THR_REL_TO_SLICE = YConfig(
     y_col="thr_mean_rel_slice",
     yerr_col=None,
     default_title="Throughput (relative to slice)",
     ylabel="Relative throughput",
     subdir=Path("overviews") / "throughput" / "relative",
-    filename="thr_slice_rel",
+    filename="thr_rel_to_slice",
 )
 
 Y_THR_MEAN = YConfig(

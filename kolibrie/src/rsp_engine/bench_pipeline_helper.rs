@@ -1,13 +1,13 @@
-use std::path::{Path, PathBuf};
 use crate::rsp_engine::csv_graph_iter2::build_stream_iter;
 use crate::rsp_engine::parking_mapper::traffic_mapper;
 use crate::rsp_engine::{OperationMode, QueryExecutionMode, RSPBuilder, RSPEngine, SimpleR2R};
-use prototypes::{SliceStrategy, WindowSnapshotStrategy};
 use prototypes::prototype::event::Time;
 use prototypes::workloads::Workload;
+use prototypes::{SliceStrategy, WindowSnapshotStrategy};
 use shared::triple::Triple;
+use std::path::PathBuf;
 
-pub type CachedGraphs = Vec<(String, Vec<String>, u64)>;
+pub type CachedGraphs = Vec<(String, Vec<String>, Time)>;
 
 // Expire strategy is simply placeholder because we don't actually use it
 fn make_legacy_q1_engine(query: &str) -> RSPEngine<Triple, Vec<(String, String)>, SliceStrategy<Triple>>
