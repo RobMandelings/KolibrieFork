@@ -70,13 +70,31 @@ class YConfig:
     filename: str
 
 
-Y_NS_MEAN = YConfig(
+Y_LAT_MEAN = YConfig(
     y_col="ns_mean",
     yerr_col=None,
-    default_title="Nanoseconds (mean)",
+    default_title="Mean latency",
     ylabel="Nanoseconds",
     subdir=Path("overviews") / "nanoseconds" / "mean",
     filename="mean_ns",
+)
+
+Y_LAT_MEAN_REL = YConfig(
+    y_col="ns_mean_rel_slice",
+    yerr_col=None,
+    default_title="Relative latency (compared to slice)",
+    ylabel="Nanoseconds",
+    subdir=Path("overviews") / "nanoseconds" / "mean",
+    filename="latency_slice_rel",
+)
+
+Y_LAT_MEAN_DIFF = YConfig(
+    y_col="ns_mean_diff_slice",
+    yerr_col=None,
+    default_title="Relative latency (compared to slice, abs difference)",
+    ylabel="Nanoseconds",
+    subdir=Path("overviews") / "nanoseconds" / "mean",
+    filename="latency_slice_diff",
 )
 
 Y_THR_SLICE = YConfig(

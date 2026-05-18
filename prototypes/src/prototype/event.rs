@@ -4,6 +4,12 @@ pub struct Event<I> {
     pub payload: I, // Heap allocated data: handle is cheap to clone, but the data is not
 }
 
+pub struct Triple {
+    pub subject: u32,
+    pub predicate: u32,
+    pub object: u32,
+}
+
 // Concrete event type with heap-allocated bytes
 pub type ByteEvent = Event<Box<[u8]>>;
 
@@ -23,8 +29,12 @@ pub fn make_string_event(ts: Time) -> Event<String> {
     Event::new(ts, make_string_payload(1000))
 }
 
-pub fn make_copy_event(ts: Time) -> Event<u64> {
-    Event::new(ts, 0)
+pub fn make_copy_event(ts: Time) -> Event<Triple> {
+    Event::new(ts, Triple {
+        subject: 0,
+        predicate: 0,
+        object: 0,
+    })
 }
 
 impl<I> Event<I> {

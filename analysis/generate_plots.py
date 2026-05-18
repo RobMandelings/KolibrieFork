@@ -16,18 +16,17 @@ def add_relative_to_slice(
         strategy_col: str,
         slice_name: str,
         metric_col: str,
-        relative_col: str,
 ) -> pd.DataFrame:
     workload_cols = [
-                        "nr_events",
-                        "stream_config.spread",
-                        "stream_config.offset",
-                        "bytes",
-                        "window.size",
-                        "window.slide",
-                        "window.offset",
-                        "nr_windows",
-                    ]
+        "nr_events",
+        "stream_config.spread",
+        "stream_config.offset",
+        "bytes",
+        "window.size",
+        "window.slide",
+        "window.offset",
+        "nr_windows",
+    ]
     baseline = (
         df[df[strategy_col] == slice_name]
             .groupby(workload_cols, as_index=False)[[metric_col]]
@@ -36,7 +35,8 @@ def add_relative_to_slice(
     )
 
     df = df.merge(baseline, on=workload_cols, how="left")
-    df[relative_col] = df[metric_col] / df[f"{metric_col}_slice"]
+    df[f"{metric_col}_rel_slice"] = df[metric_col] / df[f"{metric_col}_slice"]
+    df[f"{metric_col}_diff_slice"] = df[metric_col] - df[f"{metric_col}_slice"]
 
     return df
 
@@ -168,10 +168,14 @@ def decorate_df(df: pd.DataFrame, x_config: plot_configs.XConfig):
                              )
 
     df = add_relative_to_slice(df,
-                          strategy_col="strategy",
-                          slice_name="slice",
-                          metric_col="thr_mean",
-                          relative_col="thr_mean_rel_slice")
+                               strategy_col="strategy",
+                               slice_name="slice",
+                               metric_col="thr_mean")
+
+    df = add_relative_to_slice(df,
+                               strategy_col="strategy",
+                               slice_name="slice",
+                               metric_col="ns_mean")
 
     return df
 
@@ -185,7 +189,7 @@ def generate_plots(df: pd.DataFrame, folder_path: Path):
 
     plotter = overview_plotters.make_strategy_comparison_plotter(
         x_variant,
-        plot_configs.Y_THR_SLICE,
+        plot_configs.Y_LAT_MEAN_DIFF,
         strategies=["clone", "slice", "rc", "arc", "legacy"]
     )
     plotter(df, folder_path)
