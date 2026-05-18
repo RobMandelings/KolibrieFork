@@ -12,7 +12,7 @@ use criterion::{
 };
 use prototypes::bench_common::Strategy;
 use prototypes::Event;
-use prototypes::prototype::event::{make_copy_event, Time};
+use prototypes::prototype::event::{make_copy_event, Time, Triple};
 use prototypes::prototype::slide_strategy::strategies_report_only::{create_arc_report, create_clone_report, create_rc_report, create_slice_report};
 
 #[derive(Clone, Debug)]
@@ -115,17 +115,17 @@ fn should_run(only: &Option<Vec<Strategy>>, strategy: Strategy) -> bool {
     }
 }
 
-fn make_content(size: usize) -> Vec<Event<u64>> {
+fn make_content(size: usize) -> Vec<Event<Triple>> {
     (0..size)
         .map(|ts| make_copy_event(ts as Time))
         .collect()
 }
 
-fn make_rc_content(size: usize) -> Vec<Rc<Event<u64>>> {
+fn make_rc_content(size: usize) -> Vec<Rc<Event<Triple>>> {
     make_content(size).into_iter().map(Rc::new).collect()
 }
 
-fn make_arc_content(size: usize) -> Vec<Arc<Event<u64>>> {
+fn make_arc_content(size: usize) -> Vec<Arc<Event<Triple>>> {
     make_content(size).into_iter().map(Arc::new).collect()
 }
 

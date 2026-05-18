@@ -47,7 +47,7 @@ mod tests {
 
         // 0,1,2...,9
         let workload = mk_workload(10, 1, 0);
-        let events = create_events_for_workload(&workload, mk_string_event);
+        let events = create_events_for_workload(&workload, 0, mk_string_event);
         let ts: Vec<Time> = events.iter().map(|e| e.ts).collect();
         println!("{:?}", ts);
 
@@ -74,7 +74,7 @@ mod tests {
 
         // 0,1,2,...,11
         let workload = mk_workload(12, 1, 0);
-        let events = create_events_for_workload(&workload, mk_string_event);
+        let events = create_events_for_workload(&workload, 0, mk_string_event);
 
         for e in events {
             op.event_arrives(e);
@@ -100,7 +100,7 @@ mod tests {
 
         // Use spread=5 so timestamps = 6,11,16,21,26
         let workload = mk_workload(5, 5, 6);
-        let events = create_events_for_workload(&workload, mk_string_event);
+        let events = create_events_for_workload(&workload, 0, mk_string_event);
 
         for e in events {
             op.event_arrives(e);

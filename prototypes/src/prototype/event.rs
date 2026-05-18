@@ -4,6 +4,7 @@ pub struct Event<I> {
     pub payload: I, // Heap allocated data: handle is cheap to clone, but the data is not
 }
 
+#[derive(Hash, PartialEq, Eq, Clone, Debug)]
 pub struct Triple {
     pub subject: u32,
     pub predicate: u32,
