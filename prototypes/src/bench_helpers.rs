@@ -12,9 +12,8 @@ use crate::{ArcStrategy, CloneStrategy, Event, SliceStrategy, RcStrategy
 use criterion::black_box;
 use std::fmt::Debug;
 use std::hash::Hash;
+use crate::prototype::event::Time;
 use crate::prototype::slide_strategy::event_arrives::EventArrives;
-
-pub type Time = u64;
 
 /// Lets events arrive to run the legacy S2R operator
 fn run_legacy<I>(

@@ -66,4 +66,4 @@ impl<I> Event<I> {
     }
 }
 
-pub type Time = u64;
+pub type Time = u32;
