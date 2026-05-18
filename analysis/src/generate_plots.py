@@ -115,6 +115,41 @@ def add_relative_metric_vs_windows_baseline(
     return df
 
 
+def offset_metric_from_first(
+        df: pd.DataFrame,
+        *,
+        metric_col: str,
+        x_config: plot_configs.XConfig,
+) -> pd.DataFrame:
+    """
+    For each strategy, pick the first row by sort_key_col (after sorting),
+    use its metric_col as baseline, and replace metric_col with:
+
+        metric_col = metric_col - baseline
+
+    This makes the first point in each strategy equal to 0.
+    """
+    df = df.copy()
+
+    df = df.sort_values(
+        by=["strategy", x_config.workload_index_col],
+        ascending=[True, not x_config.descending],
+    )
+
+    baselines = (
+        df
+        .groupby("strategy", as_index=False)
+        .agg({metric_col: "first"})
+        .rename(columns={metric_col: f"baseline_{metric_col}"})
+    )
+
+    df = df.merge(baselines, on="strategy", how="left")
+    df[metric_col] = df[metric_col] - df[f"baseline_{metric_col}"]
+    df = df.drop(columns=[f"baseline_{metric_col}"])
+
+    return df
+
+
 def decorate_df_with_window_relative_metrics(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
@@ -184,13 +219,13 @@ def generate_plots(df: pd.DataFrame, folder_path: Path):
     df["thr_mean"] = df["nr_events"] / (df["ns_mean"] * 1e-9)
     df["thr_median"] = df["nr_events"] / (df["ns_median"] * 1e-9)
 
-    x_variant = plot_configs.x_size(False)
-    df = decorate_df(df, x_variant)
-
+    x_config = plot_configs.x_nr_windows(False)
+    df = decorate_df(df, x_config)
+    # df = offset_metric_from_first(df, metric_col="ns_mean", x_config=x_config)
     plotter = overview_plotters.make_strategy_comparison_plotter(
-        x_variant,
-        plot_configs.Y_THR_REL_TO_SLICE,
-        strategies=["clone", "slice", "rc", "arc", "legacy"]
+        x_config,
+        plot_configs.Y_LAT_MEAN,
+        strategies=["clone", "slice", "rc", "arc"]
     )
     plotter(df, folder_path)
 
