@@ -153,6 +153,7 @@ pub struct Args {
     pub workloads: Vec<Workload>,
     pub sample_size: Option<usize>,
     pub fill_initial_window: bool,
+    pub heap: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -457,6 +458,7 @@ pub fn parse_args() -> Args {
 
     let mut sample_size: Option<usize> = None;
     let mut fill_initial_window = false;
+    let mut heap = false;
 
     while i < all_args.len() {
         match all_args[i].as_str() {
@@ -527,6 +529,9 @@ pub fn parse_args() -> Args {
             "--fill-initial-window" => {
                 fill_initial_window = true;
             }
+            "--heap" => {
+                heap = true;
+            }
             other => {
                 panic!("unknown argument: {other}");
             }
@@ -554,6 +559,7 @@ pub fn parse_args() -> Args {
         workloads,
         sample_size,
         fill_initial_window,
+        heap,
     }
 }
 

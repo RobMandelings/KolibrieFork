@@ -4,9 +4,9 @@ use criterion::{black_box, BatchSize, BenchmarkGroup, BenchmarkId, Criterion, Th
 use pprof::criterion::{Output, PProfProfiler};
 use pprof::flamegraph::Options;
 use pprof::ProfilerGuardBuilder;
-use prototypes::bench_common::{copy_group_dir_with_catch, move_profile_file, parse_args, should_run, Strategy};
+use prototypes::bench_common::{copy_group_dir_with_catch, move_profile_file, parse_args, should_run, Args, Strategy};
 use prototypes::bench_helpers::{RunnerFactory};
-use prototypes::prototype::event::{make_byte_event, make_copy_event, Time};
+use prototypes::prototype::event::{make_byte_event, make_copy_event, StackBytesEvent, StackBytes, Time};
 use prototypes::workloads::{write_workload_to_file, Workload};
 use prototypes::{run_mem_profile, Event};
 use std::fs::File;
@@ -90,9 +90,9 @@ fn write_flamegraph_for_strategy<F>(
         .expect("failed to write flamegraph");
 }
 
-fn print_running_benchmark(strategy: &str, workload: &Workload, fill_initial_window: bool) {
+fn print_running_benchmark(strategy: &str, workload: &Workload, args: &Args) {
     println!(
-        "[BENCH] strategy={strategy} | windows={} | events={} | size={} | slide={} | spread={} | event_offset={} | bytes={} | reserve={} | fill_init={}",
+        "[BENCH] strategy={strategy} | windows={} | events={} | size={} | slide={} | spread={} | event_offset={} | bytes={} | heap={} | reserve={} | fill_init={}",
         workload.nr_windows,
         workload.nr_events,
         workload.window.size,
@@ -100,8 +100,9 @@ fn print_running_benchmark(strategy: &str, workload: &Workload, fill_initial_win
         workload.stream_config.spread,
         workload.stream_config.offset,
         workload.bytes,
+        args.heap,
         workload.reserve,
-        fill_initial_window
+        args.fill_initial_window,
     );
 }
 
@@ -111,10 +112,10 @@ fn run_bench_and_profile(
     label: &str, // "clone"
     group_path: &Path,
     runner_factory: RunnerFactory,
-    fill_initial_window: bool,
+    args: &Args,
 )
 {
-    print_running_benchmark(label, workload, fill_initial_window);
+    print_running_benchmark(label, workload, args);
     bench_strategy(group, label, workload.nr_events, &runner_factory);
     run_mem_profile(label, &runner_factory);
     move_profile_file(label, group_path);
@@ -123,8 +124,7 @@ fn run_bench_and_profile(
 fn run_benches<I, E>(
     group: &mut BenchmarkGroup<WallTime>,
     workload: &Workload,
-    fill_initial_window: bool,
-    only: &Option<Vec<Strategy>>,
+    args: &Args,
     dst_group_path: &Path,
     make_event: E,
 ) where
@@ -132,13 +132,13 @@ fn run_benches<I, E>(
     E: Fn(Time) -> Event<I> + Copy + 'static,
 {
     for strategy in Strategy::iter() {
-        if !should_run(only, strategy) {
+        if !should_run(&args.only, strategy) {
             continue;
         }
 
         let label = strategy.as_str();
-        let factory = strategy.make_factory(workload, fill_initial_window, make_event);
-        run_bench_and_profile(group, workload, label, dst_group_path, factory, fill_initial_window);
+        let factory = strategy.make_factory(workload, args.fill_initial_window, make_event);
+        run_bench_and_profile(group, workload, label, dst_group_path, factory, &args);
     }
 }
 
@@ -175,7 +175,6 @@ fn main() {
     println!("root (one up): {}", root.display());
 
     let args = parse_args();
-    let only = args.only;
     let no_bench = args.no_bench;
 
     let output_cfg = resolve_output_config();
@@ -225,10 +224,35 @@ fn main() {
                 let dst_group_path = dst_root_path.join(&workload.name);
                 let criterion_dst_path = dst_group_path.join("throughput");
                 let criterion_workload_src = criterion_src.join(&workload.get_short_name());
+                let bytes = workload.bytes;
 
-                match workload.bytes {
-                    0 => run_benches(&mut group, workload, args.fill_initial_window, &only, &dst_group_path, make_copy_event),
-                    bytes => run_benches(&mut group, workload, args.fill_initial_window, &only, &dst_group_path, move |ts| make_byte_event(ts, bytes)),
+                if args.heap {
+                    run_benches(&mut group, workload, &args, &dst_group_path, move |ts| make_byte_event(ts, bytes));
+                } else {
+                    match bytes {
+                        4 => run_benches(
+                            &mut group,
+                            workload,
+                            &args,
+                            &dst_group_path,
+                            StackBytesEvent::<4>::make_stack_bytes_event,
+                        ),
+                        8 => run_benches(
+                            &mut group,
+                            workload,
+                            &args,
+                            &dst_group_path,
+                            StackBytesEvent::<8>::make_stack_bytes_event,
+                        ),
+                        12 => run_benches(
+                            &mut group,
+                            workload,
+                            &args,
+                            &dst_group_path,
+                            StackBytesEvent::<12>::make_stack_bytes_event,
+                        ),
+                        _ => panic!("unsupported stack byte size: {}", bytes),
+                    }
                 }
 
                 group.finish();

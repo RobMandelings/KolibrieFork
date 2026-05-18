@@ -38,6 +38,24 @@ pub fn make_copy_event(ts: Time) -> Event<Triple> {
     })
 }
 
+#[derive(Hash, PartialEq, Eq, Clone, Debug)]
+pub struct StackBytes<const N: usize> {
+    pub bytes: [u8; N],
+}
+
+// Event whose payload is exactly N bytes (chosen at compile time)
+pub type StackBytesEvent<const N: usize> = Event<StackBytes<N>>;
+
+// Constructor for such an event
+impl<const N: usize> Event<StackBytes<N>> {
+    pub fn make_stack_bytes_event(ts: Time) -> Self {
+        Event {
+            ts,
+            payload: StackBytes { bytes: [0u8; N] },
+        }
+    }
+}
+
 impl<I> Event<I> {
 
     pub fn new(ts: Time, payload: I) -> Event<I>  {
@@ -46,7 +64,6 @@ impl<I> Event<I> {
             payload
         }
     }
-
 }
 
 pub type Time = u64;
