@@ -254,6 +254,13 @@ fn main() {
                             &dst_group_path,
                             StackBytesEvent::<12>::make_stack_bytes_event,
                         ),
+                        496 => run_benches(
+                            &mut group,
+                            workload,
+                            &args,
+                            &dst_group_path,
+                            StackBytesEvent::<496>::make_stack_bytes_event,
+                        ),
                         _ => panic!("unsupported stack byte size: {}", bytes),
                     }
                 }

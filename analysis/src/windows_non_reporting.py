@@ -53,7 +53,6 @@ def windows_non_reporting():
     folder_path = analysis_path.parent
 
     x_config = plot_configs.x_nr_windows(False)
-    y_config = plot_configs.y_lat_mean_rel(False)
 
     df = add_relative_metric(df,
                              strategy_col="strategy",
@@ -68,7 +67,7 @@ def windows_non_reporting():
                              )
 
     print("RELATIVE REGRESSIONS TO SHOW DIFFERENCES BETWEEN STRATEGIES")
-    report_strategy_regressions(df, x_config, y_config, strategies=["clone", "slice", "rc", "arc", "legacy"])
+    report_strategy_regressions(df, x_config, plot_configs.y_lat_mean_rel(False), strategies=["clone", "slice", "rc", "arc", "legacy"])
 
     plot_relative_throughputs(df, x_config, folder_path)
     plot_relative_latencies(df, x_config, folder_path)
