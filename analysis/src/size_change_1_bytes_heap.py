@@ -53,24 +53,6 @@ def plot_relative_throughputs(
     plotter(df, folder_path)
 
 
-def plot_relative_throughputs2(
-        df: pd.DataFrame,
-        folder_path,
-):
-    df = add_relative_to_slice(
-        df,
-        strategy_name="slice",
-        metric_col="thr_mean",
-    )
-    y_config = plot_configs.y_thr_rel_to_slice(y_log=False)
-    plotter = overview_plotters.make_strategy_comparison_plotter(
-        x_config,
-        y_config,
-        strategies=["clone", "slice", "arc", "rc"],
-    )
-    plotter(df, folder_path)
-
-
 def size_change(csv_path):
     analysis_path = Path(csv_path)
     df = pd.read_csv(analysis_path)
@@ -79,9 +61,8 @@ def size_change(csv_path):
 
     plot_mean_throughputs(df, folder_path)
     plot_relative_throughputs(df, folder_path)
-    plot_relative_throughputs2(df, folder_path)
     plot_memory_usage(df, folder_path)
 
 
 if __name__ == "__main__":
-    size_change("evaluation/size_change_496_bytes/summary.csv")
+    size_change("evaluation/size_change_1_bytes_heap/summary.csv")

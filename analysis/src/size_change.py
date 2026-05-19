@@ -30,7 +30,7 @@ def plot_memory_usage(
     plotter = overview_plotters.make_strategy_comparison_plotter(
         x_config,
         y_config,
-        strategies=["slice", "rc", "arc"],
+        strategies=["slice", "rc", "arc", "clone"],
     )
     plotter(df, folder_path)
 
@@ -48,7 +48,7 @@ def plot_relative_throughputs(
     plotter = overview_plotters.make_strategy_comparison_plotter(
         x_config,
         y_config,
-        strategies=["clone", "slice", "rc", "arc"],
+        strategies=["clone", "slice"],
     )
     plotter(df, folder_path)
 
