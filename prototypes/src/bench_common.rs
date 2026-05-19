@@ -163,6 +163,12 @@ pub(crate) enum EventSpreadSpec {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) enum ReserveSpec {
+    Values(Vec<usize>),
+    FollowSize,
+}
+
+#[derive(Clone, Debug)]
 pub(crate) enum NrEventsSpec {
     Values(Vec<usize>),
     Expr(String),
@@ -177,7 +183,7 @@ pub(crate) enum WorkloadDim {
     Bytes(Vec<usize>),
     Size(Vec<usize>),
     Slide(Vec<usize>),
-    Reserve(Vec<usize>),
+    Reserve(ReserveSpec),
 }
 
 impl WorkloadDim {
@@ -281,7 +287,13 @@ fn parse_workload_dim(flag: &str, spec: &str) -> Result<WorkloadDim, String> {
         "--bytes" => Ok(WorkloadDim::Bytes(parse_number_list(spec)?)),
         "--size" => Ok(WorkloadDim::Size(parse_number_list(spec)?)),
         "--slide" => Ok(WorkloadDim::Slide(parse_number_list(spec)?)),
-        "--reserve" => Ok(WorkloadDim::Reserve(parse_number_list(spec)?)),
+        "--reserve" => {
+            if spec.trim() == "size" {
+                Ok(WorkloadDim::Reserve(ReserveSpec::FollowSize))
+            } else {
+                Ok(WorkloadDim::Reserve(ReserveSpec::Values(parse_number_list(spec)?)))
+            }
+        }
         _ => Err(format!("unknown workload dimension flag: {flag}")),
     }
 }
@@ -297,6 +309,7 @@ struct Partial {
     size: Option<usize>,
     slide: Option<usize>,
     reserve: Option<usize>,
+    reserve_follows_size: bool,
 }
 
 impl Partial {
@@ -311,7 +324,14 @@ impl Partial {
             size: None,
             slide: None,
             reserve: Some(0),
+            reserve_follows_size: false,
         }
+    }
+
+    fn with_reserve_follow_size(&self) -> Self {
+        let mut next = self.clone();
+        next.reserve_follows_size = true;
+        next
     }
 
     fn with_event_spread_follow_slide(&self) -> Self {
@@ -339,7 +359,10 @@ impl Partial {
             WorkloadDim::Bytes(_) => next.bytes = Some(value),
             WorkloadDim::Size(_) => next.size = Some(value),
             WorkloadDim::Slide(_) => next.slide = Some(value),
-            WorkloadDim::Reserve(_) => next.reserve = Some(value),
+            WorkloadDim::Reserve(ReserveSpec::Values(_)) => next.reserve = Some(value),
+            WorkloadDim::Reserve(ReserveSpec::FollowSize) => {
+                panic!("internal error: with_dim called for ReserveSpec::FollowSize")
+            }
         }
         next
     }
@@ -357,6 +380,12 @@ impl Partial {
             slide_u
         } else {
             self.event_spread.ok_or("missing workload dimension: event_spread")?
+        };
+
+        let reserve = if self.reserve_follows_size {
+            size_u
+        } else {
+            self.reserve.unwrap_or(0)
         };
 
         let spread: Time = spread_u as Time;
@@ -395,8 +424,7 @@ fn build_workloads_from_dims(dims: &[WorkloadDim]) -> Result<Vec<Workload>, Stri
             | WorkloadDim::EventOffset(values)
             | WorkloadDim::Bytes(values)
             | WorkloadDim::Size(values)
-            | WorkloadDim::Slide(values)
-            | WorkloadDim::Reserve(values) => {
+            | WorkloadDim::Slide(values) => {
                 let mut next_partials = Vec::with_capacity(partials.len() * values.len());
                 for partial in &partials {
                     for &value in values {
@@ -404,6 +432,21 @@ fn build_workloads_from_dims(dims: &[WorkloadDim]) -> Result<Vec<Workload>, Stri
                     }
                 }
                 partials = next_partials;
+            }
+            WorkloadDim::Reserve(ReserveSpec::Values(values)) => {
+                let mut next_partials = Vec::with_capacity(partials.len() * values.len());
+                for partial in &partials {
+                    for &value in values {
+                        next_partials.push(partial.with_dim(dim, value));
+                    }
+                }
+                partials = next_partials;
+            }
+            WorkloadDim::Reserve(ReserveSpec::FollowSize) => {
+                partials = partials
+                    .into_iter()
+                    .map(|p| p.with_reserve_follow_size())
+                    .collect();
             }
             WorkloadDim::NrEvents(NrEventsSpec::Values(values)) => {
                 let mut next_partials = Vec::with_capacity(partials.len() * values.len());
