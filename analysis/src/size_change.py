@@ -6,10 +6,11 @@ import overview_plotters
 import plot_configs
 from generate_plots import add_throughputs, add_relative_to_slice
 
+x_config = plot_configs.x_size(False)
+
 
 def plot_mean_throughputs(
         df: pd.DataFrame,
-        x_config: plot_configs.XConfig,
         folder_path,
 ):
     y_config = plot_configs.y_thr_mean(y_log=False)
@@ -21,9 +22,21 @@ def plot_mean_throughputs(
     plotter(df, folder_path)
 
 
+def plot_memory_usage(
+        df: pd.DataFrame,
+        folder_path,
+):
+    y_config = plot_configs.y_mem(y_log=False)
+    plotter = overview_plotters.make_strategy_comparison_plotter(
+        x_config,
+        y_config,
+        strategies=["slice", "rc", "arc"],
+    )
+    plotter(df, folder_path)
+
+
 def plot_relative_throughputs(
         df: pd.DataFrame,
-        x_config: plot_configs.XConfig,
         folder_path,
 ):
     df = add_relative_to_slice(
@@ -46,6 +59,6 @@ def size_change(csv_path):
     df = add_throughputs(df)
     folder_path = analysis_path.parent
 
-    x_config = plot_configs.x_size(False)
-    plot_mean_throughputs(df, x_config, folder_path)
-    plot_relative_throughputs(df, x_config, folder_path)
+    plot_mean_throughputs(df, folder_path)
+    plot_relative_throughputs(df, folder_path)
+    plot_memory_usage(df, folder_path)
