@@ -1,11 +1,9 @@
+use crate::prototype::event::Time;
+use crate::prototype::slide_strategy::{ItemsReport, WindowSnapshotStrategy};
+use crate::prototype::window_bounds::after_open;
+use crate::Event;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
-use crate::debug_helper::push_tracking;
-use crate::Event;
-use crate::prototype::event::Time;
-use crate::prototype::slide_strategy::{CutoffOrOpen, ItemsReport, WindowSnapshotStrategy};
-use crate::prototype::window_bounds::{after_open, before_open};
 
 /// Concrete slide_strategy: expire old events, report them as owned Events.
 pub struct SliceStrategy<I: Clone> {
@@ -96,8 +94,8 @@ impl<I: Clone + 'static> WindowSnapshotStrategy<I> for SliceStrategy<I> {
 
 #[cfg(test)]
 mod tests {
-    use crate::make_string_event;
     use super::*;
+    use crate::make_string_event;
 
     fn consume_fn() -> Box<dyn for<'a> Fn(SliceContainer<String>)> {
         Box::new(|_| {})
