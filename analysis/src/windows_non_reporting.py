@@ -11,7 +11,6 @@ from regression import report_strategy_regressions
 def plot_relative_throughputs(df: pd.DataFrame, x_config: plot_configs.XConfig, folder_path):
     y_config = plot_configs.y_thr_mean_rel(y_log=False)
     df = add_relative_metric(df,
-                             strategy_col="strategy",
                              metric_col="thr_mean",
                              x_config=x_config
                              )
@@ -36,7 +35,7 @@ def plot_relative_latencies(df: pd.DataFrame, x_config: plot_configs.XConfig, fo
 
 
 def plot_mem_usage(df: pd.DataFrame, x_config: plot_configs.XConfig, folder_path):
-    y_config = plot_configs.y_mem_rel(True)
+    y_config = plot_configs.y_mem_rel(False)
 
     plotter = overview_plotters.make_strategy_comparison_plotter(
         x_config,
@@ -47,7 +46,7 @@ def plot_mem_usage(df: pd.DataFrame, x_config: plot_configs.XConfig, folder_path
 
 
 def windows_non_reporting():
-    analysis_path = Path("../evaluation/windows_non_reporting/summary.csv")
+    analysis_path = Path("evaluation/windows_non_reporting/summary.csv")
     df = pd.read_csv(analysis_path)
     df = add_throughputs(df)
     folder_path = analysis_path.parent
@@ -55,13 +54,11 @@ def windows_non_reporting():
     x_config = plot_configs.x_nr_windows(False)
 
     df = add_relative_metric(df,
-                             strategy_col="strategy",
                              metric_col="ns_mean",
                              x_config=x_config
                              )
 
     df = add_relative_metric(df,
-                             strategy_col="strategy",
                              metric_col="mem_total",
                              x_config=x_config
                              )
