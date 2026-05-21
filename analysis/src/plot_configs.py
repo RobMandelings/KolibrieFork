@@ -174,7 +174,7 @@ def y_thr_mean_rel(y_log: bool = False, y_log_base: float = 10.0) -> YConfig:
         default_title="Mean throughput (relative)",
         ylabel="Factor",
         subdir=Path("overviews") / "throughput" / "relative" / "mean",
-        filename=with_log_filename("mean_throughput", y_log),
+        filename=with_log_filename("mean_throughput_rel", y_log),
         y_log=y_log,
         y_log_base=y_log_base,
     )
