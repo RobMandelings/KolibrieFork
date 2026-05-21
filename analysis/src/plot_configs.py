@@ -42,9 +42,9 @@ def x_slide(descending: bool = False) -> XConfig:
     )
 
 
-def x_size(descending: bool = False) -> XConfig:
+def x_nr_elems(descending: bool = False) -> XConfig:
     return XConfig(
-        x_label="Size",
+        x_label="Number of elements",
         label_fn=size_label,
         workload_index_col="window.size",
         descending=descending,

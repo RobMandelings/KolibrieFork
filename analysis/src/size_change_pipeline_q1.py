@@ -6,8 +6,7 @@ import overview_plotters
 import plot_configs
 from generate_plots import add_throughputs, add_relative_to_slice
 
-x_config = plot_configs.x_size(False)
-
+x_config = plot_configs.x_nr_elems(False)
 
 def plot_mean_throughputs(
         df: pd.DataFrame,

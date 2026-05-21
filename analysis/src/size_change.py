@@ -6,7 +6,7 @@ import overview_plotters
 import plot_configs
 from generate_plots import add_throughputs, add_relative_to_slice
 
-x_config = plot_configs.x_size(False)
+x_config = plot_configs.x_nr_elems(False)
 
 
 def plot_mean_throughputs(
@@ -17,7 +17,20 @@ def plot_mean_throughputs(
     plotter = overview_plotters.make_strategy_comparison_plotter(
         x_config,
         y_config,
-        strategies=["clone", "slice", "rc", "arc"],
+        strategies=["clone", "slice", "rc"],
+    )
+    plotter(df, folder_path)
+
+
+def plot_mean_latencies(
+        df: pd.DataFrame,
+        folder_path,
+):
+    y_config = plot_configs.y_lat_mean(y_log=False)
+    plotter = overview_plotters.make_strategy_comparison_plotter(
+        x_config,
+        y_config,
+        strategies=["clone", "slice", "rc"],
     )
     plotter(df, folder_path)
 
@@ -30,7 +43,7 @@ def plot_memory_usage(
     plotter = overview_plotters.make_strategy_comparison_plotter(
         x_config,
         y_config,
-        strategies=["slice", "rc", "arc", "clone"],
+        strategies=["slice", "rc", "clone"],
     )
     plotter(df, folder_path)
 
@@ -60,5 +73,6 @@ def size_change(csv_path):
     folder_path = analysis_path.parent
 
     plot_mean_throughputs(df, folder_path)
+    plot_mean_latencies(df, folder_path)
     plot_relative_throughputs(df, folder_path)
     plot_memory_usage(df, folder_path)
