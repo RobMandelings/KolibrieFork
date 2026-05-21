@@ -88,7 +88,7 @@ def plot_relative_throughputs(
         metric_col="thr_mean",
         x_config=x_config
     )
-    y_config = plot_configs.y_thr_mean_rel()
+    y_config = plot_configs.y_thr_mean_rel(y_log=True)
     plotter = overview_plotters.make_strategy_comparison_plotter(
         x_config,
         y_config,
