@@ -13,7 +13,7 @@ def plot_mean_throughputs_log(
         df: pd.DataFrame,
         folder_path,
 ):
-    y_config = plot_configs.y_thr_mean(y_log=True, y_log_base=10)
+    y_config = plot_configs.y_thr_mean(y_log=True, y_log_base=2)
     plotter = overview_plotters.make_strategy_comparison_plotter(
         x_config,
         y_config,
