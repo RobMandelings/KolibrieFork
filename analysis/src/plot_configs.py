@@ -138,13 +138,14 @@ def y_thr_rel_to_slice(y_log: bool = False, y_log_base: float = 10.0) -> YConfig
 
 
 def y_thr_mean(y_log: bool = False, y_log_base: float = 10.0) -> YConfig:
+    filename = f"mean_throughput_log" if y_log else "mean_throughput"
     return YConfig(
         y_col="thr_mean",
         yerr_col="thr_std_dev",
         default_title="Mean throughput",
         ylabel="Throughput (events/s)",
         subdir=Path("overviews") / "throughput" / "mean",
-        filename="mean_throughput",
+        filename=filename,
         y_log=y_log,
         y_log_base=y_log_base,
     )
