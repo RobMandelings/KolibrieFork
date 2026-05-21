@@ -4,7 +4,7 @@ import pandas as pd
 
 import overview_plotters
 import plot_configs
-from generate_plots import add_throughputs, add_relative_to_slice
+from generate_plots import add_throughputs, add_relative_to_slice, add_relative_metric
 
 x_config = plot_configs.x_nr_elems(False)
 
@@ -61,7 +61,7 @@ def plot_memory_usage(
     plotter(df, folder_path)
 
 
-def plot_relative_throughputs(
+def plot_relative_throughputs_to_slice(
         df: pd.DataFrame,
         folder_path,
 ):
@@ -79,6 +79,24 @@ def plot_relative_throughputs(
     plotter(df, folder_path)
 
 
+def plot_relative_throughputs(
+        df: pd.DataFrame,
+        folder_path,
+):
+    df = add_relative_metric(
+        df,
+        metric_col="thr_mean",
+        x_config=x_config
+    )
+    y_config = plot_configs.y_thr_mean_rel()
+    plotter = overview_plotters.make_strategy_comparison_plotter(
+        x_config,
+        y_config,
+        strategies=["clone", "slice", "rc"],
+    )
+    plotter(df, folder_path)
+
+
 def size_change(csv_path):
     analysis_path = Path(csv_path)
     df = pd.read_csv(analysis_path)
@@ -88,5 +106,6 @@ def size_change(csv_path):
     plot_mean_throughputs(df, folder_path)
     plot_mean_throughputs_log(df, folder_path)
     plot_mean_latencies(df, folder_path)
+    plot_relative_throughputs_to_slice(df, folder_path)
     plot_relative_throughputs(df, folder_path)
     plot_memory_usage(df, folder_path)

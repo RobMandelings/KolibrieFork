@@ -43,7 +43,6 @@ def add_relative_to_slice(
 def add_relative_metric(
         df: pd.DataFrame,
         *,
-        strategy_col: str,
         metric_col: str,
         x_config: plot_configs.XConfig
 ) -> pd.DataFrame:
@@ -59,18 +58,18 @@ def add_relative_metric(
     df = df.copy()
 
     # Sort so that "first" is well-defined
-    df = df.sort_values(by=[strategy_col, sort_key_col], ascending=[True, ascending])
+    df = df.sort_values(by=["strategy", sort_key_col], ascending=[True, ascending])
 
     # Baseline per strategy (first row after sort)
     baselines = (
         df
-            .groupby(strategy_col, as_index=False)
+            .groupby("strategy", as_index=False)
             .agg({metric_col: "first"})
             .rename(columns={metric_col: f"baseline_{metric_col}"})
     )
 
     # Join baseline back on strategy
-    df = df.merge(baselines, on=strategy_col, how="left")
+    df = df.merge(baselines, on="strategy", how="left")
 
     # Compute relative metric
     df[f"{metric_col}_rel"] = df[metric_col] / df[f"baseline_{metric_col}"]
@@ -188,13 +187,11 @@ def decorate_df_with_window_relative_metrics(df: pd.DataFrame) -> pd.DataFrame:
 
 def decorate_df(df: pd.DataFrame, x_config: plot_configs.XConfig):
     df = add_relative_metric(df,
-                             strategy_col="strategy",
                              metric_col="thr_mean",
                              x_config=x_config
                              )
 
     df = add_relative_metric(df,
-                             strategy_col="strategy",
                              metric_col="thr_median",
                              x_config=x_config
                              )
