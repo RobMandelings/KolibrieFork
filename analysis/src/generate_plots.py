@@ -185,6 +185,49 @@ def decorate_df_with_window_relative_metrics(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def add_relative_change_to_previous(
+        df: pd.DataFrame,
+        *,
+        metric_col: str,
+        x_config: plot_configs.XConfig,
+        group_cols: list[str] | None = None,
+        relative_col: str | None = None,
+) -> pd.DataFrame:
+    """
+    For each group, compute the relative change of metric_col compared to the
+    previous point in x-order:
+
+        current / previous - 1
+
+    So:
+      0.0   -> no change
+     -0.25  -> 25% reduction
+     -0.50  -> 50% reduction
+      0.20  -> 20% increase
+
+    The first point in each group has no previous point, so it gets NaN.
+    """
+    df = df.copy()
+
+    if group_cols is None:
+        group_cols = ["strategy"]
+
+    if relative_col is None:
+        relative_col = f"{metric_col}_rel_change_prev"
+
+    x_col = x_config.workload_index_col
+    ascending = not x_config.descending
+
+    df = df.sort_values(by=group_cols + [x_col], ascending=[True] * len(group_cols) + [ascending])
+
+    df[relative_col] = (
+        df.groupby(group_cols)[metric_col]
+            .pct_change()
+    )
+
+    return df
+
+
 def decorate_df(df: pd.DataFrame, x_config: plot_configs.XConfig):
     df = add_relative_metric(df,
                              metric_col="thr_mean",

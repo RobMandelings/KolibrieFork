@@ -167,6 +167,19 @@ def y_thr_median(y_log: bool = False, y_log_base: float = 10.0) -> YConfig:
     )
 
 
+def y_thr_mean_rel_prev(y_log: bool = False, y_log_base: float = 10.0) -> YConfig:
+    return YConfig(
+        y_col="thr_mean_rel_prev",
+        yerr_col=None,
+        default_title="Mean throughput change relative to previous point",
+        ylabel="Relative change",
+        subdir=Path("overviews") / "throughput" / "relative_previous" / "mean",
+        filename=with_log_filename("mean_throughput_rel_prev", y_log),
+        y_log=y_log,
+        y_log_base=y_log_base,
+    )
+
+
 def y_thr_mean_rel(y_log: bool = False, y_log_base: float = 10.0) -> YConfig:
     return YConfig(
         y_col="thr_mean_rel",
