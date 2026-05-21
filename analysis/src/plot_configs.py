@@ -72,6 +72,10 @@ class YConfig:
     y_log_base: float = 10.0
 
 
+def with_log_filename(filename: str, y_log: bool) -> str:
+    return f"{filename}_log" if y_log else filename
+
+
 def y_lat_mean(y_log: bool = False, y_log_base: float = 10.0) -> YConfig:
     return YConfig(
         y_col="ns_mean",
@@ -79,7 +83,7 @@ def y_lat_mean(y_log: bool = False, y_log_base: float = 10.0) -> YConfig:
         default_title="Mean latency",
         ylabel="Nanoseconds",
         subdir=Path("overviews") / "nanoseconds" / "mean",
-        filename="mean_ns",
+        filename=with_log_filename("mean_ns", y_log),
         y_log=y_log,
         y_log_base=y_log_base,
     )
@@ -92,7 +96,7 @@ def y_lat_mean_rel(y_log: bool = False, y_log_base: float = 10.0) -> YConfig:
         default_title="Mean latency (relative)",
         ylabel="Factor",
         subdir=Path("overviews") / "latency" / "relative" / "mean",
-        filename="mean_latency_rel",
+        filename=with_log_filename("mean_latency_rel", y_log),
         y_log=y_log,
         y_log_base=y_log_base,
     )
@@ -105,7 +109,7 @@ def y_lat_rel_to_slice(y_log: bool = False, y_log_base: float = 10.0) -> YConfig
         default_title="Relative latency (compared to slice)",
         ylabel="Nanoseconds",
         subdir=Path("overviews") / "nanoseconds" / "mean",
-        filename="latency_slice_rel",
+        filename=with_log_filename("latency_slice_rel", y_log),
         y_log=y_log,
         y_log_base=y_log_base,
     )
@@ -118,7 +122,7 @@ def y_lat_mean_diff(y_log: bool = False, y_log_base: float = 10.0) -> YConfig:
         default_title="Relative latency (compared to slice, abs difference)",
         ylabel="Nanoseconds",
         subdir=Path("overviews") / "nanoseconds" / "mean",
-        filename="latency_slice_diff",
+        filename=with_log_filename("latency_slice_diff", y_log),
         y_log=y_log,
         y_log_base=y_log_base,
     )
@@ -131,21 +135,20 @@ def y_thr_rel_to_slice(y_log: bool = False, y_log_base: float = 10.0) -> YConfig
         default_title="Throughput (relative to slice)",
         ylabel="Relative throughput",
         subdir=Path("overviews") / "throughput" / "relative",
-        filename="thr_rel_to_slice",
+        filename=with_log_filename("thr_rel_to_slice", y_log),
         y_log=y_log,
         y_log_base=y_log_base,
     )
 
 
 def y_thr_mean(y_log: bool = False, y_log_base: float = 10.0) -> YConfig:
-    filename = f"mean_throughput_log" if y_log else "mean_throughput"
     return YConfig(
         y_col="thr_mean",
         yerr_col="thr_std_dev",
         default_title="Mean throughput",
         ylabel="Throughput (events/s)",
         subdir=Path("overviews") / "throughput" / "mean",
-        filename=filename,
+        filename=with_log_filename("mean_throughput", y_log),
         y_log=y_log,
         y_log_base=y_log_base,
     )
@@ -158,7 +161,7 @@ def y_thr_median(y_log: bool = False, y_log_base: float = 10.0) -> YConfig:
         default_title="Median throughput",
         ylabel="Throughput (events/s)",
         subdir=Path("overviews") / "throughput" / "median",
-        filename="median_throughput",
+        filename=with_log_filename("median_throughput", y_log),
         y_log=y_log,
         y_log_base=y_log_base,
     )
@@ -171,7 +174,7 @@ def y_thr_mean_rel(y_log: bool = False, y_log_base: float = 10.0) -> YConfig:
         default_title="Mean throughput (relative)",
         ylabel="Factor",
         subdir=Path("overviews") / "throughput" / "relative" / "mean",
-        filename="mean_throughput",
+        filename=with_log_filename("mean_throughput", y_log),
         y_log=y_log,
         y_log_base=y_log_base,
     )
@@ -184,7 +187,7 @@ def y_thr_median_rel(y_log: bool = False, y_log_base: float = 10.0) -> YConfig:
         default_title="Median throughput",
         ylabel="Factor",
         subdir=Path("overviews") / "throughput" / "relative" / "median",
-        filename="median_throughput",
+        filename=with_log_filename("median_throughput", y_log),
         y_log=y_log,
         y_log_base=y_log_base,
     )
@@ -197,7 +200,7 @@ def y_mem(y_log: bool = False, y_log_base: float = 10.0) -> YConfig:
         default_title="Memory usage",
         ylabel="Bytes",
         subdir=Path("overviews") / "memory",
-        filename="total_bytes",
+        filename=with_log_filename("total_bytes", y_log),
         y_log=y_log,
         y_log_base=y_log_base,
     )
@@ -210,7 +213,7 @@ def y_mem_rel(y_log: bool = False, y_log_base: float = 10.0) -> YConfig:
         default_title="Memory usage",
         ylabel="Bytes",
         subdir=Path("overviews") / "memory" / "relative",
-        filename="total_bytes_rel",
+        filename=with_log_filename("total_bytes_rel", y_log),
         y_log=y_log,
         y_log_base=y_log_base,
     )
@@ -223,7 +226,7 @@ def y_thr_mean_rel_window(y_log: bool = False, y_log_base: float = 10.0) -> YCon
         default_title="Mean throughput (relative to windows=1)",
         ylabel="Factor",
         subdir=Path("overviews") / "throughput" / "relative_window" / "mean",
-        filename="mean_throughput_rel_window",
+        filename=with_log_filename("mean_throughput_rel_window", y_log),
         y_log=y_log,
         y_log_base=y_log_base,
     )
@@ -236,7 +239,7 @@ def y_thr_median_rel_window(y_log: bool = False, y_log_base: float = 10.0) -> YC
         default_title="Median throughput (relative to windows=1)",
         ylabel="Factor",
         subdir=Path("overviews") / "throughput" / "relative_window" / "median",
-        filename="median_throughput_rel_window",
+        filename=with_log_filename("median_throughput_rel_window", y_log),
         y_log=y_log,
         y_log_base=y_log_base,
     )

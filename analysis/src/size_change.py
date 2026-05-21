@@ -95,6 +95,13 @@ def plot_relative_throughputs(
         strategies=["clone", "slice", "rc"],
     )
     plotter(df, folder_path)
+    y_config = plot_configs.y_thr_mean_rel(y_log=False)
+    plotter = overview_plotters.make_strategy_comparison_plotter(
+        x_config,
+        y_config,
+        strategies=["clone", "slice", "rc"],
+    )
+    plotter(df, folder_path)
 
 
 def size_change(csv_path):
