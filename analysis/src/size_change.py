@@ -74,7 +74,7 @@ def plot_relative_throughputs_to_slice(
     plotter = overview_plotters.make_strategy_comparison_plotter(
         x_config,
         y_config,
-        strategies=["clone", "slice"],
+        strategies=["clone", "slice", "rc"],
     )
     plotter(df, folder_path)
 
