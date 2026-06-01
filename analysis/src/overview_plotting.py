@@ -286,8 +286,28 @@ def _style_and_finalize_plot(
     ax.set_ylabel(ylabel, fontsize=font_config.y_label_size)
 
     ax.set_xticks(x_pos)
-    formatted_labels = [f"{int(x):,}".replace(",", ".") for x in x_tick_labels]
-    ax.set_xticklabels(formatted_labels, rotation=font_config.x_tick_rotation, ha="right")
+
+    def _is_int_like(x):
+        try:
+            int(x)
+            return True
+        except (TypeError, ValueError):
+            return False
+
+    if all(_is_int_like(x) for x in x_tick_labels):
+        formatted_labels = [f"{int(x):,}".replace(",", ".") for x in x_tick_labels]
+        ax.set_xticklabels(
+            formatted_labels,
+            rotation=font_config.x_tick_rotation,
+            ha="right",
+        )
+    else:
+        # Fall back to the raw labels (no thousands-formatting)
+        ax.set_xticklabels(
+            x_tick_labels,
+            rotation=font_config.x_tick_rotation,
+            ha="right",
+        )
 
     ax.tick_params(axis="x", labelsize=font_config.x_tick_size)
     ax.tick_params(axis="y", labelsize=font_config.y_tick_size)

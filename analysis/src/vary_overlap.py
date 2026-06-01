@@ -70,4 +70,4 @@ def vary_overlap(csv_path: str):
 
 
 if __name__ == "__main__":
-    vary_overlap("evaluation/vary_overlap/summary.csv")
+    vary_overlap("evaluation/vary_overlap2/summary.csv")
