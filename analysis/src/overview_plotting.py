@@ -10,6 +10,27 @@ from constants import STRATEGY_COLORS, STRATEGY_MARKERS
 from plot_configs import XConfig, YConfig
 from series import linear_trend_per_strategy_df, add_regression_overlay
 
+from dataclasses import dataclass
+
+
+@dataclass
+class PlotFontConfig:
+    title_size: int = 22
+    x_label_size: int = 18
+    y_label_size: int = 18
+    x_tick_size: int = 16
+    y_tick_size: int = 16
+    legend_size: int = 18
+    legend_title_size: int | None = None
+    x_tick_rotation: int = 45
+
+    def resolved_legend_title_size(self) -> int:
+        return (
+            self.legend_title_size
+            if self.legend_title_size is not None
+            else self.legend_size
+        )
+
 
 def make_overview_plotter(
         *,
@@ -257,17 +278,39 @@ def _style_and_finalize_plot(
         title=None,
         analysis_path: Path,
         output_file=None,
+        font_config: PlotFontConfig | None = None,
 ):
-    ax.set_xlabel(xlabel)
+    font_config = font_config or PlotFontConfig()
+
+    ax.set_xlabel(xlabel, fontsize=font_config.x_label_size)
+    ax.set_ylabel(ylabel, fontsize=font_config.y_label_size)
+
     ax.set_xticks(x_pos)
-    ax.set_xticklabels(x_tick_labels, rotation=45, ha="right", fontsize=8)
-    ax.set_ylabel(ylabel, fontsize=14)
+    formatted_labels = [f"{int(x):,}".replace(",", ".") for x in x_tick_labels]
+    ax.set_xticklabels(formatted_labels, rotation=font_config.x_tick_rotation, ha="right")
+
+    ax.tick_params(axis="x", labelsize=font_config.x_tick_size)
+    ax.tick_params(axis="y", labelsize=font_config.y_tick_size)
 
     if title is not None:
-        ax.set_title(title, fontsize=16)
+        ax.set_title(title, fontsize=font_config.title_size)
 
     ax.grid(True, alpha=0.3)
-    ax.legend()
+
+    legend = ax.get_legend()
+    if legend is None:
+        ax.legend(
+            fontsize=font_config.legend_size,
+            title_fontsize=font_config.resolved_legend_title_size(),
+        )
+    else:
+        for text in legend.get_texts():
+            text.set_fontsize(font_config.legend_size)
+        if legend.get_title() is not None:
+            legend.get_title().set_fontsize(
+                font_config.resolved_legend_title_size()
+            )
+
     fig.tight_layout()
 
     if output_file is not None:
@@ -289,6 +332,7 @@ def plot_overview_from_df(
         output_file=None,
         x_label_col="x_label",
         strategy_col="strategy",
+        font_config: PlotFontConfig | None = None,
 ):
     label_fn = x_config.label_fn
     y_col = y_config.y_col
@@ -297,6 +341,8 @@ def plot_overview_from_df(
     ylabel = y_config.ylabel
     workload_index_col = x_config.workload_index_col
     descending = x_config.descending
+
+    font_config = font_config or PlotFontConfig()
 
     df = add_label_column(df, label_fn=label_fn, out_col=x_label_col)
     df = df.copy()
@@ -374,6 +420,7 @@ def plot_overview_from_df(
         title=title,
         analysis_path=analysis_path,
         output_file=output_file,
+        font_config=font_config,
     )
 
 
