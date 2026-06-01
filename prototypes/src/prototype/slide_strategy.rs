@@ -11,6 +11,7 @@ pub mod iter_expire_strategy;
 pub mod rc_strategy;
 pub mod strategies_report_only;
 pub mod event_arrives;
+mod slice_deque_strategy;
 
 pub enum CutoffOrOpen {
     Cutoff(Time),

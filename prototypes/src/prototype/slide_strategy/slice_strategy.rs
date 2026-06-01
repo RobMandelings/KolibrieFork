@@ -14,7 +14,6 @@ pub struct SliceStrategy<I: Clone> {
 }
 
 impl<I: Clone> SliceStrategy<I> {
-
     /// Take a slice of the event vector by finding the first position with a certain time stamp and last position
     pub fn slice_by_ts(&self, open: Time) -> &[Event<I>] {
         let lo = self.content.partition_point(|e| !after_open(&open, &e.ts));

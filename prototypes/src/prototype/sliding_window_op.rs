@@ -93,16 +93,18 @@ where S: WindowSnapshotStrategy<I>
             self.app_time = event.ts;
         }
 
-        for (iri, window) in self.sliding_windows.iter_mut() {
-            let open = window.active_bounds.open;
-            if window.slides_at(event.ts) {
-                self.strategy.report_window(iri, open);
-                window.slide(event.ts)
+        if tick_flag {
+            for (iri, window) in self.sliding_windows.iter_mut() {
+                let open = window.active_bounds.open;
+                if window.slides_at(event.ts) {
+                    self.strategy.report_window(iri, open);
+                    window.slide(event.ts)
+                }
             }
-        }
 
-        let earliest_open_time = compute_earliest_open_time(self.sliding_windows.values());
-        self.strategy.drop_expired_events(earliest_open_time);
-        self.strategy.add_event(event);
+            let earliest_open_time = compute_earliest_open_time(self.sliding_windows.values());
+            self.strategy.drop_expired_events(earliest_open_time);
+            self.strategy.add_event(event);
+        }
     }
 }
