@@ -41,6 +41,7 @@ def make_overview_plotter(
         title: str | None = None,
         x_label_col: str = "x_label",
         strategy_col: str = "strategy",
+        font_config: PlotFontConfig | None = None,
 ):
     resolved_title = title or y_config.default_title
 
@@ -56,6 +57,7 @@ def make_overview_plotter(
             strategies=strategies,
             x_label_col=x_label_col,
             strategy_col=strategy_col,
+            font_config=font_config
         )
 
     return plotter

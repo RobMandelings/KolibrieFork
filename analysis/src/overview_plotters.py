@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from constants import STRATEGIES
-from overview_plotting import make_overview_plotter, make_strategy_windows_overview_plotter
+from overview_plotting import make_overview_plotter, make_strategy_windows_overview_plotter, PlotFontConfig
 from plot_configs import YConfig, XConfig
 
 
@@ -17,6 +17,7 @@ def make_strategy_comparison_plotter(
         strategies: list[str] | None,
         title: str | None = None,
         suffix: str | None = None,
+        font_config: PlotFontConfig | None = None,
 ):
     """
     Creates one plotter that compares the given strategies with each other.
@@ -39,6 +40,7 @@ def make_strategy_comparison_plotter(
         title=f"{base_title} ({strategy_title})",
         output_file=y_config.subdir / f"{y_config.filename}_{resolved_suffix}.png",
         strategies=strategies,
+        font_config=font_config
     )
 
 
