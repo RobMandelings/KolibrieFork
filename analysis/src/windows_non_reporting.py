@@ -24,7 +24,7 @@ def plot_relative_throughputs(df: pd.DataFrame, x_config: plot_configs.XConfig, 
 
 
 def plot_relative_latencies(df: pd.DataFrame, x_config: plot_configs.XConfig, folder_path):
-    y_config = plot_configs.y_lat_mean(False)
+    y_config = plot_configs.y_lat_mean_ns(False)
 
     plotter = overview_plotters.make_strategy_comparison_plotter(
         x_config,

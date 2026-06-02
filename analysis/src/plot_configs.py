@@ -76,19 +76,6 @@ def with_log_filename(filename: str, y_log: bool) -> str:
     return f"{filename}_log" if y_log else filename
 
 
-def y_lat_mean_sec(y_log: bool = False, y_log_base: float = 10.0) -> YConfig:
-    return YConfig(
-        y_col="sec_mean",
-        yerr_col=None,
-        default_title="Mean latency",
-        ylabel="Seconds",
-        subdir=Path("overviews") / "seconds" / "mean",
-        filename=with_log_filename("mean_sec", y_log),
-        y_log=y_log,
-        y_log_base=y_log_base,
-    )
-
-
 def y_lat_mean_ns(y_log: bool = False, y_log_base: float = 10.0) -> YConfig:
     return YConfig(
         y_col="ns_mean",
@@ -198,7 +185,7 @@ def y_thr_mean_rel(y_log: bool = False, y_log_base: float = 10.0) -> YConfig:
         y_col="thr_mean_rel",
         yerr_col=None,
         default_title="Mean throughput (relative)",
-        ylabel="Factor",
+        ylabel="Performance",
         subdir=Path("overviews") / "throughput" / "relative" / "mean",
         filename=with_log_filename("mean_throughput_rel", y_log),
         y_log=y_log,

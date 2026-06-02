@@ -14,6 +14,8 @@ from series import linear_trend_per_strategy_df, add_regression_overlay
 from dataclasses import dataclass
 
 
+figsize = (6, 4)
+
 @dataclass
 class PlotFontConfig:
     title_size: int = 22
@@ -53,7 +55,7 @@ def make_overview_plotter(
             analysis_path=analysis_path,
             x_config=x_config,
             y_config=y_config,
-            title=resolved_title,
+            title=None,
             output_file=output_file,
             strategies=strategies,
             x_label_col=x_label_col,
@@ -388,7 +390,7 @@ def plot_overview_from_df(
         x_label_col=x_label_col,
     )
 
-    fig, ax1 = plt.subplots(figsize=(16, 6))
+    fig, ax1 = plt.subplots(figsize=figsize)
 
     regression_results = _compute_regression_results(
         df=df,
@@ -504,7 +506,7 @@ def plot_single_strategy_windows_overview_from_df(
         x_label_col=x_label_col,
     )
 
-    fig, ax1 = plt.subplots(figsize=(16, 6))
+    fig, ax1 = plt.subplots(figsize=figsize)
 
     base_color = STRATEGY_COLORS.get(strategy, None)
     base_marker = STRATEGY_MARKERS.get(strategy, "o")

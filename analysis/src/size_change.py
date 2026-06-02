@@ -43,7 +43,7 @@ def plot_mean_latencies(
         df: pd.DataFrame,
         folder_path,
 ):
-    y_config = plot_configs.y_lat_mean(y_log=False)
+    y_config = plot_configs.y_lat_mean_ns(y_log=False)
     plotter = overview_plotters.make_strategy_comparison_plotter(
         x_config,
         y_config,

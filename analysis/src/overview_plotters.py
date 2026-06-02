@@ -37,7 +37,7 @@ def make_strategy_comparison_plotter(
     return make_overview_plotter(
         x_config=x_config,
         y_config=y_config,
-        title=f"{base_title} ({strategy_title})",
+        title=None,
         output_file=y_config.subdir / f"{y_config.filename}_{resolved_suffix}.png",
         strategies=strategies,
         font_config=font_config
