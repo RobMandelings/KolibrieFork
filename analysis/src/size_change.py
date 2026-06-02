@@ -56,7 +56,7 @@ def plot_memory_usage(
         df: pd.DataFrame,
         folder_path,
 ):
-    y_config = plot_configs.y_mem(y_log=True)
+    y_config = plot_configs.y_mem(y_log=False)
     plotter = overview_plotters.make_strategy_comparison_plotter(
         x_config,
         y_config,

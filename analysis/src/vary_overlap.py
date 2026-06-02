@@ -7,8 +7,11 @@ import pandas as pd
 import overview_plotters
 import plot_configs
 from generate_plots import add_throughputs, add_relative_metric
+from overview_plotting import PlotFontConfig
 
 x_config = plot_configs.x_perc_overlap(descending=True)
+
+DEFAULT_PLOT_FONT_CONFIG = PlotFontConfig(x_tick_size=14)
 
 
 def plot_relative_throughputs_vary_overlap(
@@ -26,6 +29,7 @@ def plot_relative_throughputs_vary_overlap(
         x_config,
         y_config,
         strategies=["rc", "slice", "clone", "legacy"],
+        font_config=DEFAULT_PLOT_FONT_CONFIG
     )
     plotter(df, folder_path)
 
@@ -34,6 +38,7 @@ def plot_relative_throughputs_vary_overlap(
         x_config,
         y_config,
         strategies=["rc", "slice", "clone", "legacy"],
+        font_config=DEFAULT_PLOT_FONT_CONFIG
     )
     plotter(df, folder_path)
 
@@ -47,6 +52,7 @@ def plot_absolute_throughputs_vary_overlap(
         x_config,
         y_config,
         strategies=["rc", "slice", "clone", "legacy"],
+        font_config=DEFAULT_PLOT_FONT_CONFIG
     )
     plotter(df, folder_path)
 
@@ -55,6 +61,7 @@ def plot_absolute_throughputs_vary_overlap(
         x_config,
         y_config,
         strategies=["rc", "slice", "clone", "legacy"],
+        font_config=DEFAULT_PLOT_FONT_CONFIG
     )
     plotter(df, folder_path)
 
@@ -63,6 +70,7 @@ def vary_overlap(csv_path: str):
     analysis_path = Path(csv_path)
     df = pd.read_csv(analysis_path)
     df = add_throughputs(df)
+
     folder_path = analysis_path.parent
 
     plot_relative_throughputs_vary_overlap(df, folder_path)

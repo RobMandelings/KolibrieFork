@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import Any, Callable
 
@@ -18,7 +19,7 @@ class PlotFontConfig:
     title_size: int = 22
     x_label_size: int = 18
     y_label_size: int = 18
-    x_tick_size: int = 16
+    x_tick_size: int = 14
     y_tick_size: int = 16
     legend_size: int = 18
     legend_title_size: int | None = None
@@ -286,6 +287,13 @@ def _style_and_finalize_plot(
 
     ax.set_xlabel(xlabel, fontsize=font_config.x_label_size)
     ax.set_ylabel(ylabel, fontsize=font_config.y_label_size)
+
+    # Subsample x ticks only, keep data unchanged
+    max_xticks = 15
+    if len(x_pos) > max_xticks:
+        step = math.ceil(len(x_pos) / max_xticks)
+        x_pos = x_pos[::step]
+        x_tick_labels = x_tick_labels[::step]
 
     ax.set_xticks(x_pos)
 

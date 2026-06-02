@@ -18,18 +18,18 @@ def plot_relative_throughputs(df: pd.DataFrame, x_config: plot_configs.XConfig, 
     plotter = overview_plotters.make_strategy_comparison_plotter(
         x_config,
         y_config,
-        strategies=["clone", "slice", "rc", "arc"]
+        strategies=["clone", "slice", "rc", "legacy"]
     )
     plotter(df, folder_path)
 
 
 def plot_relative_latencies(df: pd.DataFrame, x_config: plot_configs.XConfig, folder_path):
-    y_config = plot_configs.y_lat_mean_rel(False)
+    y_config = plot_configs.y_lat_mean(False)
 
     plotter = overview_plotters.make_strategy_comparison_plotter(
         x_config,
         y_config,
-        strategies=["clone", "slice", "rc", "arc", "legacy"]
+        strategies=["clone", "slice", "rc"]
     )
     plotter(df, folder_path)
 
@@ -40,7 +40,7 @@ def plot_mem_usage(df: pd.DataFrame, x_config: plot_configs.XConfig, folder_path
     plotter = overview_plotters.make_strategy_comparison_plotter(
         x_config,
         y_config,
-        strategies=["clone", "slice", "rc", "arc", "legacy"]
+        strategies=["clone", "slice", "rc", "legacy"]
     )
     plotter(df, folder_path)
 

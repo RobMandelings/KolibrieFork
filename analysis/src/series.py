@@ -58,7 +58,7 @@ def perc_overlap_label(row: pd.Series) -> str:
     if perc_overlap < 0:
         perc_overlap = 0
 
-    return f"{perc_overlap:.2%}"
+    return f"{perc_overlap:.0%}"
 
 
 def slide_label(row: pd.Series) -> str:
